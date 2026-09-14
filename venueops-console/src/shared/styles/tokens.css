@@ -1,0 +1,83 @@
+:root {
+  /* Marsh surfaces — aligned with the guest dark palette, denser for operations */
+  --color-surface-lowest: #07110f;
+  --color-surface-low: #12211e;
+  --color-surface: #182825;
+  --color-surface-high: #21332f;
+  --color-surface-highest: #2c423d;
+  --color-outline: #3b4a46;
+  --color-outline-strong: #8b9a8c;
+
+  /* Copper accents — restrained relative to the guest lime glow */
+  --color-accent: #c4784a;
+  --color-accent-hover: #d4895c;
+  --color-accent-muted: #8a5536;
+  --color-accent-soft: rgba(196, 120, 74, 0.16);
+
+  /* Text */
+  --color-text: #f3eee0;
+  --color-text-muted: #9aa89a;
+
+  /* Operating, warning, hold, and closed */
+  --color-status-operating: #6f9a2e;
+  --color-status-operating-soft: rgba(111, 154, 46, 0.18);
+  --color-status-warning: #c49a32;
+  --color-status-warning-soft: rgba(196, 154, 50, 0.18);
+  --color-status-hold: #c4784a;
+  --color-status-hold-soft: rgba(196, 120, 74, 0.18);
+  --color-status-closed: #8a8070;
+  --color-status-closed-soft: rgba(138, 128, 112, 0.18);
+
+  --color-danger: #e08a76;
+  --color-danger-soft: rgba(224, 138, 118, 0.16);
+
+  /* Spacing */
+  --space-xxs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-xxl: 3rem;
+
+  /* Corner radii */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.36);
+
+  /* Motion */
+  --duration-fast: 160ms;
+  --duration-standard: 240ms;
+  --duration-slow: 360ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Focus rings */
+  --focus-ring-color: var(--color-accent);
+  --focus-ring: 0 0 0 2px var(--color-surface-lowest),
+    0 0 0 4px var(--focus-ring-color);
+
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --rail-width: 15.5rem;
+  --shell-narrow: 52.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-standard: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+}

@@ -1,0 +1,19 @@
+applications:
+  venueopsApi:
+    repository: venueops-api
+    tag: local
+    # Prefer digests in shared environments, for example:
+    # digest: sha256:REPLACE_ME
+  environmentalMonitor:
+    repository: environmental-monitor
+    tag: local
+  operatorConsole:
+    repository: venueops-console
+    tag: local
+  guestApp:
+    repository: lumen-marsh-app
+    tag: local
+
+notes: |
+  Production and CI deployments must pin immutable digests, not mutable tags.
+  Update this manifest when promoting a known-good set of application builds.

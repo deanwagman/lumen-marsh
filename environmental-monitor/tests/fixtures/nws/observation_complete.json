@@ -1,0 +1,17 @@
+{
+  "id": "https://api.weather.gov/stations/KMCO/observations/2026-09-01T18:53:00+00:00",
+  "type": "Feature",
+  "properties": {
+    "station": "https://api.weather.gov/stations/KMCO",
+    "timestamp": "2026-09-01T18:53:00+00:00",
+    "textDescription": "Partly Cloudy",
+    "presentWeather": [],
+    "temperature": { "unitCode": "wmoUnit:degC", "value": 32.2 },
+    "relativeHumidity": { "unitCode": "wmoUnit:percent", "value": 57.3 },
+    "windDirection": { "unitCode": "wmoUnit:degree_(angle)", "value": 120 },
+    "windSpeed": { "unitCode": "wmoUnit:km_h-1", "value": 16.56 },
+    "windGust": { "unitCode": "wmoUnit:km_h-1", "value": 33.12 },
+    "precipitationLastHour": { "unitCode": "wmoUnit:mm", "value": 0 },
+    "visibility": { "unitCode": "wmoUnit:m", "value": 16090 }
+  }
+}

@@ -1,0 +1,198 @@
+# Lumen Marsh local integration stack (Phases 2–5).
+# Application images build from sibling repositories.
+# Do not encode attraction/incident/weather business rules here.
+
+name: lumen-marsh
+
+services:
+  venueops-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${VENUEOPS_DB_NAME:-venueops}
+      POSTGRES_USER: ${VENUEOPS_DB_USER:-venueops}
+      POSTGRES_PASSWORD: ${VENUEOPS_DB_PASSWORD:-venueops}
+    volumes:
+      - venueops-data:/var/lib/postgresql/data
+    networks:
+      - venueops-data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${VENUEOPS_DB_USER:-venueops} -d ${VENUEOPS_DB_NAME:-venueops}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: on-failure:5
+
+  environmental-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${ENVIRONMENTAL_DB_NAME:-environmental_monitor}
+      POSTGRES_USER: ${ENVIRONMENTAL_DB_USER:-environmental}
+      POSTGRES_PASSWORD: ${ENVIRONMENTAL_DB_PASSWORD:-environmental}
+    volumes:
+      - environmental-data:/var/lib/postgresql/data
+    networks:
+      - environmental-data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ENVIRONMENTAL_DB_USER:-environmental} -d ${ENVIRONMENTAL_DB_NAME:-environmental_monitor}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: on-failure:5
+
+  environmental-migrate:
+    build:
+      context: ../environmental-monitor
+    image: ${ENVIRONMENTAL_MONITOR_IMAGE:-environmental-monitor:local}
+    working_dir: /app
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      APP_ENV: production
+      SIMULATION_ENABLED: "false"
+      RUN_MIGRATIONS_ON_STARTUP: "false"
+      PARK_LATITUDE: ${PARK_LATITUDE:-28.474}
+      PARK_LONGITUDE: ${PARK_LONGITUDE:-81.466}
+      PARK_TIMEZONE: ${PARK_TIMEZONE:-America/New_York}
+      NWS_USER_AGENT: ${NWS_USER_AGENT:-LumenMarshEnvironmentalMonitor/0.1 (platform@example.com)}
+      DATABASE_URL: postgresql+asyncpg://${ENVIRONMENTAL_DB_USER:-environmental}:${ENVIRONMENTAL_DB_PASSWORD:-environmental}@environmental-db:5432/${ENVIRONMENTAL_DB_NAME:-environmental_monitor}
+      VENUEOPS_BASE_URL: http://venueops-api:8080
+    networks:
+      - environmental-data
+    depends_on:
+      environmental-db:
+        condition: service_healthy
+    restart: "no"
+
+  venueops-api:
+    build:
+      context: ../venueops-api
+    image: ${VENUEOPS_IMAGE:-venueops-api:local}
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://venueops-db:5432/${VENUEOPS_DB_NAME:-venueops}
+      SPRING_DATASOURCE_USERNAME: ${VENUEOPS_DB_USER:-venueops}
+      SPRING_DATASOURCE_PASSWORD: ${VENUEOPS_DB_PASSWORD:-venueops}
+      VENUEOPS_ATTRACTIONS_SEED: ${VENUEOPS_SEED:-true}
+      VENUEOPS_SECURITY_MODE: ${VENUEOPS_SECURITY_MODE:-LOCAL_JWT}
+      VENUEOPS_ISSUER_URI: ${VENUEOPS_ISSUER_URI:-http://venueops.local/test}
+      VENUEOPS_ALLOWED_CLIENT_IDS: ${VENUEOPS_ALLOWED_CLIENT_IDS:-venueops-console-local,environmental-monitor-local}
+      VENUEOPS_CORS_ORIGINS: ${VENUEOPS_CORS_ORIGINS:-http://localhost:*,http://127.0.0.1:*}
+      VENUEOPS_WEATHER_INGEST_RATE_LIMIT_PER_MINUTE: ${VENUEOPS_WEATHER_INGEST_RATE_LIMIT_PER_MINUTE:-120}
+      SERVER_SHUTDOWN: graceful
+    ports:
+      - "${VENUEOPS_HOST_PORT:-8080}:8080"
+    networks:
+      - public
+      - services
+      - venueops-data
+    depends_on:
+      venueops-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    restart: on-failure:5
+
+  environmental-monitor:
+    build:
+      context: ../environmental-monitor
+    image: ${ENVIRONMENTAL_MONITOR_IMAGE:-environmental-monitor:local}
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SIMULATION_ENABLED: ${SIMULATION_ENABLED:-false}
+      PARK_LATITUDE: ${PARK_LATITUDE:-28.474}
+      PARK_LONGITUDE: ${PARK_LONGITUDE:-81.466}
+      PARK_TIMEZONE: ${PARK_TIMEZONE:-America/New_York}
+      NWS_USER_AGENT: ${NWS_USER_AGENT:-LumenMarshEnvironmentalMonitor/0.1 (platform@example.com)}
+      DATABASE_URL: postgresql+asyncpg://${ENVIRONMENTAL_DB_USER:-environmental}:${ENVIRONMENTAL_DB_PASSWORD:-environmental}@environmental-db:5432/${ENVIRONMENTAL_DB_NAME:-environmental_monitor}
+      VENUEOPS_BASE_URL: http://venueops-api:8080
+      RUN_MIGRATIONS_ON_STARTUP: "false"
+      OIDC_TOKEN_URL: ${OIDC_TOKEN_URL:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_SCOPE: ${OIDC_SCOPE:-venueops/weather-recommendations.write}
+      OIDC_DISABLED: ${OIDC_DISABLED:-true}
+      VENUEOPS_BEARER_TOKEN: ${VENUEOPS_BEARER_TOKEN:-}
+    ports:
+      - "${ENVIRONMENTAL_MONITOR_HOST_PORT:-8000}:8080"
+    networks:
+      - public
+      - services
+      - environmental-data
+    depends_on:
+      environmental-migrate:
+        condition: service_completed_successfully
+      venueops-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    restart: on-failure:5
+
+  venueops-console:
+    build:
+      context: ../venueops-console
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_AUTH_MODE: ${VITE_AUTH_MODE:-local}
+        VITE_OIDC_AUTHORITY: ${VITE_OIDC_AUTHORITY:-}
+        VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:-}
+        VITE_OIDC_REDIRECT_URI: ${VITE_OIDC_REDIRECT_URI:-http://localhost:3001/auth/callback}
+        VITE_OIDC_LOGOUT_URI: ${VITE_OIDC_LOGOUT_URI:-http://localhost:3001/login}
+        VITE_OIDC_SCOPES: ${VITE_OIDC_SCOPES:-openid profile email}
+    image: ${OPERATOR_CONSOLE_IMAGE:-venueops-console:local}
+    ports:
+      - "${OPERATOR_CONSOLE_HOST_PORT:-3001}:8080"
+    networks:
+      - public
+    depends_on:
+      venueops-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+    restart: on-failure:5
+
+  lumen-marsh-app:
+    build:
+      context: ../lumen-marsh-app
+      args:
+        VENUEOPS_API_BASE_URL: ${VENUEOPS_API_BASE_URL:-http://localhost:8080}
+    image: ${GUEST_APP_IMAGE:-lumen-marsh-app:local}
+    ports:
+      - "${GUEST_APP_HOST_PORT:-3000}:8080"
+    networks:
+      - public
+    depends_on:
+      venueops-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+    restart: on-failure:5
+
+networks:
+  public:
+  services:
+  venueops-data:
+  environmental-data:
+
+volumes:
+  venueops-data:
+    name: lumen-marsh_venueops-data
+  environmental-data:
+    name: lumen-marsh_environmental-data

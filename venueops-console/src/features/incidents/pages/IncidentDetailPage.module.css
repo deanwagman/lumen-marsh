@@ -1,0 +1,151 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 72rem;
+}
+
+.back {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  width: fit-content;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.back:hover {
+  color: var(--color-text);
+}
+
+.header,
+.facts,
+.badges,
+.workspace,
+.panelHeading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.header {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.header h1:focus {
+  outline: none;
+}
+
+.header h1:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.facts {
+  margin: 0;
+}
+
+.facts div {
+  min-width: 8rem;
+}
+
+.kicker,
+.facts dt {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.typeLine,
+.muted {
+  color: var(--color-text-muted);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.panel h2,
+.panelHeading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.panelHeading {
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.attractionList {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.advisory {
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-surface-low);
+}
+
+.recommendationTitle {
+  margin: 0;
+  font-weight: 650;
+}
+
+.workspace {
+  align-items: flex-start;
+}
+
+.workspace > * {
+  flex: 1 1 18rem;
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.skeletonBlock {
+  height: 4rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-high) 0%,
+    var(--color-surface-highest) 50%,
+    var(--color-surface-high) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeletonBlock {
+    animation: shimmer var(--duration-slow) var(--ease-standard) infinite;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}

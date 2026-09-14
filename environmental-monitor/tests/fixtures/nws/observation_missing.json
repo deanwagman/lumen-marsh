@@ -1,0 +1,16 @@
+{
+  "id": "https://api.weather.gov/stations/KMCO/observations/2026-09-01T19:53:00+00:00",
+  "type": "Feature",
+  "properties": {
+    "station": "https://api.weather.gov/stations/KMCO",
+    "timestamp": "2026-09-01T19:53:00+00:00",
+    "textDescription": null,
+    "temperature": { "unitCode": "wmoUnit:degC", "value": null },
+    "relativeHumidity": { "unitCode": "wmoUnit:percent", "value": null },
+    "windDirection": { "unitCode": "wmoUnit:degree_(angle)", "value": null },
+    "windSpeed": { "unitCode": "wmoUnit:km_h-1", "value": null },
+    "windGust": { "unitCode": "wmoUnit:km_h-1", "value": null },
+    "precipitationLastHour": { "unitCode": "wmoUnit:mm", "value": null },
+    "visibility": { "unitCode": "wmoUnit:m", "value": null }
+  }
+}

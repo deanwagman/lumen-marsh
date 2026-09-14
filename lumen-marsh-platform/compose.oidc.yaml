@@ -1,0 +1,32 @@
+# Cognito-backed local integration overlay.
+# Applied after compose.override.yaml by: ./scripts/dev-up.sh --oidc
+# Human users authenticate with Authorization Code + PKCE. Environmental
+# Monitor authenticates independently with its client-credentials grant.
+
+services:
+  venueops-api:
+    environment:
+      VENUEOPS_SECURITY_MODE: OIDC
+      VENUEOPS_ISSUER_URI: ${VENUEOPS_ISSUER_URI:?VENUEOPS_ISSUER_URI is required}
+      VENUEOPS_ALLOWED_CLIENT_IDS: ${VENUEOPS_ALLOWED_CLIENT_IDS:?VENUEOPS_ALLOWED_CLIENT_IDS is required}
+      VENUEOPS_CORS_ORIGINS: http://localhost:*,http://127.0.0.1:*
+
+  venueops-console:
+    build:
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:8080}
+        VITE_AUTH_MODE: oidc
+        VITE_OIDC_AUTHORITY: ${VITE_OIDC_AUTHORITY:?VITE_OIDC_AUTHORITY is required}
+        VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:?VITE_OIDC_CLIENT_ID is required}
+        VITE_OIDC_REDIRECT_URI: ${VITE_OIDC_REDIRECT_URI:-http://127.0.0.1:5173/auth/callback}
+        VITE_OIDC_LOGOUT_URI: ${VITE_OIDC_LOGOUT_URI:-http://127.0.0.1:5173/}
+        VITE_OIDC_SCOPES: ${VITE_OIDC_SCOPES:-openid profile email venueops/operator.read venueops/attractions.command venueops/incidents.command venueops/advisories.publish venueops/weather-recommendations.review}
+
+  environmental-monitor:
+    environment:
+      OIDC_DISABLED: "false"
+      OIDC_TOKEN_URL: ${OIDC_TOKEN_URL:?OIDC_TOKEN_URL is required}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?OIDC_CLIENT_ID is required}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET is required}
+      OIDC_SCOPE: ${OIDC_SCOPE:-venueops/weather-recommendations.write}
+      VENUEOPS_BEARER_TOKEN: ""

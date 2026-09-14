@@ -1,0 +1,38 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.operating {
+  color: var(--color-status-operating);
+  background: var(--color-status-operating-soft);
+}
+
+.warning {
+  color: var(--color-status-warning);
+  background: var(--color-status-warning-soft);
+}
+
+.hold {
+  color: var(--color-status-hold);
+  background: var(--color-status-hold-soft);
+}
+
+.closed {
+  color: var(--color-status-closed);
+  background: var(--color-status-closed-soft);
+}

@@ -1,0 +1,16 @@
+.git
+.venv
+.tools
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.python-version
+.env
+.env.*
+!.env.example
+tests
+scripts
+docker-compose.yml
+__pycache__
+*.pyc
+.DS_Store

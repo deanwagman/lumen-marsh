@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: venueops
+      POSTGRES_USER: venueops
+      POSTGRES_PASSWORD: venueops
+    ports:
+      - "5432:5432"

@@ -1,0 +1,96 @@
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  border: 1px solid rgba(196, 120, 74, 0.35);
+  border-radius: var(--radius-md);
+  background: var(--color-status-hold-soft);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.header h2 {
+  font-size: 1rem;
+}
+
+.count {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) auto;
+  grid-template-areas:
+    "identity badge"
+    "reason reason"
+    "when when";
+  gap: 0.2rem var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  text-decoration: none;
+}
+
+.item:hover {
+  border-color: var(--color-accent-muted);
+}
+
+.identity {
+  grid-area: identity;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.area,
+.reason,
+.when {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.reason {
+  grid-area: reason;
+}
+
+.when {
+  grid-area: when;
+}
+
+@media (min-width: 40rem) {
+  .item {
+    grid-template-columns: minmax(0, 1.3fr) auto minmax(0, 1.4fr) auto;
+    grid-template-areas: "identity badge reason when";
+    align-items: center;
+  }
+
+  .reason,
+  .when {
+    font-size: 0.85rem;
+  }
+
+  .when {
+    justify-self: end;
+  }
+}

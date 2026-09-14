@@ -1,0 +1,76 @@
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+*.swp
+*~
+
+# Local environment and credentials
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.test
+**/credentials.json
+**/*.pem
+**/*.key
+**/*.p12
+**/*.jks
+
+# Logs, coverage, and temporary output
+**/*.log
+**/coverage/
+**/htmlcov/
+**/.coverage
+**/tmp/
+**/.cache/
+
+# Java / Gradle
+**/.gradle/
+**/build/
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Python
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.tools/
+
+# Node / Vite
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/*.local
+
+# Flutter / Dart
+**/.dart_tool/
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/.build/
+**/.buildlog/
+**/app.*.symbols
+**/app.*.map.json
+
+# OpenTofu / Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+!**/*.tfvars.example
+**/.terraform.lock.hcl
+**/crash.log
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+
+# Local databases and runtime data
+**/*.db
+**/*.sqlite
+**/*.sqlite3

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "ghost-orchid",
+    "title": "Lumen Ghost Orchid",
+    "category": "flora",
+    "summary": "A nocturnal orchid observed near Mangrove Run.",
+    "body": "Field observers first logged the Lumen Ghost Orchid along the quieter eddies of Mangrove Run, where root lattices catch residual biolume after dusk.\n\nPetals remain nearly translucent by day. After last light, a cool silver bloom appears for roughly twenty minutes—long enough for expedition boats to pause without blocking the main channel.\n\nGuests are asked not to touch the blooms. The orchid’s symbiotic film is fragile, and the wetlands recover faster when observation stays from the boardwalk and boat path.",
+    "imageAsset": "assets/field_guide/images/ghost-orchid-v2.webp",
+    "imageAlt": "A pale orchid glowing beneath mangrove roots."
+  },
+  {
+    "id": "biolume-moss",
+    "title": "Biolume Boardwalk Moss",
+    "category": "flora",
+    "summary": "Soft moss that brightens footfalls on Luminous Wetlands boardwalks.",
+    "body": "Biolume moss colonizes shaded planks throughout the Luminous Wetlands. Pressure from footsteps releases a brief green shimmer that fades within seconds.\n\nPark horticulture treats it as a living wayfinding cue: denser patches mark safe observation alcoves, while thinner growth appears on high-traffic spans.\n\nDo not scrape or collect samples. The moss rebounds slowly after abrasion, and the boardwalk lighting plan depends on an unbroken living layer.",
+    "imageAsset": "assets/field_guide/images/biolume-moss-v2.webp",
+    "imageAlt": "Soft green moss glowing along a wooden boardwalk plank."
+  },
+  {
+    "id": "marsh-heron",
+    "title": "Cypress Basin Dusk Heron",
+    "category": "wildlife",
+    "summary": "A dusk heron that hunts the still water around Cypress Coil.",
+    "body": "The Cypress Basin dusk heron arrives as Cypress Coil’s launch windows quiet for the evening. It prefers the reed fringe south of the coaster’s splash channel.\n\nObservers note a copper sheen on the wing edges when stormglass instruments nearby charge for night readings. The bird seems unbothered by distant launch thunder once guests clear the overlook rails.\n\nKeep voices low and lenses capped with soft shutters. Sudden flashes push the heron off the basin and interrupt feeding for the rest of the night.",
+    "imageAsset": "assets/field_guide/images/marsh-heron-v2.webp",
+    "imageAlt": "A slender heron standing in dusk water among cypress knees."
+  },
+  {
+    "id": "stormglass-notes",
+    "title": "Stormglass Station Briefing",
+    "category": "researchNotes",
+    "summary": "Research Quarter notes on how stormglass instruments read the marsh.",
+    "body": "Stormglass Station anchors the Research Quarter’s guest-facing weather lab. Instruments here sample humidity, ionic charge, and biolume density from sensors threaded through the wetlands.\n\nWhen the park places a weather hold, Station technicians correlate lightning proximity with stormglass crystallization rate. Guests sometimes see instruments cloud over minutes before an outdoor attraction pauses.\n\nThis note is observational only. Operational status always comes from live VenueOps boards—not from the glass itself.",
+    "imageAsset": "assets/field_guide/images/stormglass-notes-v2.webp",
+    "imageAlt": "Glass weather instruments glowing inside a research station."
+  },
+  {
+    "id": "mangrove-lore",
+    "title": "Mangrove Run Expedition Lore",
+    "category": "attractionLore",
+    "summary": "Why Mangrove Run boats travel beneath a living canopy.",
+    "body": "Mangrove Run began as a survey route for wetland ecologists mapping luminous root systems. Early crews reported that boats moving slowly under the canopy stirred fewer sediment blooms and revealed clearer biolume trails.\n\nGuest expeditions reuse that pacing. The attraction’s gentle tempo is not only comfort design—it mirrors the original research cadence that kept instruments calibrated and orchids undisturbed.\n\nListen for the soft chime before each inlet: it marks a handoff between survey sectors still referenced in Research Quarter logs.",
+    "imageAsset": "assets/field_guide/images/mangrove-lore-v2.webp",
+    "imageAlt": "An expedition boat gliding beneath a glowing mangrove canopy."
+  },
+  {
+    "id": "coil-origin",
+    "title": "Cypress Coil Origin Note",
+    "category": "attractionLore",
+    "summary": "How a research launch track became Cypress Coil.",
+    "body": "Cypress Coil began as a short research launch used to loft sensor drones above the basin canopy. Engineers later lengthened the track into a guest coaster while keeping the original launch profile that cleared cypress crowns cleanly.\n\nThe spiral that gives the ride its name follows an old maintenance path once walked by horticulture crews tending elevated moss trays.\n\nWhen the attraction is closed, that same corridor returns to quiet observation—dusk herons reclaim the reed line, and the Field Guide treats the pause as part of the basin’s rhythm.",
+    "imageAsset": "assets/field_guide/images/coil-origin-v2.webp",
+    "imageAlt": "A launch coaster track curving through a cypress basin canopy."
+  }
+]

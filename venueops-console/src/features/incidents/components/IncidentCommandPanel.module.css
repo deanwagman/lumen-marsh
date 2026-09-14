@@ -1,0 +1,42 @@
+.panel,
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.form input,
+.form select {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .form {
+    animation: expand var(--duration-fast) var(--ease-standard);
+  }
+}
+
+@keyframes expand {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}

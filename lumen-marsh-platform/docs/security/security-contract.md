@@ -1,0 +1,202 @@
+# Lumen Marsh security contract
+
+**Status:** Accepted for implementation (Phase 0)  
+**Owners:** VenueOps API, VenueOps Console, Environmental Monitor, Platform  
+**Related ADR:** [ADR 0001 — Cognito and JWT](./adr/0001-cognito-jwt.md)
+
+This document is the shared security boundary. The Java API and React console implement it independently. The API remains authoritative: hiding a console button is not authorization.
+
+## Goals
+
+- Guests anonymously view attractions, wait times, advisories, media, and guest live updates.
+- Operators sign in before using Control Tower.
+- Supervisors receive elevated operational permissions.
+- Environmental Monitor authenticates as a service, not a human.
+- VenueOps derives audit identities from verified credentials — never from `X-Actor`.
+- REST commands and the operator event stream enforce the same rules.
+
+## Deny by default
+
+Every route is denied unless it is explicitly classified below as **Public**, **Operator**, **Supervisor**, **Integration**, or **Internal**.
+
+Internal routes are unavailable outside trusted local/dev tooling and must be disabled or protected in shared/demo deployments.
+
+## Identities
+
+| Identity | Authentication | Principal purpose |
+|---|---|---|
+| Guest | None | Public park reads and guest SSE |
+| Operator | Cognito user access token (group `operators`) | Day-to-day Control Tower work |
+| Supervisor | Cognito user access token (group `supervisors`) | Guest-facing publish and high-impact resolution |
+| Weather service | Cognito client-credentials token | Submit weather recommendations only |
+| VenueOps system | Internal process identity | Automated system events (no external token) |
+
+### Cognito groups
+
+- `operators`
+- `supervisors` (implies operator capabilities)
+
+A user may belong to both groups. Supervisor membership grants every operator permission plus supervisor-only commands.
+
+### OAuth resource and scopes
+
+Resource server identifier (scope prefix): `venueops`. Cognito access tokens identify the calling app with `client_id`, not `aud=venueops`.
+
+| Scope | Intended holder | Grants |
+|---|---|---|
+| `venueops/operator.read` | Console (operators, supervisors) | Operator GET endpoints and operator SSE |
+| `venueops/attractions.command` | Console | Attraction command POSTs |
+| `venueops/incidents.command` | Console | Incident create/list/get/activity and non-supervisor incident commands |
+| `venueops/advisories.publish` | Console (supervisors) | Publish/withdraw guest advisories |
+| `venueops/weather-recommendations.review` | Console | Weather inbox reads and ACKNOWLEDGE / DISMISS / LINK_INCIDENT |
+| `venueops/weather-recommendations.write` | Environmental Monitor only | `POST /api/v1/integrations/weather/recommendations` |
+
+Human tokens must never receive `venueops/weather-recommendations.write`.  
+The weather-service client must receive only that write scope.
+
+## Token claims
+
+VenueOps validates access tokens with at least:
+
+| Claim | Requirement |
+|---|---|
+| `iss` | Exact Cognito user-pool issuer URL |
+| `token_use` | Must be `access` |
+| `client_id` | Must match an allowed app client (console now; Environmental Monitor later) |
+| `sub` | Present; durable subject for humans and services |
+| `scope` / `scp` | Space-delimited scopes used for authorization |
+| `cognito:groups` | Mapped to `ROLE_OPERATOR` / `ROLE_SUPERVISOR` |
+| `exp` | Required; reject expired tokens |
+
+Optional display claims (`email`, `preferred_username`, `name`) may populate UI labels and activity **display snapshots** only. They are not durable identity keys.
+
+## Audit identity
+
+### Value object (target model)
+
+```text
+ActorIdentity
+  subject       // Cognito sub, or fixed system/service id
+  displayName   // snapshot for humans; descriptive label for services
+  type          // HUMAN | SERVICE | SYSTEM | LEGACY
+  issuer        // token iss, or "venueops" for SYSTEM
+```
+
+### Recording rules
+
+| Actor type | When | `subject` | `displayName` |
+|---|---|---|---|
+| `HUMAN` | Operator/supervisor command | Cognito `sub` | Best-effort name/email from claims at event time |
+| `SERVICE` | Weather recommendation ingest | Service client subject / client id policy | e.g. `environmental-monitor` |
+| `SYSTEM` | Internal automation | `venueops-system` | `VenueOps system` |
+| `LEGACY` | Backfilled pre-auth activity | Prior `X-Actor` string or `unknown` | Same as historic actor string |
+
+### UI vs history
+
+- **UI** may show `displayName` (and role badges).
+- **Permanent audit key** is `subject` + `actor_type` (+ `issuer` when available).
+- Spoofed `X-Actor` headers must be ignored after Phase 4 and must not change recorded identity.
+
+## Endpoint classification
+
+Full inventory: [endpoint-inventory.md](./endpoint-inventory.md).
+
+### Public (anonymous)
+
+- `GET /api/v1/attractions`
+- `GET /api/v1/attractions/{id}`
+- `GET /api/v1/attractions/events`
+- `GET /api/v1/advisories` (guest advisory contract: [guest-advisory-contract.md](../guest-advisory-contract.md); not `/api/v1/guest/advisories`)
+- `GET /api/v1/events`
+- `GET /media/**`
+- `GET /actuator/health` (and liveness/readiness equivalents if exposed)
+
+### Operator
+
+Requires authenticated operator or supervisor with matching scopes:
+
+- All `/api/v1/operator/**` reads
+- `GET /api/v1/operator/events`
+- Attraction commands (all current `AttractionCommand` values)
+- Incident report + operator incident commands except supervisor-only ones
+- Weather recommendation inbox + `ACKNOWLEDGE` / `DISMISS` / `LINK_INCIDENT`
+
+### Supervisor
+
+Requires supervisor group **and** `venueops/advisories.publish` (for advisory commands):
+
+- Incident command `PUBLISH_GUEST_ADVISORY`
+- Incident command `WITHDRAW_GUEST_ADVISORY`
+- Incident command `RESOLVE` when severity is `MAJOR` or `CRITICAL`
+- Future emergency / override commands (none yet)
+
+`RESOLVE` for `MINOR` / `MODERATE` remains an operator capability.
+
+### Integration
+
+Requires scope `venueops/weather-recommendations.write`:
+
+- `POST /api/v1/integrations/weather/recommendations`
+
+### Denied / not public
+
+- `GET /api/hello` — legacy probe; deny in secured deployments
+- SpringDoc / Swagger UI (`/swagger-ui/**`, `/v3/api-docs/**`) — local/dev only; deny or protect in demo/prod
+- All other Actuator endpoints — deny
+
+## Role × permission matrix
+
+| Capability | Guest | Operator | Supervisor | Weather service |
+|---|---|---|---|---|
+| Guest attraction/advisory/media/SSE reads | ✓ | ✓ | ✓ | ✓ (unnecessary) |
+| Operator reads + operator SSE | | ✓ | ✓ | |
+| Attraction commands | | ✓ | ✓ | |
+| Report / manage incidents (non-supervisor cmds) | | ✓ | ✓ | |
+| Publish / withdraw guest advisory | | | ✓ | |
+| Resolve MAJOR/CRITICAL incident | | | ✓ | |
+| Resolve MINOR/MODERATE incident | | ✓ | ✓ | |
+| Review weather recommendations | | ✓ | ✓ | |
+| Write weather recommendations | | | | ✓ |
+
+## Client architecture
+
+### `venueops-console` (public Cognito app client)
+
+- No client secret
+- Authorization Code + PKCE
+- Scopes: operator read/command scopes (supervisors receive advisory publish via group + scope assignment)
+- Tokens attached as `Authorization: Bearer` on REST and operator SSE (fetch-based SSE; never query-string tokens)
+
+### `environmental-monitor` (confidential Cognito app client)
+
+- Client secret via local env / Secrets Manager / SSM — never Git or ordinary Compose files
+- Client Credentials
+- Scope: `venueops/weather-recommendations.write` only
+
+## Error contract
+
+| Condition | HTTP | Notes |
+|---|---|---|
+| Missing / invalid / expired token on protected route | `401` | Problem Details JSON; no token contents |
+| Valid token, insufficient role/scope | `403` | Problem Details JSON |
+| Public route | `200`/`…` | No auth required |
+
+## Explicit non-goals (Phase 0)
+
+- Implementing Spring Security or Cognito infra (later phases)
+- Guest Cognito login
+- Fine-grained per-attraction ACLs
+- Mutual TLS between services
+
+## Acceptance anchors
+
+These scenarios must remain true after Phases 1–9:
+
+1. Guest reads attractions and guest SSE without a token.
+2. Guest cannot call attraction or incident commands (`401`).
+3. Operator can change attraction state and review recommendations.
+4. Operator cannot publish a guest advisory (`403`).
+5. Supervisor can publish advisories and resolve major incidents.
+6. Weather service can POST recommendations and cannot call `/api/v1/operator/**` (`403`).
+7. Forged `X-Actor` does not change audit identity after Phase 4.
+8. Operator SSE requires the same session as REST; expired tokens stop reconnect and request sign-in.

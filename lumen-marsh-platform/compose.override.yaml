@@ -1,0 +1,31 @@
+# Local developer conveniences. Automatically merged with compose.yaml.
+# Production-like runs: docker compose -f compose.yaml up --build
+# Simulation stays off in compose.yaml; this override enables it for local demos.
+
+services:
+  venueops-api:
+    environment:
+      VENUEOPS_SECURITY_MODE: LOCAL_JWT
+      VENUEOPS_ISSUER_URI: http://venueops.local/test
+      VENUEOPS_ALLOWED_CLIENT_IDS: venueops-console-local,environmental-monitor-local
+      VENUEOPS_CORS_ORIGINS: http://localhost:*,http://127.0.0.1:*
+
+  environmental-monitor:
+    environment:
+      APP_ENV: development
+      SIMULATION_ENABLED: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OIDC_DISABLED: "true"
+      VENUEOPS_BEARER_TOKEN: local-weather-token
+
+  environmental-migrate:
+    environment:
+      APP_ENV: development
+      SIMULATION_ENABLED: "false"
+
+  venueops-console:
+    build:
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_AUTH_MODE: local
+

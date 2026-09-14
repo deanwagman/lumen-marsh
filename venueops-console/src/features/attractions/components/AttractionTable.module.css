@@ -1,0 +1,98 @@
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-outline);
+}
+
+.table th {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--color-surface-high);
+}
+
+.table tbody tr:last-child td,
+.table tbody tr:last-child th {
+  border-bottom: none;
+}
+
+.row {
+  transition: background-color var(--duration-slow) var(--ease-standard);
+}
+
+.flashRow {
+  animation: rowPulse var(--duration-slow) var(--ease-standard);
+  background: var(--color-accent-soft);
+}
+
+.flashCell {
+  display: inline-block;
+  animation: cellPulse var(--duration-slow) var(--ease-standard);
+}
+
+@keyframes rowPulse {
+  from {
+    background: var(--color-accent-soft);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+@keyframes cellPulse {
+  from {
+    color: var(--color-accent-hover);
+    transform: translateY(-1px);
+  }
+  to {
+    color: inherit;
+    transform: none;
+  }
+}
+
+.table tbody tr:hover {
+  background: var(--color-surface-high);
+}
+
+.nameLink {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.nameLink:hover {
+  color: var(--color-accent-hover);
+}
+
+.area {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}

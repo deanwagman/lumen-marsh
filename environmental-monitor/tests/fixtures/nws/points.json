@@ -1,0 +1,21 @@
+{
+  "id": "https://api.weather.gov/points/28.474,-81.466",
+  "type": "Feature",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [-81.466, 28.474]
+  },
+  "properties": {
+    "cwa": "MLB",
+    "forecastOffice": "https://api.weather.gov/offices/MLB",
+    "gridId": "MLB",
+    "gridX": 26,
+    "gridY": 69,
+    "forecast": "https://api.weather.gov/gridpoints/MLB/26,69/forecast",
+    "forecastHourly": "https://api.weather.gov/gridpoints/MLB/26,69/forecast/hourly",
+    "observationStations": "https://api.weather.gov/gridpoints/MLB/26,69/stations",
+    "forecastZone": "https://api.weather.gov/zones/forecast/FLZ045",
+    "county": "https://api.weather.gov/zones/county/FLC095",
+    "timeZone": "America/New_York"
+  }
+}

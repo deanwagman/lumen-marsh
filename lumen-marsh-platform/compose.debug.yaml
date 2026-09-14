@@ -1,0 +1,20 @@
+# Optional debug overlays. Use:
+#   docker compose -f compose.yaml -f compose.override.yaml -f compose.debug.yaml up --build
+# or: ./scripts/dev-up.sh --debug
+
+services:
+  venueops-db:
+    ports:
+      - "${VENUEOPS_DB_HOST_PORT:-5432}:5432"
+
+  environmental-db:
+    ports:
+      - "${ENVIRONMENTAL_DB_HOST_PORT:-5433}:5432"
+
+  venueops-api:
+    environment:
+      LOGGING_LEVEL_COM_DEANWAGMAN_LUMENMARSH: DEBUG
+
+  environmental-monitor:
+    environment:
+      LOG_LEVEL: DEBUG

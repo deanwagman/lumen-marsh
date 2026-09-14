@@ -1,0 +1,25 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "id": "https://api.weather.gov/stations/KMCO",
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-81.3089, 28.4294] },
+      "properties": {
+        "stationIdentifier": "KMCO",
+        "name": "Orlando International Airport",
+        "timeZone": "America/New_York"
+      }
+    },
+    {
+      "id": "https://api.weather.gov/stations/KORL",
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-81.3329, 28.5455] },
+      "properties": {
+        "stationIdentifier": "KORL",
+        "name": "Orlando Executive Airport",
+        "timeZone": "America/New_York"
+      }
+    }
+  ]
+}

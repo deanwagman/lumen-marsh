@@ -1,0 +1,14 @@
+package com.deanwagman.lumenmarsh.venueops.incident.domain;
+
+public enum IncidentEventType {
+    INCIDENT_REPORTED,
+    INCIDENT_ACKNOWLEDGED,
+    INCIDENT_ASSIGNED,
+    MITIGATION_STARTED,
+    SEVERITY_CHANGED,
+    ATTRACTION_LINKED,
+    ATTRACTION_UNLINKED,
+    GUEST_ADVISORY_PUBLISHED,
+    GUEST_ADVISORY_WITHDRAWN,
+    INCIDENT_RESOLVED
+}

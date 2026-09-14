@@ -1,0 +1,12 @@
+.git
+.dart_tool
+.idea
+build
+android
+ios
+test
+*.iml
+.flutter-plugins-dependencies
+.metadata
+README.md
+.DS_Store

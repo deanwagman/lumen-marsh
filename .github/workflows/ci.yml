@@ -1,0 +1,144 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  venueops-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: venueops-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - name: Test
+        run: ./gradlew test
+
+  environmental-monitor:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: environmental-monitor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install Python
+        run: uv python install 3.13
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format
+        run: uv run ruff format --check .
+      - name: Type check
+        run: uv run mypy src
+      - name: Test
+        run: uv run pytest
+
+  operator-console:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: venueops-console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: venueops-console/.nvmrc
+          cache: npm
+          cache-dependency-path: venueops-console/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  guest-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lumen-marsh-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build web --release
+
+  platform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lumen-marsh-platform
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose
+        env:
+          VENUEOPS_ISSUER_URI: https://example.invalid/user-pool
+          VENUEOPS_ALLOWED_CLIENT_IDS: validation-client
+          VITE_OIDC_AUTHORITY: https://example.invalid/user-pool
+          VITE_OIDC_CLIENT_ID: validation-client
+          VITE_API_BASE_URL: http://127.0.0.1:8080
+          OPERATOR_CONSOLE_HOST_PORT: "5173"
+          OIDC_TOKEN_URL: https://example.invalid/oauth2/token
+          OIDC_CLIENT_ID: validation-monitor
+          OIDC_CLIENT_SECRET: validation-placeholder
+        run: |
+          docker compose -f compose.yaml config >/dev/null
+          docker compose -f compose.yaml -f compose.override.yaml -f compose.oidc.yaml config >/dev/null
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.8.8
+      - name: OpenTofu format
+        run: tofu fmt -check -recursive infrastructure
+      - name: Validate demo infrastructure
+        working-directory: lumen-marsh-platform/infrastructure/environments/demo
+        run: |
+          tofu init -backend=false
+          tofu validate
+      - name: Validate development identity infrastructure
+        working-directory: lumen-marsh-platform/infrastructure/environments/dev-identity
+        run: |
+          tofu init -backend=false
+          tofu validate
+      - name: Check shell syntax
+        run: |
+          for script in scripts/*.sh; do
+            bash -n "$script"
+          done
+      - name: Validate version manifest
+        run: test -f versions.yaml
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Filesystem and secret scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true

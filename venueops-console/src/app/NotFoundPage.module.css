@@ -1,0 +1,20 @@
+.page {
+  display: flex;
+  max-width: 36rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.back {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.back:hover {
+  color: var(--color-accent-hover);
+}

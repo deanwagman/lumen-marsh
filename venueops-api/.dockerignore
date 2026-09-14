@@ -1,0 +1,11 @@
+.gradle
+build
+.git
+.gitattributes
+.idea
+.vscode
+*.iml
+HELP.md
+README.md
+docker-compose.yml
+src/test

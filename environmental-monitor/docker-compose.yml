@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: environmental_monitor
+      POSTGRES_USER: environmental
+      POSTGRES_PASSWORD: environmental
+    ports:
+      - "5433:5432"
+
+  environmental-monitor:
+    build: .
+    ports:
+      - "8000:8080"
+    environment:
+      APP_ENV: development
+      LOG_LEVEL: INFO
+      PARK_LATITUDE: "28.474"
+      PARK_LONGITUDE: "-81.466"
+      PARK_TIMEZONE: America/New_York
+      NWS_USER_AGENT: LumenMarshEnvironmentalMonitor/0.1 (lumen-marsh-ops@example.com)
+      SIMULATION_ENABLED: "true"
+      VENUEOPS_BASE_URL: http://host.docker.internal:8080
+      DATABASE_URL: postgresql+asyncpg://environmental:environmental@postgres:5432/environmental_monitor
+    depends_on:
+      - postgres
