@@ -18,6 +18,7 @@ public record VenueOpsSecurityProperties(
 ) {
     public static final String LOCAL_CONSOLE_CLIENT_ID = "venueops-console-local";
     public static final String LOCAL_MONITOR_CLIENT_ID = "environmental-monitor-local";
+    public static final String LOCAL_RELIABILITY_CLIENT_ID = "reliability-integration-local";
 
     public enum Mode {
         /**
@@ -38,7 +39,7 @@ public record VenueOpsSecurityProperties(
             throw new IllegalStateException("venueops.security.issuer-uri is required");
         }
         if (allowedClientIds == null || allowedClientIds.isBlank()) {
-            allowedClientIds = LOCAL_CONSOLE_CLIENT_ID + "," + LOCAL_MONITOR_CLIENT_ID;
+            allowedClientIds = LOCAL_CONSOLE_CLIENT_ID + "," + LOCAL_MONITOR_CLIENT_ID + "," + LOCAL_RELIABILITY_CLIENT_ID;
         }
         if (parseCsv(allowedClientIds).isEmpty()) {
             throw new IllegalStateException("venueops.security.allowed-client-ids must list at least one client_id");

@@ -1,5 +1,6 @@
 package com.deanwagman.lumenmarsh.venueops.incident.api;
 
+import com.deanwagman.lumenmarsh.venueops.incident.application.RelatedMaintenanceWorkOrders;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.Incident;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatus;
@@ -22,9 +23,17 @@ public record OperatorIncidentResponse(
         List<String> attractionIds,
         Instant createdAt,
         Instant updatedAt,
-        long version
+        long version,
+        List<RelatedMaintenanceWorkOrders.RelatedWorkOrderSummary> relatedWorkOrders
 ) {
     public static OperatorIncidentResponse from(Incident incident) {
+        return from(incident, List.of());
+    }
+
+    public static OperatorIncidentResponse from(
+            Incident incident,
+            List<RelatedMaintenanceWorkOrders.RelatedWorkOrderSummary> relatedWorkOrders
+    ) {
         return new OperatorIncidentResponse(
                 incident.id().value(),
                 incident.title(),
@@ -39,7 +48,8 @@ public record OperatorIncidentResponse(
                 incident.attractionIds().stream().map(id -> id.value()).toList(),
                 incident.createdAt(),
                 incident.updatedAt(),
-                incident.version()
+                incident.version(),
+                relatedWorkOrders == null ? List.of() : relatedWorkOrders
         );
     }
 }

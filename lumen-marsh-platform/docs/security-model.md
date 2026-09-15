@@ -18,6 +18,7 @@ Flutter, Environmental Monitor, and the operator event stream stay out of scope 
 | Recommendation review | Operator |
 | Advisory publishing | Supervisor |
 | Weather recommendation ingestion | Weather service |
+| Reliability recommendation ingestion | Reliability service |
 | Media and health | Public |
 | Everything else | Denied |
 
@@ -32,7 +33,7 @@ Supervisors inherit every operator permission.
 | Guest | None | — | None (no audit write) |
 | Operator | Human access token, group `operators` | `OPERATOR` | JWT `sub` |
 | Supervisor | Human access token, group `supervisors` | `SUPERVISOR` | JWT `sub` |
-| Weather service | Client-credentials token | `WEATHER_SERVICE` | Token `sub` / client id |
+| Reliability service | Client-credentials token | `RELIABILITY_SERVICE` | Token `sub` / client id |
 | VenueOps system | Internal process only | `SYSTEM` | `venueops-system` |
 
 Client-supplied `X-Actor` is not identity. Protected commands must ignore or reject it.
@@ -46,7 +47,11 @@ Client-supplied `X-Actor` is not identity. Protected commands must ignore or rej
 | `venueops/incidents.command` | Operators, supervisors | Incident report and non-publish incident commands |
 | `venueops/advisories.publish` | Supervisors | Publish / withdraw guest advisory |
 | `venueops/weather-recommendations.review` | Operators, supervisors | Weather inbox reads and review commands |
+| `venueops/maintenance.read` | Operators, supervisors | Maintenance asset and work-order reads |
+| `venueops/maintenance.command` | Operators, supervisors | Create, assign, and update work orders |
+| `venueops/maintenance.inspect` | Supervisors | Inspection approval and work-order completion |
 | `venueops/weather-recommendations.write` | Weather service only | Recommendation ingest |
+| `venueops/reliability.write` | Reliability service only | Reliability recommendation ingest |
 
 ### Claims VenueOps will require on access tokens
 
@@ -78,8 +83,20 @@ Audit: **None** means the route does not record an actor. History routes **retur
 | GET | `/api/v1/operator/weather/recommendations` | `OperatorWeatherRecommendationController` | Query | Protected | `OPERATOR` + `venueops/weather-recommendations.review` | None |
 | GET | `/api/v1/operator/weather/recommendations/{recommendationId}` | `OperatorWeatherRecommendationController` | Query | Protected | `OPERATOR` + `venueops/weather-recommendations.review` | None |
 | POST | `/api/v1/operator/weather/recommendations/{recommendationId}/commands` | `OperatorWeatherRecommendationController` | Command | Protected | `OPERATOR` + `venueops/weather-recommendations.review` | **HUMAN** from JWT |
-| GET | `/api/v1/operator/events` | `OperatorEventController` | Stream | Protected | `OPERATOR` + `venueops/operator.read` | None — **deferred** until the attraction checkpoint |
+| GET | `/api/v1/operator/events` | `OperatorEventController` | Stream | Protected | `OPERATOR` + `venueops/operator.read` | None — **deferred** until the attraction checkpoint. `maintenance.work-orders.snapshot` and `maintenance.work-order.updated` additionally require `venueops/maintenance.read` on the same token. |
+| GET | `/api/v1/operator/maintenance/assets` | `MaintenanceAssetController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
+| GET | `/api/v1/operator/maintenance/assets/{assetId}` | `MaintenanceAssetController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
+| GET | `/api/v1/operator/maintenance/assets/{assetId}/work-orders` | `MaintenanceAssetController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
+| GET | `/api/v1/operator/maintenance/work-orders` | `MaintenanceWorkOrderController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
+| GET | `/api/v1/operator/maintenance/work-orders/{workOrderId}` | `MaintenanceWorkOrderController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
+| GET | `/api/v1/operator/maintenance/work-orders/{workOrderId}/activity` | `MaintenanceWorkOrderController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | Returns stored actors |
+| POST | `/api/v1/operator/maintenance/work-orders` | `MaintenanceWorkOrderController` | Command | Protected | `OPERATOR` + `venueops/maintenance.command` | **HUMAN** from JWT |
+| POST | `/api/v1/operator/maintenance/work-orders/{workOrderId}/commands` | `MaintenanceWorkOrderController` | Command | Protected | See maintenance commands | **HUMAN** from JWT |
+| GET | `/api/v1/operator/maintenance/recommendations` | `MaintenanceRecommendationController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
+| GET | `/api/v1/operator/maintenance/recommendations/{recommendationId}` | `MaintenanceRecommendationController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
+| POST | `/api/v1/operator/maintenance/recommendations/{recommendationId}/commands` | `MaintenanceRecommendationController` | Command | Protected | `OPERATOR` + `venueops/maintenance.command` | **HUMAN** from JWT |
 | POST | `/api/v1/integrations/weather/recommendations` | `WeatherRecommendationIntegrationController` | Command | Protected | `WEATHER_SERVICE` + `venueops/weather-recommendations.write` | **SERVICE** from JWT — **deferred** until the attraction checkpoint |
+| POST | `/api/v1/integrations/reliability/recommendations` | `ReliabilityRecommendationIntegrationController` | Command | Protected | `RELIABILITY_SERVICE` + `venueops/reliability.write` | **SERVICE** from JWT |
 | GET | `/api/hello` | `HelloController` | Query | Denied | — | None |
 | GET | `/swagger-ui/**`, `/v3/api-docs/**` | SpringDoc | Query | Denied outside local/dev | — | None |
 | GET | Other Actuator endpoints | Actuator | Query | Denied | — | None |
@@ -121,6 +138,19 @@ All via `POST /api/v1/operator/weather/recommendations/{id}/commands`. Access: O
 `ACKNOWLEDGE`, `DISMISS`, `LINK_INCIDENT`.
 
 Ingest (`POST /api/v1/integrations/weather/recommendations`) is Weather service, audit SERVICE. Out of scope for the first checkpoint.
+
+## Maintenance commands
+
+Work-order lifecycle via `POST /api/v1/operator/maintenance/work-orders/{id}/commands`. Audit: HUMAN from JWT. Client-supplied actor fields are ignored.
+
+| Command | Access | Role / scope |
+|---|---|---|
+| `OPEN`, `ASSIGN`, `START_WORK`, `REQUEST_INSPECTION`, `REASSIGN`, `SET_ESTIMATED_RESTORE`, `RECORD_CHECKLIST_RESULT`, `LINK_INCIDENT`, `ADD_NOTE`, `ADD_EVIDENCE` | Operator | `venueops/maintenance.command` |
+| `CANCEL` (P3/P4) | Operator | `venueops/maintenance.command` |
+| `CANCEL` (P1/P2) | Supervisor | `SUPERVISOR` + `venueops/maintenance.command` |
+| `APPROVE_INSPECTION`, `REJECT_INSPECTION`, `COMPLETE` | Supervisor | `SUPERVISOR` + `venueops/maintenance.inspect` |
+
+Ingest (`POST /api/v1/integrations/reliability/recommendations`) is Reliability service, audit SERVICE. A recommendation never becomes a work order until an operator accepts it. `ACCEPT` and `DISMISS` require `commandId` and `expectedVersion`. Work orders never reopen attractions.
 
 ## Checkpoint (do this next)
 

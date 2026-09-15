@@ -10,6 +10,7 @@ const categoryLabels: Record<string, string> = {
   attractions: 'Attractions',
   incidents: 'Incidents',
   weather: 'Weather',
+  maintenance: 'Maintenance',
 };
 
 export default function DocsIndexPage() {

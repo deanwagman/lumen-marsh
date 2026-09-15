@@ -20,7 +20,7 @@ services:
         VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:?VITE_OIDC_CLIENT_ID is required}
         VITE_OIDC_REDIRECT_URI: ${VITE_OIDC_REDIRECT_URI:-http://127.0.0.1:5173/auth/callback}
         VITE_OIDC_LOGOUT_URI: ${VITE_OIDC_LOGOUT_URI:-http://127.0.0.1:5173/}
-        VITE_OIDC_SCOPES: ${VITE_OIDC_SCOPES:-openid profile email venueops/operator.read venueops/attractions.command venueops/incidents.command venueops/advisories.publish venueops/weather-recommendations.review}
+        VITE_OIDC_SCOPES: ${VITE_OIDC_SCOPES:-openid profile email venueops/operator.read venueops/attractions.command venueops/incidents.command venueops/advisories.publish venueops/weather-recommendations.review venueops/maintenance.read venueops/maintenance.command venueops/maintenance.inspect}
 
   environmental-monitor:
     environment:

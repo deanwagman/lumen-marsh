@@ -14,6 +14,7 @@ describe('docs registry', () => {
       'attractions',
       'incidents',
       'weather',
+      'maintenance',
     ]);
   });
 
@@ -52,7 +53,7 @@ describe('docs registry', () => {
   });
 
   it('includes all articles for both roles in the starter set', () => {
-    expect(listArticles({ role: 'operator' })).toHaveLength(5);
-    expect(listArticles({ role: 'supervisor' })).toHaveLength(5);
+    expect(listArticles({ role: 'operator' })).toHaveLength(6);
+    expect(listArticles({ role: 'supervisor' })).toHaveLength(6);
   });
 });

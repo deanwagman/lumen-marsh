@@ -22,7 +22,8 @@ public class ActorResolver {
     }
 
     static ActorIdentity fromJwt(Jwt jwt, Collection<? extends GrantedAuthority> authorities) {
-        boolean service = hasAuthority(authorities, VenueOpsScopes.SCOPE_WEATHER_WRITE)
+        boolean service = (hasAuthority(authorities, VenueOpsScopes.SCOPE_WEATHER_WRITE)
+                || hasAuthority(authorities, VenueOpsScopes.SCOPE_RELIABILITY_WRITE))
                 && !hasAuthority(authorities, VenueOpsScopes.ROLE_OPERATOR)
                 && !hasAuthority(authorities, VenueOpsScopes.ROLE_SUPERVISOR);
         String subject = jwt.getSubject();
@@ -36,7 +37,11 @@ public class ActorResolver {
                     jwt.getClaimAsString("cid"),
                     subject
             );
-            return new ActorIdentity(clientId, ActorIdentity.WEATHER_SERVICE_DISPLAY, ActorType.SERVICE, issuer);
+            String display = hasAuthority(authorities, VenueOpsScopes.SCOPE_RELIABILITY_WRITE)
+                    && !hasAuthority(authorities, VenueOpsScopes.SCOPE_WEATHER_WRITE)
+                    ? ActorIdentity.RELIABILITY_SERVICE_DISPLAY
+                    : ActorIdentity.WEATHER_SERVICE_DISPLAY;
+            return new ActorIdentity(clientId, display, ActorType.SERVICE, issuer);
         }
         String display = firstNonBlank(
                 jwt.getClaimAsString("name"),

@@ -15,6 +15,7 @@ import java.time.Clock;
 public class WeatherIngestRateLimitFilter extends OncePerRequestFilter {
 
     static final String INGEST_PATH = "/api/v1/integrations/weather/recommendations";
+    static final String RELIABILITY_INGEST_PATH = "/api/v1/integrations/reliability/recommendations";
 
     private final WeatherIngestRateLimiter limiter;
 
@@ -30,7 +31,7 @@ public class WeatherIngestRateLimitFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return limiter.isDisabled()
                 || !HttpMethod.POST.matches(request.getMethod())
-                || !INGEST_PATH.equals(request.getRequestURI());
+                || !isIngestPath(request.getRequestURI());
     }
 
     @Override
@@ -44,9 +45,13 @@ public class WeatherIngestRateLimitFilter extends OncePerRequestFilter {
             response.setStatus(429);
             response.setHeader("Retry-After", "60");
             response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-            byte[] body = """
+            byte[] body = (INGEST_PATH.equals(request.getRequestURI())
+                    ? """
                     {"title":"Too Many Requests","status":429,"detail":"Weather ingest rate limit exceeded."}
-                    """.getBytes(StandardCharsets.UTF_8);
+                    """
+                    : """
+                    {"title":"Too Many Requests","status":429,"detail":"Reliability ingest rate limit exceeded."}
+                    """).getBytes(StandardCharsets.UTF_8);
             response.getOutputStream().write(body);
             return;
         }
@@ -62,5 +67,9 @@ public class WeatherIngestRateLimitFilter extends OncePerRequestFilter {
         }
         String remote = request.getRemoteAddr();
         return remote == null || remote.isBlank() ? "unknown" : remote;
+    }
+
+    private static boolean isIngestPath(String uri) {
+        return INGEST_PATH.equals(uri) || RELIABILITY_INGEST_PATH.equals(uri);
     }
 }

@@ -89,6 +89,42 @@ export class InvalidTransitionError extends ApiError {
   }
 }
 
+export class DuplicateCommandError extends ApiError {
+  readonly commandId: string | undefined;
+  readonly existingAggregateId: string | undefined;
+  readonly requestedAggregateId: string | undefined;
+
+  constructor(
+    message = 'That command identifier already belongs to another resource.',
+    options?: {
+      commandId?: string;
+      existingAggregateId?: string;
+      requestedAggregateId?: string;
+      body?: unknown;
+    },
+  ) {
+    super(message, 409, {
+      code: 'DUPLICATE_COMMAND',
+      body: options?.body,
+    });
+    this.commandId = options?.commandId;
+    this.existingAggregateId = options?.existingAggregateId;
+    this.requestedAggregateId = options?.requestedAggregateId;
+  }
+}
+
+export class MaintenancePrerequisiteError extends ApiError {
+  constructor(
+    message = 'A maintenance prerequisite has not been met.',
+    body?: unknown,
+  ) {
+    super(message, 422, {
+      code: 'MAINTENANCE_PREREQUISITE',
+      body,
+    });
+  }
+}
+
 export class ServerError extends ApiError {
   constructor(
     message = 'The VenueOps API failed.',

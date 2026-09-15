@@ -1,6 +1,7 @@
 package com.deanwagman.lumenmarsh.venueops.incident.api;
 
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionNotFoundException;
+import com.deanwagman.lumenmarsh.venueops.incident.application.ActiveHighPriorityWorkOrdersException;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentNotFoundException;
 import com.deanwagman.lumenmarsh.venueops.incident.application.StaleIncidentVersionException;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.InvalidIncidentTransitionException;
@@ -32,6 +33,18 @@ public class IncidentExceptionHandler {
     @ExceptionHandler(AttractionNotFoundException.class)
     public ProblemDetail handleAttractionNotFound(AttractionNotFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, CODE_ATTRACTION_NOT_FOUND, "Attraction not found", ex.getMessage());
+    }
+
+    @ExceptionHandler(ActiveHighPriorityWorkOrdersException.class)
+    public ProblemDetail handleActiveWorkOrders(ActiveHighPriorityWorkOrdersException ex) {
+        ProblemDetail detail = problem(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "ACTIVE_WORK_ORDERS",
+                "Active high-priority work orders require confirmation",
+                ex.getMessage()
+        );
+        detail.setProperty("workOrderNumbers", ex.workOrderNumbers());
+        return detail;
     }
 
     @ExceptionHandler(InvalidIncidentTransitionException.class)

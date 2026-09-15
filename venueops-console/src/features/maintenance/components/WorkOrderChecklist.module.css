@@ -1,0 +1,84 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.progress,
+.muted,
+.marker {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.track {
+  height: 0.4rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-high);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--color-status-warning);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-low);
+}
+
+.required {
+  border-color: rgba(196, 154, 50, 0.55);
+}
+
+.sequence {
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.marker {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.controls,
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.controls {
+  gap: var(--space-sm);
+}
+
+.controls select,
+.controls input {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-lowest);
+  color: var(--color-text);
+}
+
+.controls button {
+  min-height: 2.75rem;
+  width: fit-content;
+}

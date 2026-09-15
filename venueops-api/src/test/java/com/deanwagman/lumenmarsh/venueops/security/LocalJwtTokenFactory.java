@@ -30,6 +30,17 @@ public class LocalJwtTokenFactory {
                 "Operator One",
                 List.of("operators"),
                 VenueOpsScopes.OPERATOR_READ + " " + VenueOpsScopes.ATTRACTIONS_COMMAND + " "
+                        + VenueOpsScopes.INCIDENTS_COMMAND + " " + VenueOpsScopes.WEATHER_REVIEW + " "
+                        + VenueOpsScopes.MAINTENANCE_READ + " " + VenueOpsScopes.MAINTENANCE_COMMAND
+        );
+    }
+
+    public String operatorWithoutMaintenanceToken() {
+        return token(
+                "operator-sub-no-maintenance",
+                "Operator Without Maintenance",
+                List.of("operators"),
+                VenueOpsScopes.OPERATOR_READ + " " + VenueOpsScopes.ATTRACTIONS_COMMAND + " "
                         + VenueOpsScopes.INCIDENTS_COMMAND + " " + VenueOpsScopes.WEATHER_REVIEW
         );
     }
@@ -41,7 +52,8 @@ public class LocalJwtTokenFactory {
                 List.of("supervisors"),
                 VenueOpsScopes.OPERATOR_READ + " " + VenueOpsScopes.ATTRACTIONS_COMMAND + " "
                         + VenueOpsScopes.INCIDENTS_COMMAND + " " + VenueOpsScopes.ADVISORIES_PUBLISH + " "
-                        + VenueOpsScopes.WEATHER_REVIEW
+                        + VenueOpsScopes.WEATHER_REVIEW + " " + VenueOpsScopes.MAINTENANCE_READ + " "
+                        + VenueOpsScopes.MAINTENANCE_COMMAND + " " + VenueOpsScopes.MAINTENANCE_INSPECT
         );
     }
 
@@ -54,16 +66,24 @@ public class LocalJwtTokenFactory {
         );
     }
 
+    public String reliabilityServiceToken() {
+        return token(
+                "reliability-integration-client",
+                ActorIdentity.RELIABILITY_SERVICE_DISPLAY,
+                List.of(),
+                VenueOpsScopes.RELIABILITY_WRITE
+        );
+    }
+
     public String token(String subject, String name, List<String> groups, String scope) {
         boolean weatherOnly = VenueOpsScopes.WEATHER_WRITE.equals(scope);
-        return token(
-                subject,
-                name,
-                groups,
-                scope,
-                weatherOnly ? TestAuth.MONITOR_CLIENT_ID : TestAuth.CONSOLE_CLIENT_ID,
-                "access"
-        );
+        boolean reliabilityOnly = VenueOpsScopes.RELIABILITY_WRITE.equals(scope);
+        String clientId = weatherOnly
+                ? TestAuth.MONITOR_CLIENT_ID
+                : reliabilityOnly
+                ? VenueOpsSecurityProperties.LOCAL_RELIABILITY_CLIENT_ID
+                : TestAuth.CONSOLE_CLIENT_ID;
+        return token(subject, name, groups, scope, clientId, "access");
     }
 
     public String token(

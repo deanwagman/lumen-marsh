@@ -21,19 +21,22 @@ public class IncidentService {
     private final Clock clock;
     private final GuestAdvisoryUpdatePublisher guestAdvisoryPublisher;
     private final IncidentUpdatePublisher incidentPublisher;
+    private final IncidentResolutionGuard resolutionGuard;
 
     public IncidentService(
             IncidentRepository incidents,
             AttractionRepository attractions,
             Clock clock,
             GuestAdvisoryUpdatePublisher guestAdvisoryPublisher,
-            IncidentUpdatePublisher incidentPublisher
+            IncidentUpdatePublisher incidentPublisher,
+            IncidentResolutionGuard resolutionGuard
     ) {
         this.incidents = Objects.requireNonNull(incidents);
         this.attractions = Objects.requireNonNull(attractions);
         this.clock = Objects.requireNonNull(clock);
         this.guestAdvisoryPublisher = Objects.requireNonNull(guestAdvisoryPublisher);
         this.incidentPublisher = Objects.requireNonNull(incidentPublisher);
+        this.resolutionGuard = Objects.requireNonNull(resolutionGuard);
     }
 
     public List<Incident> list() {
@@ -84,17 +87,30 @@ public class IncidentService {
             IncidentSeverity severity,
             String attractionId,
             String guestTitle,
-            String guestMessage
+            String guestMessage,
+            boolean confirmActiveWorkOrders
     ) {
         Incident incident = get(id);
         if (incident.version() != expectedVersion) {
             throw new StaleIncidentVersionException(id, expectedVersion, incident.version());
+        }
+        if (command == IncidentCommand.RESOLVE) {
+            resolutionGuard.assertResolutionAllowed(incident, confirmActiveWorkOrders);
         }
         apply(incident, command, actor, reason, assignee, severity, attractionId, guestTitle, guestMessage);
         IncidentActivity activity = lastUncommitted(incident);
         incidents.save(incident);
         publishIncident(activity, incident);
         publishGuestAdvisoryIfNeeded(activity, incident);
+        return incident;
+    }
+
+    public Incident recordLinkedWorkOrder(IncidentId id, String workOrderId, String workOrderNumber, String actor, String reason) {
+        Incident incident = get(id);
+        incident.recordLinkedWorkOrder(workOrderId, workOrderNumber, actor, reason, clock);
+        IncidentActivity activity = lastUncommitted(incident);
+        incidents.save(incident);
+        publishIncident(activity, incident);
         return incident;
     }
 

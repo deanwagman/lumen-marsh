@@ -32,6 +32,20 @@ public final class TestAuth {
                 VenueOpsScopes.OPERATOR_READ,
                 VenueOpsScopes.ATTRACTIONS_COMMAND,
                 VenueOpsScopes.INCIDENTS_COMMAND,
+                VenueOpsScopes.WEATHER_REVIEW,
+                VenueOpsScopes.MAINTENANCE_READ,
+                VenueOpsScopes.MAINTENANCE_COMMAND
+        );
+    }
+
+    public static RequestPostProcessor operatorWithoutMaintenance() {
+        return jwt(
+                "operator-sub-no-maintenance",
+                "Operator Without Maintenance",
+                List.of("operators"),
+                VenueOpsScopes.OPERATOR_READ,
+                VenueOpsScopes.ATTRACTIONS_COMMAND,
+                VenueOpsScopes.INCIDENTS_COMMAND,
                 VenueOpsScopes.WEATHER_REVIEW
         );
     }
@@ -45,7 +59,10 @@ public final class TestAuth {
                 VenueOpsScopes.ATTRACTIONS_COMMAND,
                 VenueOpsScopes.INCIDENTS_COMMAND,
                 VenueOpsScopes.ADVISORIES_PUBLISH,
-                VenueOpsScopes.WEATHER_REVIEW
+                VenueOpsScopes.WEATHER_REVIEW,
+                VenueOpsScopes.MAINTENANCE_READ,
+                VenueOpsScopes.MAINTENANCE_COMMAND,
+                VenueOpsScopes.MAINTENANCE_INSPECT
         );
     }
 
@@ -55,6 +72,15 @@ public final class TestAuth {
                 ActorIdentity.WEATHER_SERVICE_DISPLAY,
                 List.of(),
                 VenueOpsScopes.WEATHER_WRITE
+        );
+    }
+
+    public static RequestPostProcessor reliabilityService() {
+        return jwt(
+                "reliability-integration-client",
+                ActorIdentity.RELIABILITY_SERVICE_DISPLAY,
+                List.of(),
+                VenueOpsScopes.RELIABILITY_WRITE
         );
     }
 
@@ -95,8 +121,13 @@ public final class TestAuth {
     }
 
     private static String clientIdFor(List<String> groups, String... scopes) {
-        boolean weatherOnly = Arrays.asList(scopes).contains(VenueOpsScopes.WEATHER_WRITE)
-                && groups.isEmpty();
-        return weatherOnly ? MONITOR_CLIENT_ID : CONSOLE_CLIENT_ID;
+        boolean machineOnly = Arrays.asList(scopes).contains(VenueOpsScopes.WEATHER_WRITE)
+                || Arrays.asList(scopes).contains(VenueOpsScopes.RELIABILITY_WRITE);
+        if (machineOnly && groups.isEmpty()) {
+            return Arrays.asList(scopes).contains(VenueOpsScopes.RELIABILITY_WRITE)
+                    ? VenueOpsSecurityProperties.LOCAL_RELIABILITY_CLIENT_ID
+                    : MONITOR_CLIENT_ID;
+        }
+        return CONSOLE_CLIENT_ID;
     }
 }

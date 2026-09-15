@@ -27,6 +27,8 @@
   --color-status-hold-soft: rgba(196, 120, 74, 0.18);
   --color-status-closed: #8a8070;
   --color-status-closed-soft: rgba(138, 128, 112, 0.18);
+  --color-status-testing: #5b8fd4;
+  --color-status-testing-soft: rgba(91, 143, 212, 0.18);
 
   --color-danger: #e08a76;
   --color-danger-soft: rgba(224, 138, 118, 0.16);

@@ -10,6 +10,7 @@ import { AttractionQueries } from './AttractionQueries';
 import { IncidentQueries } from '@/features/incidents/api/IncidentQueries';
 import { WeatherRecommendationQueries } from '@/features/weather/api/WeatherRecommendationQueries';
 import { DashboardQueries } from '@/features/dashboard/api/DashboardQueries';
+import { MaintenanceQueries } from '@/features/maintenance/api/MaintenanceQueries';
 import {
   DASHBOARD_INVALIDATE_DEBOUNCE_MS,
   resetDashboardInvalidation,
@@ -235,6 +236,26 @@ describe('handleAttractionStreamEvent', () => {
     vi.advanceTimersByTime(DASHBOARD_INVALIDATE_DEBOUNCE_MS);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: DashboardQueries.snapshot() });
     vi.useRealTimers();
+  });
+
+  it('ignores maintenance events when the subscriber cannot read maintenance', () => {
+    const queryClient = new QueryClient();
+    handleAttractionStreamEvent(
+      queryClient,
+      'maintenance.work-orders.snapshot',
+      JSON.stringify([
+        {
+          id: 'd1111111-1111-4111-8111-111111111111',
+          workOrderNumber: 'LM-2026-0001',
+          status: 'OPEN',
+          priority: 'P1',
+          version: 2,
+          updatedAt: '2026-09-14T18:50:00Z',
+        },
+      ]),
+      { maintenanceRead: false },
+    );
+    expect(queryClient.getQueryData(MaintenanceQueries.summaries())).toBeUndefined();
   });
 });
 

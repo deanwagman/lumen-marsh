@@ -2,6 +2,7 @@ package com.deanwagman.lumenmarsh.venueops.incident.infrastructure;
 
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionRepository;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentRepository;
+import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentResolutionGuard;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentService;
 import com.deanwagman.lumenmarsh.venueops.incident.application.GuestAdvisoryUpdatePublisher;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentUpdatePublisher;
@@ -19,8 +20,9 @@ public class IncidentConfiguration {
             AttractionRepository attractions,
             Clock clock,
             GuestAdvisoryUpdatePublisher guestAdvisoryPublisher,
-            IncidentUpdatePublisher incidentPublisher
+            IncidentUpdatePublisher incidentPublisher,
+            IncidentResolutionGuard resolutionGuard
     ) {
-        return new IncidentService(incidents, attractions, clock, guestAdvisoryPublisher, incidentPublisher);
+        return new IncidentService(incidents, attractions, clock, guestAdvisoryPublisher, incidentPublisher, resolutionGuard);
     }
 }

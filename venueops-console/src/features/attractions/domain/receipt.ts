@@ -6,6 +6,7 @@ export type CommandReceipt = {
   attractionId?: string;
   attractionName?: string;
   incidentId?: string;
+  workOrderId?: string;
   summary: string;
   version: number;
   activityId: string | null;

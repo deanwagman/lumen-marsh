@@ -14,6 +14,7 @@ import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentUpdateEve
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatus;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentType;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationOperationalSnapshot;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationUpdateEventType;
@@ -123,6 +124,21 @@ class SseAttractionUpdateBroadcasterTest {
     }
 
     @Test
+    void maintenanceUpdatesReachMaintenanceReadersOnly() {
+        RecordingEmitter operator = new RecordingEmitter();
+        RecordingEmitter maintenance = new RecordingEmitter();
+        broadcaster.subscribeOperator(operator);
+        broadcaster.subscribeOperator(maintenance, true);
+
+        MaintenanceOperationalUpdate update = sampleMaintenance();
+        broadcaster.publish(update);
+
+        assertThat(maintenance.maintenancePayloads).containsExactly(update);
+        assertThat(operator.maintenancePayloads).isEmpty();
+        assertThat(broadcaster.operatorSubscriberCount()).isEqualTo(2);
+    }
+
+    @Test
     void heartbeatsDoNotRemoveHealthySubscribers() {
         RecordingEmitter healthy = new RecordingEmitter();
         RecordingEmitter failing = new RecordingEmitter(new IOException("disconnected"));
@@ -217,11 +233,36 @@ class SseAttractionUpdateBroadcasterTest {
         );
     }
 
+    private static MaintenanceOperationalUpdate sampleMaintenance() {
+        return new MaintenanceOperationalUpdate(
+                "maint-evt-1",
+                "WORK_STARTED",
+                "MAINTENANCE_WORK_ORDER",
+                "6dbb04f2-b20d-4b16-ae57-43072fc2e408",
+                4L,
+                "cypress-coil",
+                null,
+                "operator-sub-1",
+                "Operator One",
+                "corr",
+                NOW,
+                new MaintenanceOperationalUpdate.MaintenanceWorkOrderSnapshot(
+                        "6dbb04f2-b20d-4b16-ae57-43072fc2e408",
+                        "LM-2026-0042",
+                        "IN_PROGRESS",
+                        "P1",
+                        4L,
+                        NOW
+                )
+        );
+    }
+
     private static class RecordingEmitter extends SseEmitter {
         private final List<Object> payloads = new CopyOnWriteArrayList<>();
         private final List<Object> weatherPayloads = new CopyOnWriteArrayList<>();
         private final List<Object> advisoryPayloads = new CopyOnWriteArrayList<>();
         private final List<Object> incidentPayloads = new CopyOnWriteArrayList<>();
+        private final List<Object> maintenancePayloads = new CopyOnWriteArrayList<>();
         private final List<String> comments = new CopyOnWriteArrayList<>();
         private final IOException failure;
 
@@ -249,6 +290,8 @@ class SseAttractionUpdateBroadcasterTest {
                     advisoryPayloads.add(update);
                 } else if (data instanceof IncidentOperationalUpdate update) {
                     incidentPayloads.add(update);
+                } else if (data instanceof MaintenanceOperationalUpdate update) {
+                    maintenancePayloads.add(update);
                 } else if (data instanceof String text && text.startsWith(":")) {
                     comments.add(text.replace(":", "").trim());
                 }

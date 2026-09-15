@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
 import {
+  DuplicateCommandError,
   ForbiddenError,
   InvalidTransitionError,
   isAbortError,
+  MaintenancePrerequisiteError,
   NetworkError,
   NotFoundError,
   ServerError,
@@ -20,8 +22,12 @@ const problemDetailSchema = z
     code: z.string().optional(),
     expectedVersion: z.number().optional(),
     actualVersion: z.number().optional(),
+    currentVersion: z.number().optional(),
     currentStatus: z.string().optional(),
     command: z.string().optional(),
+    commandId: z.string().optional(),
+    existingAggregateId: z.string().optional(),
+    requestedAggregateId: z.string().optional(),
   })
   .loose();
 
@@ -110,7 +116,9 @@ export class ApiClient {
 
     if (!response.ok) {
       if (response.status === 401) this.onUnauthorized?.();
-      if (response.status === 403) this.onForbidden?.();
+      // Command 403s are inline permission failures. Only stream/workspace GETs
+      // should flip the console into the access-denied route.
+      if (response.status === 403 && options.method !== 'POST') this.onForbidden?.();
       throw await errorFromResponse(response);
     }
 
@@ -154,7 +162,7 @@ async function errorFromResponse(response: Response): Promise<Error> {
       if (problem?.code === 'STALE_VERSION') {
         return new VersionConflictError(detail, {
           expectedVersion: problem.expectedVersion,
-          actualVersion: problem.actualVersion,
+          actualVersion: problem.actualVersion ?? problem.currentVersion,
           body: problem,
         });
       }
@@ -165,9 +173,29 @@ async function errorFromResponse(response: Response): Promise<Error> {
           body: problem,
         });
       }
+      if (problem?.code === 'DUPLICATE_COMMAND') {
+        return new DuplicateCommandError(detail, {
+          commandId: problem.commandId,
+          existingAggregateId: problem.existingAggregateId,
+          requestedAggregateId: problem.requestedAggregateId,
+          body: problem,
+        });
+      }
       return new ServerError(
         detail ?? 'The request conflicted with current attraction state.',
         409,
+        { code: problem?.code, body: problem },
+      );
+    case 422:
+      if (problem?.code === 'MAINTENANCE_PREREQUISITE') {
+        return new MaintenancePrerequisiteError(
+          detail ?? 'A maintenance prerequisite has not been met.',
+          problem,
+        );
+      }
+      return new ServerError(
+        detail ?? `Request failed with status ${response.status}.`,
+        422,
         { code: problem?.code, body: problem },
       );
     default:

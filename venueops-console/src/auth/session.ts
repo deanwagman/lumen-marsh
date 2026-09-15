@@ -6,6 +6,9 @@ export const venueOpsScopes = {
   incidentsCommand: 'venueops/incidents.command',
   advisoriesPublish: 'venueops/advisories.publish',
   weatherRecommendationsReview: 'venueops/weather-recommendations.review',
+  maintenanceRead: 'venueops/maintenance.read',
+  maintenanceCommand: 'venueops/maintenance.command',
+  maintenanceInspect: 'venueops/maintenance.inspect',
 } as const;
 
 export type VenueOpsScope =

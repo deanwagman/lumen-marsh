@@ -6,6 +6,9 @@ import com.deanwagman.lumenmarsh.venueops.attraction.infrastructure.streaming.Ss
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentOperationalSnapshot;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentService;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceOperationalUpdate;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceWorkOrderQueryService;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceWorkOrderFilter;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationOperationalSnapshot;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationService;
@@ -15,6 +18,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,29 +37,33 @@ public class OperatorEventController {
     private final GuestAttractionReadService guestAttractionReadService;
     private final WeatherRecommendationService weatherRecommendationService;
     private final IncidentService incidentService;
+    private final MaintenanceWorkOrderQueryService maintenanceWorkOrders;
 
     public OperatorEventController(
             SseAttractionUpdateBroadcaster broadcaster,
             GuestAttractionReadService guestAttractionReadService,
             WeatherRecommendationService weatherRecommendationService,
-            IncidentService incidentService
+            IncidentService incidentService,
+            MaintenanceWorkOrderQueryService maintenanceWorkOrders
     ) {
         this.broadcaster = broadcaster;
         this.guestAttractionReadService = guestAttractionReadService;
         this.weatherRecommendationService = weatherRecommendationService;
         this.incidentService = incidentService;
+        this.maintenanceWorkOrders = maintenanceWorkOrders;
     }
 
     @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @PreAuthorize("hasAuthority('" + VenueOpsScopes.SCOPE_OPERATOR_READ + "')")
     @Operation(
             summary = "Stream operator console updates",
-            description = "Server-sent events for Control Tower. The first events are attractions.snapshot, weather.recommendations.snapshot, and incidents.snapshot. Later events are attraction.updated, weather.recommendation.updated, weather.recommendation.cleared, incident.reported, incident.updated, and incident.resolved. Incident events are operator-only. Guest Flutter clients must use GET /api/v1/attractions/events or GET /api/v1/events."
+            description = "Server-sent events for Control Tower. Connecting requires venueops/operator.read. The first events are attractions.snapshot, weather.recommendations.snapshot, and incidents.snapshot. Subscribers that also hold venueops/maintenance.read receive maintenance.work-orders.snapshot and later maintenance.work-order.updated events. Guest Flutter clients must use GET /api/v1/attractions/events or GET /api/v1/events."
     )
-    public SseEmitter events(HttpServletResponse response) {
+    public SseEmitter events(HttpServletResponse response, Authentication authentication) {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-store");
         response.setHeader("X-Accel-Buffering", "no");
-        SseEmitter emitter = broadcaster.subscribeOperator();
+        boolean maintenanceRead = hasMaintenanceRead(authentication);
+        SseEmitter emitter = broadcaster.subscribeOperator(maintenanceRead);
         try {
             List<AttractionResponse> attractions = guestAttractionReadService.listForGuest().stream()
                     .map(detail -> AttractionResponse.from(detail.operational(), detail.experience()))
@@ -69,10 +77,26 @@ public class OperatorEventController {
                     .map(IncidentOperationalSnapshot::from)
                     .toList();
             broadcaster.sendNamed(emitter, IncidentOperationalUpdate.SNAPSHOT_EVENT, null, incidents);
+            if (maintenanceRead) {
+                var workOrders = maintenanceWorkOrders.list(new MaintenanceWorkOrderFilter(
+                        null, null, null, null, null, null, null, null, null, null, 0, 100
+                )).items().stream()
+                        .map(MaintenanceOperationalUpdate.MaintenanceWorkOrderSnapshot::from)
+                        .toList();
+                broadcaster.sendNamed(emitter, MaintenanceOperationalUpdate.SNAPSHOT_EVENT, null, workOrders);
+            }
         } catch (RuntimeException ex) {
             broadcaster.unsubscribe(emitter);
             throw ex;
         }
         return emitter;
+    }
+
+    private static boolean hasMaintenanceRead(Authentication authentication) {
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> VenueOpsScopes.SCOPE_MAINTENANCE_READ.equals(authority.getAuthority()));
     }
 }

@@ -1,0 +1,49 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 72rem;
+}
+
+.back {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  width: fit-content;
+}
+
+.crumbs,
+.kicker,
+.muted,
+.facts dt {
+  color: var(--color-text-muted);
+}
+
+.kicker,
+.facts dt {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.header,
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.header {
+  justify-content: space-between;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.facts {
+  margin: 0;
+}
+
+.facts dd {
+  margin: 0;
+}

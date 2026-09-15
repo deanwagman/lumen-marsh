@@ -29,6 +29,7 @@ Internal routes are unavailable outside trusted local/dev tooling and must be di
 | Operator | Cognito user access token (group `operators`) | Day-to-day Control Tower work |
 | Supervisor | Cognito user access token (group `supervisors`) | Guest-facing publish and high-impact resolution |
 | Weather service | Cognito client-credentials token | Submit weather recommendations only |
+| Reliability service | Cognito client-credentials token | Submit reliability recommendations only |
 | VenueOps system | Internal process identity | Automated system events (no external token) |
 
 ### Cognito groups
@@ -44,15 +45,20 @@ Resource server identifier (scope prefix): `venueops`. Cognito access tokens ide
 
 | Scope | Intended holder | Grants |
 |---|---|---|
-| `venueops/operator.read` | Console (operators, supervisors) | Operator GET endpoints and operator SSE |
+| `venueops/operator.read` | Console (operators, supervisors) | Operator GET endpoints and operator SSE. Maintenance snapshot/update events on that stream additionally require `venueops/maintenance.read`. |
 | `venueops/attractions.command` | Console | Attraction command POSTs |
 | `venueops/incidents.command` | Console | Incident create/list/get/activity and non-supervisor incident commands |
 | `venueops/advisories.publish` | Console (supervisors) | Publish/withdraw guest advisories |
 | `venueops/weather-recommendations.review` | Console | Weather inbox reads and ACKNOWLEDGE / DISMISS / LINK_INCIDENT |
+| `venueops/maintenance.read` | Console | Maintenance asset and work-order reads |
+| `venueops/maintenance.command` | Console | Create, assign, and update maintenance work |
+| `venueops/maintenance.inspect` | Console (supervisors) | Approve/reject inspection and complete work orders |
 | `venueops/weather-recommendations.write` | Environmental Monitor only | `POST /api/v1/integrations/weather/recommendations` |
+| `venueops/reliability.write` | Reliability integration only | `POST /api/v1/integrations/reliability/recommendations` |
 
-Human tokens must never receive `venueops/weather-recommendations.write`.  
-The weather-service client must receive only that write scope.
+Human tokens must never receive `venueops/weather-recommendations.write` or `venueops/reliability.write`.
+The weather-service client must receive only the weather write scope.
+The reliability-integration client must receive only `venueops/reliability.write`.
 
 ## Token claims
 
@@ -116,10 +122,12 @@ Full inventory: [endpoint-inventory.md](./endpoint-inventory.md).
 Requires authenticated operator or supervisor with matching scopes:
 
 - All `/api/v1/operator/**` reads
-- `GET /api/v1/operator/events`
+- `GET /api/v1/operator/events` (maintenance SSE payloads require `venueops/maintenance.read` in addition to stream access)
 - Attraction commands (all current `AttractionCommand` values)
 - Incident report + operator incident commands except supervisor-only ones
 - Weather recommendation inbox + `ACKNOWLEDGE` / `DISMISS` / `LINK_INCIDENT`
+- Maintenance asset and work-order reads
+- Maintenance commands except supervisor inspection/completion (`OPEN`, `ASSIGN`, `START_WORK`, `REQUEST_INSPECTION`, `SET_ESTIMATED_RESTORE`, recommendation `ACCEPT` / `DISMISS`)
 
 ### Supervisor
 
@@ -128,6 +136,8 @@ Requires supervisor group **and** `venueops/advisories.publish` (for advisory co
 - Incident command `PUBLISH_GUEST_ADVISORY`
 - Incident command `WITHDRAW_GUEST_ADVISORY`
 - Incident command `RESOLVE` when severity is `MAJOR` or `CRITICAL`
+- Maintenance `APPROVE_INSPECTION`, `REJECT_INSPECTION`, and `COMPLETE`
+- Maintenance `CANCEL` for P1/P2 work orders
 - Future emergency / override commands (none yet)
 
 `RESOLVE` for `MINOR` / `MODERATE` remains an operator capability.
@@ -138,6 +148,10 @@ Requires scope `venueops/weather-recommendations.write`:
 
 - `POST /api/v1/integrations/weather/recommendations`
 
+Requires scope `venueops/reliability.write`:
+
+- `POST /api/v1/integrations/reliability/recommendations`
+
 ### Denied / not public
 
 - `GET /api/hello` — legacy probe; deny in secured deployments
@@ -146,17 +160,21 @@ Requires scope `venueops/weather-recommendations.write`:
 
 ## Role × permission matrix
 
-| Capability | Guest | Operator | Supervisor | Weather service |
-|---|---|---|---|---|
-| Guest attraction/advisory/media/SSE reads | ✓ | ✓ | ✓ | ✓ (unnecessary) |
-| Operator reads + operator SSE | | ✓ | ✓ | |
-| Attraction commands | | ✓ | ✓ | |
-| Report / manage incidents (non-supervisor cmds) | | ✓ | ✓ | |
-| Publish / withdraw guest advisory | | | ✓ | |
-| Resolve MAJOR/CRITICAL incident | | | ✓ | |
-| Resolve MINOR/MODERATE incident | | ✓ | ✓ | |
-| Review weather recommendations | | ✓ | ✓ | |
-| Write weather recommendations | | | | ✓ |
+| Capability | Guest | Operator | Supervisor | Weather service | Reliability service |
+|---|---|---|---|---|---|
+| Guest attraction/advisory/media/SSE reads | ✓ | ✓ | ✓ | ✓ (unnecessary) | ✓ (unnecessary) |
+| Operator reads + operator SSE | | ✓ | ✓ | | |
+| Attraction commands | | ✓ | ✓ | | |
+| Report / manage incidents (non-supervisor cmds) | | ✓ | ✓ | | |
+| Publish / withdraw guest advisory | | | ✓ | | |
+| Resolve MAJOR/CRITICAL incident | | | ✓ | | |
+| Resolve MINOR/MODERATE incident | | ✓ | ✓ | | |
+| Review weather recommendations | | ✓ | ✓ | | |
+| Write weather recommendations | | | | ✓ | |
+| Read maintenance data | | ✓ | ✓ | | |
+| Create / assign / update maintenance work | | ✓ | ✓ | | |
+| Approve inspection or complete work orders | | | ✓ | | |
+| Write reliability recommendations | | | | | ✓ |
 
 ## Client architecture
 
@@ -172,6 +190,12 @@ Requires scope `venueops/weather-recommendations.write`:
 - Client secret via local env / Secrets Manager / SSM — never Git or ordinary Compose files
 - Client Credentials
 - Scope: `venueops/weather-recommendations.write` only
+
+### `reliability-integration` (confidential Cognito app client)
+
+- Client secret via local env / Secrets Manager / SSM — never Git or ordinary Compose files
+- Client Credentials
+- Scope: `venueops/reliability.write` only
 
 ## Error contract
 
@@ -198,5 +222,6 @@ These scenarios must remain true after Phases 1–9:
 4. Operator cannot publish a guest advisory (`403`).
 5. Supervisor can publish advisories and resolve major incidents.
 6. Weather service can POST recommendations and cannot call `/api/v1/operator/**` (`403`).
-7. Forged `X-Actor` does not change audit identity after Phase 4.
-8. Operator SSE requires the same session as REST; expired tokens stop reconnect and request sign-in.
+7. Reliability service can POST recommendations and cannot call `/api/v1/operator/**` (`403`).
+8. Forged `X-Actor` does not change audit identity after Phase 4.
+9. Operator SSE requires the same session as REST; expired tokens stop reconnect and request sign-in.

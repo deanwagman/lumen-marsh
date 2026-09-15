@@ -105,7 +105,7 @@ if [[ "$AUTH_MODE" == "oidc" ]]; then
   export VITE_OIDC_CLIENT_ID="$client"
   export VITE_OIDC_REDIRECT_URI=http://127.0.0.1:5173/auth/callback
   export VITE_OIDC_LOGOUT_URI=http://127.0.0.1:5173/
-  export VITE_OIDC_SCOPES="openid profile email venueops/operator.read venueops/attractions.command venueops/incidents.command venueops/advisories.publish venueops/weather-recommendations.review"
+  export VITE_OIDC_SCOPES="openid profile email venueops/operator.read venueops/attractions.command venueops/incidents.command venueops/advisories.publish venueops/weather-recommendations.review venueops/maintenance.read venueops/maintenance.command venueops/maintenance.inspect"
   export VITE_API_BASE_URL=http://127.0.0.1:8080
   export OPERATOR_CONSOLE_HOST_PORT=5173
   export OPERATOR_CONSOLE_ORIGIN=http://127.0.0.1:5173

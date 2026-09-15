@@ -4,6 +4,7 @@ import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionNotFo
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.AttractionId;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentNotFoundException;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentService;
+import com.deanwagman.lumenmarsh.venueops.incident.application.RelatedMaintenanceWorkOrders;
 import com.deanwagman.lumenmarsh.venueops.incident.application.StaleIncidentVersionException;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.Incident;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentCommand;
@@ -46,6 +47,9 @@ class OperatorIncidentControllerTest {
 
     @MockitoBean
     private IncidentService incidentService;
+
+    @MockitoBean
+    private RelatedMaintenanceWorkOrders relatedMaintenanceWorkOrders;
 
     @Test
     void reportCreatesIncident() throws Exception {
@@ -99,7 +103,8 @@ class OperatorIncidentControllerTest {
                 isNull(),
                 isNull(),
                 isNull(),
-                isNull()
+                isNull(),
+                eq(false)
         )).thenThrow(new InvalidIncidentTransitionException(IncidentStatus.REPORTED, IncidentCommand.RESOLVE));
 
         mockMvc.perform(post("/api/v1/operator/incidents/inc-1/commands")
@@ -129,7 +134,8 @@ class OperatorIncidentControllerTest {
                 isNull(),
                 isNull(),
                 isNull(),
-                isNull()
+                isNull(),
+                eq(false)
         )).thenThrow(new StaleIncidentVersionException(INCIDENT_ID, 9L, 1L));
 
         mockMvc.perform(post("/api/v1/operator/incidents/inc-1/commands")

@@ -40,6 +40,11 @@ describe('docs pages', () => {
         name: /attractions.*shift overview, state commands/i,
       }),
     ).toHaveAttribute('href', '/docs/attractions');
+    expect(
+      screen.getByRole('link', {
+        name: /maintenance.*reliability recommendations/i,
+      }),
+    ).toHaveAttribute('href', '/docs/maintenance');
     expect(screen.getByRole('navigation', { name: 'Console' })).toContainElement(
       screen.getByRole('link', { name: 'Docs' }),
     );
@@ -56,6 +61,17 @@ describe('docs pages', () => {
     expect(
       screen.getByRole('link', { name: 'Attraction commands' }),
     ).toHaveAttribute('href', '/docs/attractions#commands');
+  });
+
+  it('renders the maintenance guide', async () => {
+    renderApp({ initialEntries: ['/docs/maintenance'] });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Maintenance', level: 1 }),
+    ).toBeInTheDocument();
+    expect(document.getElementById('lifecycle')).toBeTruthy();
+    expect(document.getElementById('handoff')).toBeTruthy();
+    expect(document.getElementById('scopes')).toBeTruthy();
   });
 
   it('filters role-specific sections on the article page', async () => {

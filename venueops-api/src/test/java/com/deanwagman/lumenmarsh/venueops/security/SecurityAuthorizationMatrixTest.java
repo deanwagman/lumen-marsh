@@ -93,6 +93,44 @@ class SecurityAuthorizationMatrixTest {
     }
 
     @Test
+    void reliabilityServiceCannotCallOperatorEndpoints() throws Exception {
+        mockMvc.perform(get("/api/v1/operator/maintenance/work-orders").with(TestAuth.reliabilityService()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/operator/maintenance/work-orders")
+                        .with(TestAuth.reliabilityService())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "commandId": "ce8d795d-cc8c-4f10-a1ac-4eb331e727ab",
+                                  "assetId": "0fd7c7ce-f7af-4b65-8789-27679ca40303",
+                                  "classification": "CORRECTIVE",
+                                  "priority": "P2",
+                                  "summary": "Machine tokens cannot create work"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void operatorCannotCallReliabilityIngest() throws Exception {
+        mockMvc.perform(post("/api/v1/integrations/reliability/recommendations")
+                        .with(TestAuth.operator())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "observationId": "operator-denied",
+                                  "observedAt": "2026-09-14T18:25:00Z",
+                                  "assetCode": "CC-TRAIN-01-WHEEL-A",
+                                  "signalType": "VIBRATION",
+                                  "severity": "INFO",
+                                  "evidence": "e",
+                                  "recommendedAction": "a"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void helloIsDenied() throws Exception {
         mockMvc.perform(get("/api/hello")).andExpect(status().isUnauthorized());
     }
@@ -100,6 +138,12 @@ class SecurityAuthorizationMatrixTest {
     @Test
     void operatorSseRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/v1/operator/events")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void operatorWithoutMaintenanceReadCanOpenOperatorStream() throws Exception {
+        mockMvc.perform(get("/api/v1/operator/events").with(TestAuth.operatorWithoutMaintenance()))
+                .andExpect(status().isOk());
     }
 
     @Test

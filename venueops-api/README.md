@@ -14,6 +14,10 @@ Weather recommendations answer a third:
 
 > What did Environmental Monitor just advise, and has Control Tower acknowledged, dismissed, or opened an incident?
 
+Maintenance work orders answer a fourth:
+
+> What repair or inspection work is in progress, and is the attraction ready for operational testing?
+
 ## Technology
 
 - Java 21
@@ -81,6 +85,16 @@ The PostgreSQL integration test uses Testcontainers and is skipped automatically
 | `stormglass-station` | Stormglass Station | Research Quarter | Indoor dark ride | `CLOSED` |
 | `cypress-coil` | Cypress Coil | Cypress Basin | Launch coaster | `CLOSED` |
 
+Seeded Cypress Coil maintenance assets (when `venueops.attractions.seed=true`):
+
+| Asset code | Name | Type |
+| --- | --- | --- |
+| `CC-ATTRACTION` | Cypress Coil | Attraction |
+| `CC-RIDE-SYSTEM` | Cypress Coil Ride System | System |
+| `CC-TRAIN-01` | Cypress Coil Train 1 | Vehicle |
+| `CC-TRAIN-01-WHEEL-A` | Cypress Coil Train 1 Wheel Assembly A | Component |
+| `CC-TRAIN-01-VIB-01` | Cypress Coil Train 1 Vibration Sensor | Sensor |
+
 ## Operational states
 
 ```mermaid
@@ -137,6 +151,8 @@ The stream is a live projection of committed changes. Internal activity records 
 | `weather.recommendations.snapshot` | Operator | Current weather-recommendation inbox |
 | `weather.recommendation.updated` | Operator | A recommendation was created, updated, or handled |
 | `weather.recommendation.cleared` | Operator | Environmental Monitor sent a cleared source version |
+| `maintenance.work-orders.snapshot` | Operator with `venueops/maintenance.read` | Current work-order summaries |
+| `maintenance.work-order.updated` | Operator with `venueops/maintenance.read` | One work order changed after a successful maintenance command |
 | heartbeat comment | Guest and operator | Keeps proxies from closing an idle connection |
 
 Each `attraction.updated` payload includes the complete operational state so clients can apply it independently:
@@ -342,9 +358,12 @@ Spring `ProblemDetail` JSON with a stable `code`:
 | Unknown attraction | `404` | `ATTRACTION_NOT_FOUND` |
 | Unknown incident | `404` | `INCIDENT_NOT_FOUND` |
 | Unknown weather recommendation | `404` | `WEATHER_RECOMMENDATION_NOT_FOUND` |
+| Unknown maintenance resource | `404` | `MAINTENANCE_NOT_FOUND` |
 | Invalid request | `400` | `INVALID_REQUEST` |
 | Invalid transition | `409` | `INVALID_TRANSITION` |
 | Stale expected version | `409` | `STALE_VERSION` |
+| Maintenance prerequisite not met | `422` | `MAINTENANCE_PREREQUISITE` |
+| Active P1/P2 work orders on incident resolve | `422` | `ACTIVE_WORK_ORDERS` |
 | Unexpected failure | `500` | `INTERNAL_ERROR` |
 
 ## Weather-hold demonstration
@@ -531,6 +550,28 @@ curl -s -X POST http://localhost:8080/api/v1/integrations/weather/recommendation
 
 The operator stream emits `weather.recommendation.updated` then `weather.recommendation.cleared`. Guest Flutter streams never receive those events. Linking or clearing a recommendation does not change attraction status.
 
+### Operator maintenance
+
+```http
+GET  /api/v1/operator/maintenance/assets
+GET  /api/v1/operator/maintenance/assets/{assetId}
+GET  /api/v1/operator/maintenance/assets/{assetId}/work-orders
+GET  /api/v1/operator/maintenance/work-orders
+POST /api/v1/operator/maintenance/work-orders
+GET  /api/v1/operator/maintenance/work-orders/{workOrderId}
+POST /api/v1/operator/maintenance/work-orders/{workOrderId}/commands
+GET  /api/v1/operator/maintenance/work-orders/{workOrderId}/activity
+GET  /api/v1/operator/maintenance/recommendations
+POST /api/v1/operator/maintenance/recommendations/{recommendationId}/commands
+POST /api/v1/integrations/reliability/recommendations
+```
+
+Maintenance work orders never reopen an attraction. `COMPLETE` is blocked while the attraction is in `TECHNICAL_DELAY`, `TESTING`, or `RETURNING_TO_SERVICE`. `CLOSED`, `OPERATING`, and `WEATHER_HOLD` are allowed so overnight work can finish on a closed attraction and weather holds stay independent of maintenance completion. Reliability ingest creates a pending recommendation, not a work order. Machine tokens use `Authorization: Bearer local-reliability-token` in `LOCAL_JWT` mode.
+
+Work-order commands: `OPEN`, `ASSIGN`, `START_WORK`, `REQUEST_INSPECTION`, `REJECT_INSPECTION`, `APPROVE_INSPECTION`, `COMPLETE`, `CANCEL`, `REASSIGN`, `SET_ESTIMATED_RESTORE`, `RECORD_CHECKLIST_RESULT`, `LINK_INCIDENT`, `ADD_NOTE`, `ADD_EVIDENCE`. Every command requires `commandId` and `expectedVersion`. Duplicate `commandId` values replay the original result. Reusing a `commandId` against a different work-order URL returns `409` with code `DUPLICATE_COMMAND`.
+
+Recommendation commands: `ACCEPT`, `DISMISS`. Every command requires `commandId` and `expectedVersion`. `ACCEPT` claims the recommendation before creating a work order so concurrent accepts cannot create duplicates.
+
 ## Architecture
 
 ```text
@@ -545,11 +586,16 @@ com.deanwagman.lumenmarsh.venueops
 │   ├── application/      # service, repository port, operational updates
 │   ├── api/              # operator API, guest advisories, park-wide SSE
 │   └── infrastructure/   # in-memory and JPA adapters
-└── weather/
+├── weather/
     ├── domain/           # recommendation inbox aggregate and idempotent ingest
     ├── application/      # service, repository port, operator SSE updates
     ├── api/              # integration ingest, operator commands, operator SSE
     └── infrastructure/   # in-memory and JPA adapters
+└── maintenance/
+    ├── domain/           # assets, work orders, checklists, recommendations
+    ├── application/      # commands, queries, incident/attraction gates
+    ├── api/              # operator maintenance API and reliability ingest
+    └── infrastructure/   # in-memory and JPA adapters, Cypress Coil seed
 ```
 
 The domain packages do not import Spring, JPA, HTTP, or JDBC. Persistence is selected with `venueops.attractions.persistence`:
@@ -561,4 +607,4 @@ Demo attractions are loaded only when `venueops.attractions.seed=true`. The in-m
 
 ## Deferred scope
 
-Maps, show schedules, wait prediction, notifications, authentication, Kafka/SQS, AI, multiple parks, food ordering, and maintenance work orders.
+Maps, show schedules, wait prediction, notifications, Kafka/SQS, AI, multiple parks, food ordering, purchasing, and technician workforce identity.

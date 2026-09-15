@@ -13,6 +13,7 @@ import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverityChange
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatus;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatusChanged;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentType;
+import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentWorkOrderLinked;
 
 import java.time.Instant;
 import java.util.List;
@@ -37,7 +38,9 @@ public record IncidentActivityResponse(
         IncidentSeverity newSeverity,
         String attractionId,
         String guestTitle,
-        String guestMessage
+        String guestMessage,
+        String workOrderId,
+        String workOrderNumber
 ) {
     public static IncidentActivityResponse from(IncidentActivity activity) {
         return switch (activity) {
@@ -62,6 +65,10 @@ public record IncidentActivityResponse(
                     .guestMessage(published.guestMessage())
                     .build();
             case IncidentGuestAdvisoryWithdrawn withdrawn -> base(withdrawn).build();
+            case IncidentWorkOrderLinked linked -> base(linked)
+                    .workOrderId(linked.workOrderId())
+                    .workOrderNumber(linked.workOrderNumber())
+                    .build();
         };
     }
 
@@ -99,6 +106,8 @@ public record IncidentActivityResponse(
         private String attractionId;
         private String guestTitle;
         private String guestMessage;
+        private String workOrderId;
+        private String workOrderNumber;
 
         private Builder(
                 String id,
@@ -180,6 +189,16 @@ public record IncidentActivityResponse(
             return this;
         }
 
+        private Builder workOrderId(String workOrderId) {
+            this.workOrderId = workOrderId;
+            return this;
+        }
+
+        private Builder workOrderNumber(String workOrderNumber) {
+            this.workOrderNumber = workOrderNumber;
+            return this;
+        }
+
         private IncidentActivityResponse build() {
             return new IncidentActivityResponse(
                     id,
@@ -201,7 +220,9 @@ public record IncidentActivityResponse(
                     newSeverity,
                     attractionId,
                     guestTitle,
-                    guestMessage
+                    guestMessage,
+                    workOrderId,
+                    workOrderNumber
             );
         }
     }

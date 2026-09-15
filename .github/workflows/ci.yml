@@ -70,7 +70,9 @@ jobs:
       - run: npm run build
 
   guest-app:
-    runs-on: ubuntu-latest
+    # Pixel goldens were authored on macOS. Flutter's comparator is intentionally
+    # exact and the engine documents cross-platform rendering differences.
+    runs-on: macos-15
     defaults:
       run:
         working-directory: lumen-marsh-app
@@ -78,6 +80,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.47.1"
           channel: stable
           cache: true
       - run: flutter pub get
@@ -134,7 +137,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Filesystem and secret scan
-        uses: aquasecurity/trivy-action@0.28.0
+        # v0.36.0, pinned to the verified release commit rather than a mutable tag.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           scan-type: fs
           scan-ref: .

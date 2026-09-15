@@ -54,6 +54,7 @@ class IncidentActivityMapperTest {
         incident.withdrawGuestAdvisory("Operator One", "Rewording", CLOCK);
         incident.publishGuestAdvisory("Weather advisory", "Some outdoor attractions are paused.", "Operator One", null, CLOCK);
         incident.startMitigation("Operator One", null, CLOCK);
+        incident.recordLinkedWorkOrder("6dbb04f2-b20d-4b16-ae57-43072fc2e408", "LM-2026-0042", "Operator One", "Maintenance opened", CLOCK);
         incident.unlinkAttraction(cypress, "Operator One", "Not in radius", CLOCK);
         incident.linkAttraction(stormglass, "Operator One", null, CLOCK);
         incident.resolve("Operator One", "Storm cell moved out of radius", CLOCK);

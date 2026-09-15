@@ -14,6 +14,7 @@ import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverityChange
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatus;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatusChanged;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentType;
+import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentWorkOrderLinked;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -140,6 +141,18 @@ final class IncidentActivityMapper {
                     entity.getPreviousVersion(),
                     entity.getResultingVersion()
             );
+            case WORK_ORDER_LINKED -> new IncidentWorkOrderLinked(
+                    entity.getId(),
+                    incidentId,
+                    entity.getType(),
+                    entity.getActor(),
+                    entity.getReason(),
+                    entity.getOccurredAt(),
+                    entity.getPreviousVersion(),
+                    entity.getResultingVersion(),
+                    payload.get("workOrderId").asString(),
+                    payload.get("workOrderNumber").asString()
+            );
         };
     }
 
@@ -168,6 +181,10 @@ final class IncidentActivityMapper {
                 payload.put("guestMessage", published.guestMessage());
             }
             case IncidentGuestAdvisoryWithdrawn ignored -> {
+            }
+            case IncidentWorkOrderLinked linked -> {
+                payload.put("workOrderId", linked.workOrderId());
+                payload.put("workOrderNumber", linked.workOrderNumber());
             }
         }
         return payload;

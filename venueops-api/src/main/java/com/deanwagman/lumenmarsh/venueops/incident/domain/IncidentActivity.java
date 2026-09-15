@@ -10,7 +10,8 @@ public sealed interface IncidentActivity
         IncidentAttractionLinked,
         IncidentAttractionUnlinked,
         IncidentGuestAdvisoryPublished,
-        IncidentGuestAdvisoryWithdrawn {
+        IncidentGuestAdvisoryWithdrawn,
+        IncidentWorkOrderLinked {
 
     String id();
 

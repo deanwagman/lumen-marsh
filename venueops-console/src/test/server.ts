@@ -6,6 +6,8 @@ import type { WeatherRecommendation } from '@/features/weather/domain/recommenda
 import { applyIncidentCommandSideEffects } from './applyIncidentCommandSideEffects';
 import { catalogAttractions, lightningIncident, lightningIncidentActivity, toOperatorAttraction } from './fixtures';
 import { calmDashboard } from '@/features/dashboard/test/fixtures';
+import { maintenanceHandlers } from './maintenanceHandlers';
+import { resetMaintenanceStores } from './maintenanceStore';
 
 export const weatherInbox: WeatherRecommendation[] = [];
 export const incidentStore: IncidentRecord[] = [];
@@ -19,6 +21,8 @@ export function resetWeatherInbox() {
 export function resetIncidents() {
   incidentStore.splice(0, incidentStore.length);
 }
+
+export { resetMaintenanceStores };
 
 export const handlers = [
   http.get('/api/v1/operator/dashboard', () => HttpResponse.json(calmDashboard)),
@@ -174,6 +178,7 @@ export const handlers = [
     weatherInbox[index] = next;
     return HttpResponse.json(next);
   }),
+  ...maintenanceHandlers,
 ];
 
 export const server = setupServer(...handlers);

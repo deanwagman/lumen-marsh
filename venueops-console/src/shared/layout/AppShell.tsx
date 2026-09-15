@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { CommandReceiptBanner } from '@/features/attractions/components/CommandReceiptBanner';
 import { useIncidents } from '@/features/incidents/hooks/useIncidents';
 import { isOpenIncident } from '@/features/incidents/domain/incident';
+import { useMaintenanceNavBadge } from '@/features/maintenance/hooks/useMaintenanceNavBadge';
 import { Button } from '@/shared/ui/Button';
 
 import { ConnectionIndicator } from './ConnectionIndicator';
@@ -13,6 +14,7 @@ export function AppShell() {
   const auth = useAuth();
   const operator = auth.session!;
   const incidents = useIncidents();
+  const maintenance = useMaintenanceNavBadge();
   const openCount = (incidents.data ?? []).filter(isOpenIncident).length;
   const initials = operator.displayName
     .split(/\s+/)
@@ -76,6 +78,24 @@ export function AppShell() {
               </span>
             ) : null}
           </NavLink>
+          {maintenance.visible ? (
+            <NavLink
+              className={({ isActive }) =>
+                isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+              }
+              to="/maintenance"
+            >
+              Maintenance
+              {maintenance.count > 0 ? (
+                <span
+                  className={styles.badge}
+                  aria-label={`${maintenance.count} pending maintenance items`}
+                >
+                  {maintenance.count}
+                </span>
+              ) : null}
+            </NavLink>
+          ) : null}
           <NavLink
             className={({ isActive }) =>
               isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink

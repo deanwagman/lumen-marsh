@@ -48,7 +48,8 @@ class IncidentServiceTest {
         attractions = new InMemoryAttractionRepository();
         publisher = new RecordingPublisher();
         incidentPublisher = new RecordingIncidentPublisher();
-        service = new IncidentService(incidents, attractions, CLOCK, publisher, incidentPublisher);
+        service = new IncidentService(incidents, attractions, CLOCK, publisher, incidentPublisher, (incident, confirm) -> {
+        });
         attractions.save(Attraction.create(new AttractionId("mangrove-run"), "Mangrove Run", "Luminous Wetlands", AttractionType.BOAT_EXPEDITION, CLOCK));
         attractions.save(Attraction.create(new AttractionId("cypress-coil"), "Cypress Coil", "Cypress Basin", AttractionType.LAUNCH_COASTER, CLOCK));
     }
@@ -151,7 +152,8 @@ class IncidentServiceTest {
     void repositoryFailuresPublishNothing() {
         IncidentRepository failingRepository = mock(IncidentRepository.class);
         when(failingRepository.findById(any())).thenReturn(Optional.empty());
-        IncidentService reporting = new IncidentService(failingRepository, attractions, CLOCK, publisher, incidentPublisher);
+        IncidentService reporting = new IncidentService(failingRepository, attractions, CLOCK, publisher, incidentPublisher, (incident, confirm) -> {
+        });
         doThrow(new RuntimeException("write failed")).when(failingRepository).save(any());
 
         assertThatThrownBy(() -> reporting.report(
@@ -216,7 +218,8 @@ class IncidentServiceTest {
                 severity,
                 attractionId,
                 guestTitle,
-                guestTitle == null ? null : "Paused."
+                guestTitle == null ? null : "Paused.",
+                false
         );
     }
 

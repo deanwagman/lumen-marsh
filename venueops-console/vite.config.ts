@@ -14,13 +14,13 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: process.env.VENUEOPS_API_ORIGIN ?? 'http://localhost:8080',
         changeOrigin: true,
         timeout: 0,
         proxyTimeout: 0,
       },
       '/media': {
-        target: 'http://localhost:8080',
+        target: process.env.VENUEOPS_API_ORIGIN ?? 'http://localhost:8080',
         changeOrigin: true,
       },
     },

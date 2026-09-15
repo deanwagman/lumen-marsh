@@ -1,0 +1,39 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.list p {
+  margin: 0;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.tech {
+  margin-top: var(--space-xs);
+}
+
+.tech summary {
+  cursor: pointer;
+  color: var(--color-text-muted);
+}

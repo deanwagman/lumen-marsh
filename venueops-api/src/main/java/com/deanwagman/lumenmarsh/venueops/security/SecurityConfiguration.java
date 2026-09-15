@@ -67,6 +67,8 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/v1/events").permitAll()
                         .requestMatchers("/api/v1/integrations/weather/**")
                         .hasAuthority(VenueOpsScopes.SCOPE_WEATHER_WRITE)
+                        .requestMatchers("/api/v1/integrations/reliability/**")
+                        .hasAuthority(VenueOpsScopes.SCOPE_RELIABILITY_WRITE)
                         .requestMatchers("/api/v1/operator/**")
                         .hasAuthority(VenueOpsScopes.ROLE_OPERATOR)
                         .anyRequest().denyAll();

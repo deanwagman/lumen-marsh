@@ -34,7 +34,7 @@ VITE_OIDC_AUTHORITY=${issuer}
 VITE_OIDC_CLIENT_ID=${client}
 VITE_OIDC_REDIRECT_URI=http://127.0.0.1:5173/auth/callback
 VITE_OIDC_LOGOUT_URI=http://127.0.0.1:5173/
-VITE_OIDC_SCOPES=openid profile email venueops/operator.read venueops/attractions.command venueops/incidents.command venueops/advisories.publish venueops/weather-recommendations.review
+VITE_OIDC_SCOPES=openid profile email venueops/operator.read venueops/attractions.command venueops/incidents.command venueops/advisories.publish venueops/weather-recommendations.review venueops/maintenance.read venueops/maintenance.command venueops/maintenance.inspect
 
 # VenueOps API (OIDC mode; do not mix with LOCAL_JWT)
 VENUEOPS_SECURITY_MODE=OIDC

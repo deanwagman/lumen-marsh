@@ -1,6 +1,7 @@
 package com.deanwagman.lumenmarsh.venueops.incident.api;
 
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentService;
+import com.deanwagman.lumenmarsh.venueops.incident.application.RelatedMaintenanceWorkOrders;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.Incident;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentId;
 import com.deanwagman.lumenmarsh.venueops.security.ActorAuditContext;
@@ -31,15 +32,18 @@ public class OperatorIncidentController {
     private final IncidentService incidentService;
     private final ActorResolver actorResolver;
     private final CommandAuthorization commandAuthorization;
+    private final RelatedMaintenanceWorkOrders relatedMaintenanceWorkOrders;
 
     public OperatorIncidentController(
             IncidentService incidentService,
             ActorResolver actorResolver,
-            CommandAuthorization commandAuthorization
+            CommandAuthorization commandAuthorization,
+            RelatedMaintenanceWorkOrders relatedMaintenanceWorkOrders
     ) {
         this.incidentService = incidentService;
         this.actorResolver = actorResolver;
         this.commandAuthorization = commandAuthorization;
+        this.relatedMaintenanceWorkOrders = relatedMaintenanceWorkOrders;
     }
 
     @PostMapping
@@ -69,7 +73,8 @@ public class OperatorIncidentController {
     @PreAuthorize("hasAuthority('" + VenueOpsScopes.SCOPE_OPERATOR_READ + "')")
     @Operation(summary = "Get incident detail")
     public OperatorIncidentResponse get(@PathVariable String incidentId) {
-        return OperatorIncidentResponse.from(incidentService.get(new IncidentId(incidentId)));
+        Incident incident = incidentService.get(new IncidentId(incidentId));
+        return OperatorIncidentResponse.from(incident, relatedMaintenanceWorkOrders.forIncident(incident.id()));
     }
 
     @GetMapping("/{incidentId}/activity")
@@ -108,7 +113,8 @@ public class OperatorIncidentController {
                 request.severity(),
                 request.attractionId(),
                 request.guestTitle(),
-                request.guestMessage()
+                request.guestMessage(),
+                Boolean.TRUE.equals(request.confirmActiveWorkOrders())
         )));
     }
 }

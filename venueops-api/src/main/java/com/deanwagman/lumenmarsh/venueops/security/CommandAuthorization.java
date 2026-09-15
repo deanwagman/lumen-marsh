@@ -2,6 +2,8 @@ package com.deanwagman.lumenmarsh.venueops.security;
 
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentCommand;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenancePriority;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenanceWorkOrderCommand;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -34,6 +36,29 @@ public class CommandAuthorization {
 
     public void requireWeatherReviewCommand() {
         require(requireAuthentication(), VenueOpsScopes.SCOPE_WEATHER_REVIEW);
+    }
+
+    public void requireMaintenanceCommand(MaintenanceWorkOrderCommand command, MaintenancePriority priority) {
+        Authentication authentication = requireAuthentication();
+        if (command.requiresSupervisor()) {
+            require(authentication, VenueOpsScopes.SCOPE_MAINTENANCE_INSPECT);
+            require(authentication, VenueOpsScopes.ROLE_SUPERVISOR);
+            return;
+        }
+        require(authentication, VenueOpsScopes.SCOPE_MAINTENANCE_COMMAND);
+        if (command == MaintenanceWorkOrderCommand.CANCEL && priority.requiresSupervisorToCancel()) {
+            require(authentication, VenueOpsScopes.ROLE_SUPERVISOR);
+        }
+    }
+
+    public boolean isSupervisor() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(VenueOpsScopes.ROLE_SUPERVISOR::equals);
     }
 
     private static Authentication requireAuthentication() {

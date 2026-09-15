@@ -319,6 +319,32 @@ public final class Incident {
         assertInvariants();
     }
 
+    public void recordLinkedWorkOrder(
+            String workOrderId,
+            String workOrderNumber,
+            String actor,
+            String reason,
+            Clock clock
+    ) {
+        requireActor(actor);
+        requireClock(clock);
+        Instant occurredAt = Instant.now(clock);
+        long previousVersion = this.version;
+        bump(occurredAt);
+        history.add(new IncidentWorkOrderLinked(
+                newActivityId(),
+                id,
+                IncidentEventType.WORK_ORDER_LINKED,
+                actor,
+                normalizeReason(reason),
+                occurredAt,
+                previousVersion,
+                this.version,
+                requireText(workOrderId, "workOrderId"),
+                requireText(workOrderNumber, "workOrderNumber")
+        ));
+    }
+
     public void withdrawGuestAdvisory(String actor, String reason, Clock clock) {
         requireOpen(IncidentCommand.WITHDRAW_GUEST_ADVISORY);
         requireActor(actor);

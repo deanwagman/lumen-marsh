@@ -12,6 +12,7 @@ public record IncidentCommandRequest(
         IncidentSeverity severity,
         String attractionId,
         String guestTitle,
-        String guestMessage
+        String guestMessage,
+        Boolean confirmActiveWorkOrders
 ) {
 }

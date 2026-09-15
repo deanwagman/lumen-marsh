@@ -27,7 +27,11 @@ export function CommandReceiptBanner() {
     return null;
   }
 
-  const activityHref = receipt.incidentId
+  const activityHref = receipt.workOrderId
+    ? receipt.activityId
+      ? `/maintenance/work-orders/${receipt.workOrderId}#activity-${receipt.activityId}`
+      : `/maintenance/work-orders/${receipt.workOrderId}`
+    : receipt.incidentId
     ? receipt.activityId
       ? `/incidents/${receipt.incidentId}#activity-${receipt.activityId}`
       : `/incidents/${receipt.incidentId}`
@@ -39,6 +43,11 @@ export function CommandReceiptBanner() {
     <div className={styles.banner} role="status" aria-label="Command accepted">
       <p>{receipt.summary}</p>
       <div className={styles.actions}>
+        {receipt.workOrderId ? (
+          <Link className={styles.link} to={`/maintenance/work-orders/${receipt.workOrderId}`}>
+            Open work order
+          </Link>
+        ) : null}
         <Link className={styles.link} to={activityHref}>
           View activity
         </Link>

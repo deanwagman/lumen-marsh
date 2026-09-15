@@ -6,6 +6,8 @@ import com.deanwagman.lumenmarsh.venueops.incident.application.GuestAdvisoryOper
 import com.deanwagman.lumenmarsh.venueops.incident.application.GuestAdvisoryUpdatePublisher;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentUpdatePublisher;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceOperationalUpdate;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceUpdatePublisher;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationUpdatePublisher;
 import io.micrometer.core.instrument.Counter;
@@ -23,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class SseAttractionUpdateBroadcaster
-        implements AttractionUpdatePublisher, GuestAdvisoryUpdatePublisher, WeatherRecommendationUpdatePublisher, IncidentUpdatePublisher {
+        implements AttractionUpdatePublisher, GuestAdvisoryUpdatePublisher, WeatherRecommendationUpdatePublisher, IncidentUpdatePublisher, MaintenanceUpdatePublisher {
 
     public static final String UPDATE_EVENT = "attraction.updated";
     public static final String SNAPSHOT_EVENT = "attractions.snapshot";
@@ -55,28 +57,45 @@ public class SseAttractionUpdateBroadcaster
                 .register(meterRegistry);
     }
 
+    private final ConcurrentHashMap<String, Boolean> operatorMaintenanceRead = new ConcurrentHashMap<>();
+
     public SseEmitter subscribe() {
-        return subscribe(guestEmitters, new SseEmitter(timeoutMs));
+        return subscribe(guestEmitters, new SseEmitter(timeoutMs), null);
     }
 
     public SseEmitter subscribeOperator() {
-        return subscribe(operatorEmitters, new SseEmitter(timeoutMs));
+        return subscribeOperator(false);
+    }
+
+    public SseEmitter subscribeOperator(boolean maintenanceRead) {
+        return subscribeOperator(new SseEmitter(timeoutMs), maintenanceRead);
     }
 
     SseEmitter subscribe(SseEmitter emitter) {
-        return subscribe(guestEmitters, emitter);
+        return subscribe(guestEmitters, emitter, null);
     }
 
     SseEmitter subscribeOperator(SseEmitter emitter) {
-        return subscribe(operatorEmitters, emitter);
+        return subscribeOperator(emitter, false);
     }
 
-    private SseEmitter subscribe(ConcurrentHashMap<String, SseEmitter> emitters, SseEmitter emitter) {
+    SseEmitter subscribeOperator(SseEmitter emitter, boolean maintenanceRead) {
+        return subscribe(operatorEmitters, emitter, maintenanceRead);
+    }
+
+    private SseEmitter subscribe(
+            ConcurrentHashMap<String, SseEmitter> emitters,
+            SseEmitter emitter,
+            Boolean maintenanceRead
+    ) {
         String id = UUID.randomUUID().toString();
         emitter.onCompletion(() -> drop(id));
         emitter.onTimeout(() -> drop(id));
         emitter.onError(error -> drop(id));
         emitters.put(id, emitter);
+        if (maintenanceRead != null) {
+            operatorMaintenanceRead.put(id, maintenanceRead);
+        }
         return emitter;
     }
 
@@ -129,9 +148,33 @@ public class SseAttractionUpdateBroadcaster
         broadcast(operatorEmitters, update.eventId(), update.sseEventName(), update);
     }
 
+    @Override
+    public void publish(MaintenanceOperationalUpdate update) {
+        broadcast(
+                operatorEmitters,
+                update.eventId(),
+                update.sseEventName(),
+                update,
+                id -> Boolean.TRUE.equals(operatorMaintenanceRead.get(id))
+        );
+    }
+
     private void broadcast(ConcurrentHashMap<String, SseEmitter> emitters, String eventId, String eventName, Object payload) {
+        broadcast(emitters, eventId, eventName, payload, id -> true);
+    }
+
+    private void broadcast(
+            ConcurrentHashMap<String, SseEmitter> emitters,
+            String eventId,
+            String eventName,
+            Object payload,
+            java.util.function.Predicate<String> include
+    ) {
         updatesPublished.increment();
         emitters.forEach((id, emitter) -> {
+            if (!include.test(id)) {
+                return;
+            }
             try {
                 emitter.send(SseEmitter.event()
                         .id(eventId)
@@ -190,6 +233,7 @@ public class SseAttractionUpdateBroadcaster
     }
 
     private void drop(String id) {
+        operatorMaintenanceRead.remove(id);
         SseEmitter removed = guestEmitters.remove(id);
         if (removed == null) {
             removed = operatorEmitters.remove(id);

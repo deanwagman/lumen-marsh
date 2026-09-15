@@ -1,0 +1,124 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.header,
+.meta,
+.inboxHeader,
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.kicker {
+  margin: 0 0 var(--space-xxs);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lede,
+.muted {
+  margin: var(--space-xs) 0 0;
+  color: var(--color-text-muted);
+  max-width: 46rem;
+}
+
+.queue,
+.tabs,
+.inbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.queueList,
+.inbox {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.queueLink {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(90deg, rgba(111, 154, 46, 0.08), transparent 18%),
+    var(--color-surface);
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.tabs {
+  flex-direction: row;
+}
+
+.tabs button {
+  min-height: 2.75rem;
+  padding: 0 var(--space-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.tabs button[aria-selected='true'] {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}
+
+.filters label,
+.inboxHeader label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.filters select,
+.filters input,
+.inboxHeader select {
+  min-height: 2.75rem;
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid rgba(224, 138, 118, 0.4);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-soft);
+}

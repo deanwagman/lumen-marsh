@@ -1,0 +1,27 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+}
+
+.testing {
+  border: 1px solid rgba(91, 143, 212, 0.55);
+  background: rgba(91, 143, 212, 0.12);
+}
+
+.fault {
+  border: 1px solid rgba(196, 120, 74, 0.5);
+  background: var(--color-status-hold-soft);
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.card button {
+  min-height: 2.75rem;
+  width: fit-content;
+}

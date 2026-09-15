@@ -1,0 +1,80 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid rgba(196, 120, 74, 0.35);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(90deg, rgba(196, 120, 74, 0.12), transparent 32%),
+    var(--color-surface);
+}
+
+.header,
+.badges,
+.actions,
+.help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.signal,
+.readout dt {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.asset {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+}
+
+.readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin: 0;
+}
+
+.readout dd {
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.evidence,
+.next,
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.form,
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.form textarea {
+  min-height: 4.5rem;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-lowest);
+  color: var(--color-text);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+}

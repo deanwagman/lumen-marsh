@@ -18,6 +18,14 @@ import {
   weatherRecommendationListSchema,
   weatherRecommendationSseUpdateSchema,
 } from '@/features/weather/api/weatherRecommendationSchema';
+import {
+  applyWorkOrderSummaryUpdate,
+  replaceWorkOrderSummaries,
+} from '@/features/maintenance/api/maintenanceCache';
+import {
+  maintenanceSseUpdateSchema,
+  maintenanceWorkOrderSnapshotListSchema,
+} from '@/features/maintenance/api/maintenanceSchemas';
 import { resolveApiUrl } from '@/shared/api/client';
 
 import {
@@ -37,7 +45,15 @@ export function handleAttractionStreamEvent(
   queryClient: QueryClient,
   eventName: string,
   data: string,
+  capabilities: { maintenanceRead?: boolean } = {},
 ): void {
+  const maintenanceRead = capabilities.maintenanceRead !== false;
+  if (
+    !maintenanceRead &&
+    (eventName === 'maintenance.work-orders.snapshot' || eventName === 'maintenance.work-order.updated')
+  ) {
+    return;
+  }
   if (eventName === 'attractions.snapshot') {
     const attractions = attractionListSchema.parse(JSON.parse(data) as unknown);
     replaceAttractionList(queryClient, attractions);
@@ -66,6 +82,14 @@ export function handleAttractionStreamEvent(
   ) {
     const update = incidentSseUpdateSchema.parse(JSON.parse(data) as unknown);
     applyIncidentUpdate(queryClient, update.incident);
+  } else if (eventName === 'maintenance.work-orders.snapshot') {
+    const snapshots = maintenanceWorkOrderSnapshotListSchema.parse(JSON.parse(data) as unknown);
+    replaceWorkOrderSummaries(queryClient, snapshots);
+  } else if (eventName === 'maintenance.work-order.updated') {
+    const update = maintenanceSseUpdateSchema.parse(JSON.parse(data) as unknown);
+    applyWorkOrderSummaryUpdate(queryClient, update.workOrder, {
+      incidentId: update.incidentId ?? null,
+    });
   }
 
   if (dashboardStreamEvents.has(eventName)) {
@@ -90,6 +114,7 @@ export const AttractionEventSource = {
       onUnauthorized?: () => void;
       onForbidden?: () => void;
       reconnectDelayMs?: number;
+      includeMaintenanceEvents?: boolean;
     },
   ): () => void {
     let staleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -128,7 +153,9 @@ export const AttractionEventSource = {
 
     const applyEvent = (eventName: string, data: string) => {
       try {
-        handleAttractionStreamEvent(queryClient, eventName, data);
+        handleAttractionStreamEvent(queryClient, eventName, data, {
+          maintenanceRead: options.includeMaintenanceEvents !== false,
+        });
         clearStaleTimer();
         setStreamHealth(queryClient, { type: 'message', at: Date.now() });
       } catch (error) {

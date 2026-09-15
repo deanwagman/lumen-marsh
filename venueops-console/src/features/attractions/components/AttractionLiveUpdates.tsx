@@ -2,11 +2,13 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/auth/AuthContext';
+import { canReadMaintenance } from '@/features/maintenance/domain/maintenance';
 import { AttractionEventSource } from '@/features/attractions/api/AttractionEventSource';
 
 export function AttractionLiveUpdates() {
   const queryClient = useQueryClient();
   const auth = useAuth();
+  const maintenanceRead = canReadMaintenance(auth.session);
 
   useEffect(
     () => {
@@ -15,6 +17,7 @@ export function AttractionLiveUpdates() {
         getAccessToken: auth.getAccessToken,
         onUnauthorized: auth.expireSession,
         onForbidden: auth.reportAccessDenied,
+        includeMaintenanceEvents: maintenanceRead,
       });
     },
     [
@@ -23,6 +26,7 @@ export function AttractionLiveUpdates() {
       auth.getAccessToken,
       auth.expireSession,
       auth.reportAccessDenied,
+      maintenanceRead,
     ],
   );
 

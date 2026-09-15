@@ -16,6 +16,9 @@ import DocArticlePage from '@/features/docs/pages/DocArticlePage';
 import DocsIndexPage from '@/features/docs/pages/DocsIndexPage';
 import IncidentDetailPage from '@/features/incidents/pages/IncidentDetailPage';
 import IncidentsPage from '@/features/incidents/pages/IncidentsPage';
+import MaintenanceAssetPage from '@/features/maintenance/pages/MaintenanceAssetPage';
+import MaintenancePage from '@/features/maintenance/pages/MaintenancePage';
+import MaintenanceWorkOrderPage from '@/features/maintenance/pages/MaintenanceWorkOrderPage';
 import { AppShell } from '@/shared/layout/AppShell';
 
 import NotFoundPage from './NotFoundPage';
@@ -39,6 +42,9 @@ export const appRoutes: RouteObject[] = [
           { path: 'attractions/:id', element: <AttractionDetailPage /> },
           { path: 'incidents', element: <IncidentsPage /> },
           { path: 'incidents/:incidentId', element: <IncidentDetailPage /> },
+          { path: 'maintenance', element: <MaintenancePage /> },
+          { path: 'maintenance/work-orders/:workOrderId', element: <MaintenanceWorkOrderPage /> },
+          { path: 'maintenance/assets/:assetId', element: <MaintenanceAssetPage /> },
           { path: 'docs', element: <DocsIndexPage /> },
           { path: 'docs/:slug', element: <DocArticlePage /> },
           { path: 'not-found', element: <NotFoundPage /> },

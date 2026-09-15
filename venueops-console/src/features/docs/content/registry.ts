@@ -3,6 +3,7 @@ import { attractionsArticle } from '@/features/docs/content/attractions';
 import { dashboardArticle } from '@/features/docs/content/dashboard';
 import { gettingStartedArticle } from '@/features/docs/content/getting-started';
 import { incidentsArticle } from '@/features/docs/content/incidents';
+import { maintenanceArticle } from '@/features/docs/content/maintenance';
 import { weatherArticle } from '@/features/docs/content/weather';
 import type { DocArticle, DocSection } from '@/features/docs/domain/types';
 
@@ -12,6 +13,7 @@ const articles: DocArticle[] = [
   attractionsArticle,
   incidentsArticle,
   weatherArticle,
+  maintenanceArticle,
 ];
 
 function isVisibleToRole(
