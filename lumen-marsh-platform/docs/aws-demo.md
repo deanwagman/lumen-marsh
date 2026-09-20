@@ -10,10 +10,13 @@ S3 + CloudFront
 Public HTTPS → reverse proxy on EC2
 ├── VenueOps API
 ├── Environmental Monitor
+├── Park Flow Intelligence
 └── PostgreSQL (self-managed)
     ├── venueops
     └── environmental_monitor
 ```
+
+Reliability ingest uses a machine client against VenueOps. Do not add a reliability producer to this sketch.
 
 ## Security posture
 

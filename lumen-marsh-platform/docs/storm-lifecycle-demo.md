@@ -1,6 +1,6 @@
 # Storm lifecycle demo (Control Tower + Flutter)
 
-UI-driven walkthrough of the integrated weather hold → advisory → recovery path. Automated HTTP proof: [`../scripts/storm-lifecycle-acceptance.sh`](../scripts/storm-lifecycle-acceptance.sh). Guest contract: [`guest-advisory-contract.md`](./guest-advisory-contract.md).
+UI-driven walkthrough of the integrated weather hold → advisory → recovery path. Automated HTTP proof: [`../scripts/storm-lifecycle-acceptance.sh`](../scripts/storm-lifecycle-acceptance.sh). Guest contract: [`guest-advisory-contract.md`](./guest-advisory-contract.md). Cypress Coil maintenance uses the same stack and leak/authz style: [`maintenance-lifecycle-demo.md`](./maintenance-lifecycle-demo.md).
 
 This is the portfolio demo. Do not start the [AWS public deployment gate](./security/public-deployment-gate.md) until this pass is reliable.
 

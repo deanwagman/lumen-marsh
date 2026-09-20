@@ -1,10 +1,10 @@
 # VenueOps security contract
 
-**Status:** Access rules defined from controller inspection. Cognito is not required to accept this document.
+**Status:** Implemented for the running six-piece stack (API, monitor, park-flow, console, guest, platform). Cognito is not required to accept this document.
 **Source:** every `@RestController` in `venueops-api` plus static `/media/**` and Actuator.
-**First checkpoint:** guest read of Mangrove Run; operator sign-in; operator attraction command; anonymous command rejected; activity history records the authenticated operator.
+**Shipped checkpoint:** guest read of Mangrove Run; operator sign-in; operator attraction command; anonymous command rejected; activity history records the authenticated operator. Operator SSE, weather ingest, maintenance, and park-flow ingest are in the same model.
 
-Flutter, Environmental Monitor, and the operator event stream stay out of scope until that checkpoint works.
+Flutter, Environmental Monitor, Park Flow Intelligence, and the operator event stream are in scope of the running stack.
 
 ## Policy
 
@@ -13,12 +13,16 @@ Flutter, Environmental Monitor, and the operator event stream stay out of scope 
 | Guest attraction reads | Public |
 | Published advisory reads | Public |
 | Guest SSE | Public |
+| Guest flow reads | Public |
 | Attraction commands | Operator |
 | Incident commands | Operator |
 | Recommendation review | Operator |
 | Advisory publishing | Supervisor |
 | Weather recommendation ingestion | Weather service |
-| Reliability recommendation ingestion | Reliability service |
+| Reliability recommendation ingestion | Reliability ingest identity (no Compose producer) |
+| Flow observation and forecast ingestion | Park Flow Intelligence |
+| Flow recommendation review | Operator |
+| Flow guest publication | Supervisor |
 | Media and health | Public |
 | Everything else | Denied |
 
@@ -33,7 +37,9 @@ Supervisors inherit every operator permission.
 | Guest | None | — | None (no audit write) |
 | Operator | Human access token, group `operators` | `OPERATOR` | JWT `sub` |
 | Supervisor | Human access token, group `supervisors` | `SUPERVISOR` | JWT `sub` |
-| Reliability service | Client-credentials token | `RELIABILITY_SERVICE` | Token `sub` / client id |
+| Weather service | Client-credentials token | `WEATHER_SERVICE` | Token `sub` / client id |
+| Reliability ingest | Client-credentials token | `RELIABILITY_SERVICE` | Token `sub` / client id |
+| Park Flow Intelligence | Client-credentials token | `FLOW_SERVICE` | Token `sub` / client id |
 | VenueOps system | Internal process only | `SYSTEM` | `venueops-system` |
 
 Client-supplied `X-Actor` is not identity. Protected commands must ignore or reject it.
@@ -42,7 +48,7 @@ Client-supplied `X-Actor` is not identity. Protected commands must ignore or rej
 
 | Scope | Who receives it | Used for |
 |---|---|---|
-| `venueops/operator.read` | Operators, supervisors | Operator GET routes (and operator SSE later) |
+| `venueops/operator.read` | Operators, supervisors | Operator GET routes and operator SSE |
 | `venueops/attractions.command` | Operators, supervisors | Attraction command POST |
 | `venueops/incidents.command` | Operators, supervisors | Incident report and non-publish incident commands |
 | `venueops/advisories.publish` | Supervisors | Publish / withdraw guest advisory |
@@ -54,12 +60,12 @@ Client-supplied `X-Actor` is not identity. Protected commands must ignore or rej
 | `venueops/flow.command` | Operators, supervisors | Approve or dismiss flow recommendations |
 | `venueops/flow.publish` | Supervisors | Publish or withdraw guest flow guidance |
 | `venueops/weather-recommendations.write` | Weather service only | Recommendation ingest |
-| `venueops/reliability.write` | Reliability service only | Reliability recommendation ingest |
+| `venueops/reliability.write` | Reliability ingest only | Reliability recommendation ingest |
 | `venueops/flow-ingest.write` | Park Flow Intelligence only | Observation and forecast ingest |
 
 ### Claims VenueOps will require on access tokens
 
-`iss` (exact issuer), `token_use` (`access`), `client_id` (an allowed console or monitor app client), `sub`, `scope`/`scp`, `cognito:groups`, `exp`. Signature must verify. Access tokens are not required to carry `aud`; Cognito identifies the caller with `client_id`. Display names (`name`, `email`, `preferred_username`) are presentation snapshots only.
+`iss` (exact issuer), `token_use` (`access`), `client_id` (an allowed console, monitor, park-flow, or reliability ingest app client), `sub`, `scope`/`scp`, `cognito:groups`, `exp`. Signature must verify. Access tokens are not required to carry `aud`; Cognito identifies the caller with `client_id`. Display names (`name`, `email`, `preferred_username`) are presentation snapshots only.
 
 ## Route inventory
 
@@ -87,7 +93,7 @@ Audit: **None** means the route does not record an actor. History routes **retur
 | GET | `/api/v1/operator/weather/recommendations` | `OperatorWeatherRecommendationController` | Query | Protected | `OPERATOR` + `venueops/weather-recommendations.review` | None |
 | GET | `/api/v1/operator/weather/recommendations/{recommendationId}` | `OperatorWeatherRecommendationController` | Query | Protected | `OPERATOR` + `venueops/weather-recommendations.review` | None |
 | POST | `/api/v1/operator/weather/recommendations/{recommendationId}/commands` | `OperatorWeatherRecommendationController` | Command | Protected | `OPERATOR` + `venueops/weather-recommendations.review` | **HUMAN** from JWT |
-| GET | `/api/v1/operator/events` | `OperatorEventController` | Stream | Protected | `OPERATOR` + `venueops/operator.read` | None — **deferred** until the attraction checkpoint. `maintenance.work-orders.snapshot` and `maintenance.work-order.updated` additionally require `venueops/maintenance.read` on the same token. |
+| GET | `/api/v1/operator/events` | `OperatorEventController` | Stream | Protected | `OPERATOR` + `venueops/operator.read` | None. `maintenance.work-orders.snapshot` and `maintenance.work-order.updated` additionally require `venueops/maintenance.read`. `flow.snapshot` and other `flow.*` events additionally require `venueops/flow.read`. |
 | GET | `/api/v1/operator/maintenance/assets` | `MaintenanceAssetController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
 | GET | `/api/v1/operator/maintenance/assets/{assetId}` | `MaintenanceAssetController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
 | GET | `/api/v1/operator/maintenance/assets/{assetId}/work-orders` | `MaintenanceAssetController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
@@ -99,8 +105,19 @@ Audit: **None** means the route does not record an actor. History routes **retur
 | GET | `/api/v1/operator/maintenance/recommendations` | `MaintenanceRecommendationController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
 | GET | `/api/v1/operator/maintenance/recommendations/{recommendationId}` | `MaintenanceRecommendationController` | Query | Protected | `OPERATOR` + `venueops/maintenance.read` | None |
 | POST | `/api/v1/operator/maintenance/recommendations/{recommendationId}/commands` | `MaintenanceRecommendationController` | Command | Protected | `OPERATOR` + `venueops/maintenance.command` | **HUMAN** from JWT |
-| POST | `/api/v1/integrations/weather/recommendations` | `WeatherRecommendationIntegrationController` | Command | Protected | `WEATHER_SERVICE` + `venueops/weather-recommendations.write` | **SERVICE** from JWT — **deferred** until the attraction checkpoint |
+| POST | `/api/v1/integrations/weather/recommendations` | `WeatherRecommendationIntegrationController` | Command | Protected | `WEATHER_SERVICE` + `venueops/weather-recommendations.write` | **SERVICE** from JWT |
 | POST | `/api/v1/integrations/reliability/recommendations` | `ReliabilityRecommendationIntegrationController` | Command | Protected | `RELIABILITY_SERVICE` + `venueops/reliability.write` | **SERVICE** from JWT |
+| GET | `/api/v1/flow/overview` | `GuestFlowController` | Query | Public | — | None |
+| GET | `/api/v1/flow/recommendations` | `GuestFlowController` | Query | Public | — | None |
+| GET | `/api/v1/attractions/{attractionId}/wait-forecast` | `GuestFlowController` | Query | Public | — | None |
+| GET | `/api/v1/operator/flow/overview` | `OperatorFlowController` | Query | Protected | `OPERATOR` + `venueops/flow.read` | None |
+| GET | `/api/v1/operator/flow/attractions/{attractionId}` | `OperatorFlowController` | Query | Protected | `OPERATOR` + `venueops/flow.read` | None |
+| GET | `/api/v1/operator/flow/recommendations` | `OperatorFlowController` | Query | Protected | `OPERATOR` + `venueops/flow.read` | None |
+| GET | `/api/v1/operator/flow/recommendations/{recommendationId}` | `OperatorFlowController` | Query | Protected | `OPERATOR` + `venueops/flow.read` | None |
+| GET | `/api/v1/operator/flow/recommendations/{recommendationId}/activity` | `OperatorFlowController` | Query | Protected | `OPERATOR` + `venueops/flow.read` | Returns stored actors |
+| POST | `/api/v1/operator/flow/recommendations/{recommendationId}/commands` | `OperatorFlowController` | Command | Protected | See flow commands | **HUMAN** from JWT |
+| POST | `/api/v1/integrations/flow/observations` | `FlowObservationIntegrationController` | Command | Protected | `FLOW_SERVICE` + `venueops/flow-ingest.write` | **SERVICE** from JWT |
+| POST | `/api/v1/integrations/flow/forecasts` | `FlowForecastIntegrationController` | Command | Protected | `FLOW_SERVICE` + `venueops/flow-ingest.write` | **SERVICE** from JWT |
 | GET | `/api/hello` | `HelloController` | Query | Denied | — | None |
 | GET | `/swagger-ui/**`, `/v3/api-docs/**` | SpringDoc | Query | Denied outside local/dev | — | None |
 | GET | Other Actuator endpoints | Actuator | Query | Denied | — | None |
@@ -114,7 +131,7 @@ All via `POST /api/v1/operator/attractions/{attractionId}/commands`. Access: Ope
 
 `START_TESTING`, `COMPLETE_TESTING`, `APPROVE_RETURN_TO_SERVICE`, `PLACE_WEATHER_HOLD`, `CLEAR_WEATHER_HOLD`, `REPORT_TECHNICAL_FAULT`, `COMPLETE_REPAIR`, `CLOSE_FOR_DAY`, `REDUCE_CAPACITY`, `RESTORE_CAPACITY`, `UPDATE_WAIT_TIME`.
 
-No attraction command is supervisor-only. The first protected command for the checkpoint may be any of these (for example `PLACE_WEATHER_HOLD` or `UPDATE_WAIT_TIME` on Mangrove Run).
+No attraction command is supervisor-only. Control Tower may hide state-change controls from operators; `CommandAuthorization.requireAttractionCommand()` only requires `venueops/attractions.command`.
 
 ## Incident commands
 
@@ -141,7 +158,7 @@ All via `POST /api/v1/operator/weather/recommendations/{id}/commands`. Access: O
 
 `ACKNOWLEDGE`, `DISMISS`, `LINK_INCIDENT`.
 
-Ingest (`POST /api/v1/integrations/weather/recommendations`) is Weather service, audit SERVICE. Out of scope for the first checkpoint.
+Ingest (`POST /api/v1/integrations/weather/recommendations`) is Weather service, audit SERVICE.
 
 ## Maintenance commands
 
@@ -154,9 +171,20 @@ Work-order lifecycle via `POST /api/v1/operator/maintenance/work-orders/{id}/com
 | `CANCEL` (P1/P2) | Supervisor | `SUPERVISOR` + `venueops/maintenance.command` |
 | `APPROVE_INSPECTION`, `REJECT_INSPECTION`, `COMPLETE` | Supervisor | `SUPERVISOR` + `venueops/maintenance.inspect` |
 
-Ingest (`POST /api/v1/integrations/reliability/recommendations`) is Reliability service, audit SERVICE. A recommendation never becomes a work order until an operator accepts it. `ACCEPT` and `DISMISS` require `commandId` and `expectedVersion`. Work orders never reopen attractions.
+Ingest (`POST /api/v1/integrations/reliability/recommendations`) is Reliability ingest, audit SERVICE. There is no Compose reliability producer. A recommendation never becomes a work order until an operator accepts it. `ACCEPT` and `DISMISS` require `commandId` and `expectedVersion`. Work orders never reopen attractions.
 
-## Checkpoint (do this next)
+## Flow commands
+
+All via `POST /api/v1/operator/flow/recommendations/{id}/commands`. Audit: HUMAN from JWT.
+
+| Command | Access | Role / scope |
+|---|---|---|
+| `APPROVE`, `DISMISS` | Operator | `venueops/flow.command` |
+| `PUBLISH`, `WITHDRAW` | Supervisor | `SUPERVISOR` + `venueops/flow.publish` |
+
+Ingest (`POST /api/v1/integrations/flow/observations` and `/forecasts`) is Park Flow Intelligence, audit SERVICE. Park Flow Intelligence never changes attraction status, capacity, posted waits, or guest guidance.
+
+## Shipped checkpoint
 
 ```text
 Guest can read Mangrove Run
@@ -166,15 +194,4 @@ Anonymous command is rejected
 Activity history records the authenticated operator
 ```
 
-Implementation order after this contract:
-
-1. Provision the development Cognito user pool.
-2. Create one operator and one supervisor test account.
-3. Validate Cognito JWTs in VenueOps.
-4. Protect `POST /api/v1/operator/attractions/{id}/commands`.
-5. Record JWT identity on that command; ignore `X-Actor`.
-6. Add Cognito login to the console.
-7. Prove the checkpoint locally.
-8. Expand the same rules to the remaining protected routes above.
-
-Until step 7 passes: do not change Flutter, Environmental Monitor, or operator SSE as part of this work.
+That checkpoint is in the running tree. Expand the same rules only when adding a new route; do not reopen Flutter, Environmental Monitor, or operator SSE as a "later phase."

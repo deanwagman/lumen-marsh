@@ -1,6 +1,6 @@
 # Lumen Marsh
 
-Guest companion for **Lumen Marsh**, a fictional eco-futurist wetlands destination. The app reads live attraction conditions from [VenueOps API](../venueops-api).
+Guest companion for **Lumen Marsh**, a fictional eco-futurist wetlands destination. The app reads live attraction conditions, guest advisories, and published park-flow guidance from [VenueOps API](../venueops-api). Guests never see operator identities, work orders, or unpublished recommendations.
 
 ## Run
 

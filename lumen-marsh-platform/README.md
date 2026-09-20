@@ -6,6 +6,8 @@ Application source lives in sibling directories in the Lumen Marsh monorepo. Thi
 
 ## Architecture
 
+Six pieces, one Compose graph, two databases:
+
 ```text
 Guest browser                 Control Tower browser
    │                                    │
@@ -15,12 +17,16 @@ lumen-marsh-app :3000          venueops-console :3001
    └──────────────┬─────────────────────┘
                   ▼
            venueops-api :8080
-                  ▲
-                  │ recommendations
-           environmental-monitor :8000
-                  │
-     venueops-db / environmental-db (private)
+          ▲               ▲
+ weather  │               │  observations / forecasts
+          │               │
+environmental-monitor   park-flow-intelligence
+         :8000                 :8100
+          │
+venueops-db / environmental-db (private)
 ```
+
+Reliability recommendations are ingested on VenueOps (`POST /api/v1/integrations/reliability/recommendations`) with `local-reliability-token` in `LOCAL_JWT` mode. There is no reliability producer in Compose.
 
 ## Repository map
 
@@ -30,15 +36,17 @@ lumen-marsh/
 ├── venueops-console/         React operator console (Control Tower)
 ├── venueops-api/             Spring Boot operational API
 ├── environmental-monitor/    Python weather monitor and recommender
+├── park-flow-intelligence/   Python queue simulator and flow recommender
 └── lumen-marsh-platform/     This repository
 ```
 
 | Application | Responsibility |
 | --- | --- |
-| **lumen-marsh-app** | Guest catalog, advisories, live park updates |
-| **venueops-console** | Control Tower: attractions, incidents, weather inbox |
-| **venueops-api** | Attractions, incidents, advisories, weather inbox, SSE |
-| **environmental-monitor** | Weather → recommendations to VenueOps |
+| **lumen-marsh-app** | Guest catalog, advisories, Best Next Experience, live park updates |
+| **venueops-console** | Control Tower: attractions, incidents, weather inbox, maintenance, park flow |
+| **venueops-api** | Attractions, incidents, advisories, weather inbox, maintenance, flow, SSE |
+| **environmental-monitor** | Weather → recommendations to VenueOps. Never commands a ride. |
+| **park-flow-intelligence** | Simulated queues and forecasts → VenueOps. Never changes attraction state. |
 | **lumen-marsh-platform** | Local integration, demos, OpenTofu, platform CI |
 
 ## Prerequisites
@@ -56,6 +64,7 @@ cp .env.example .env
 ./scripts/dev-up.sh
 ./scripts/smoke-test.sh
 ./scripts/storm-lifecycle-acceptance.sh
+./scripts/maintenance-lifecycle-acceptance.sh
 ```
 
 To run the browser console against the applied development Cognito user pool:
@@ -64,7 +73,7 @@ To run the browser console against the applied development Cognito user pool:
 ./scripts/dev-up.sh --oidc
 ```
 
-OIDC mode starts the full stack. The console is available at `http://127.0.0.1:5173`; human users authenticate with Authorization Code + PKCE and Environmental Monitor uses a separate client-credentials grant. The launcher reads the monitor secret from AWS Secrets Manager with `AWS_PROFILE` (default: `lumen-marsh`) and never writes it to `.env`. The default command remains the complete offline `LOCAL_JWT` stack.
+OIDC mode starts the full stack. The console is available at `http://127.0.0.1:5173`; human users authenticate with Authorization Code + PKCE. Environmental Monitor and Park Flow Intelligence use separate client-credentials grants. The launcher reads machine secrets from AWS Secrets Manager with `AWS_PROFILE` (default: `lumen-marsh`) and never writes them to `.env`. The default command remains the complete offline `LOCAL_JWT` stack.
 
 Service URLs:
 
@@ -74,6 +83,7 @@ Service URLs:
 | Operator console | http://localhost:3001 |
 | VenueOps API | http://localhost:8080 |
 | Environmental Monitor | http://localhost:8000 |
+| Park Flow Intelligence | http://localhost:8100 |
 
 Stop without deleting data:
 
@@ -107,6 +117,7 @@ Compose does not replace fast local loops:
 ```bash
 cd ../venueops-api && ./gradlew bootRun
 cd ../environmental-monitor && uv run fastapi dev src/environmental_monitor/main.py
+cd ../park-flow-intelligence && uv run fastapi dev src/park_flow_intelligence/main.py --port 8100
 cd ../venueops-console && npm run dev
 cd ../lumen-marsh-app && flutter run -d chrome \
   --dart-define=VENUEOPS_API_BASE_URL=http://localhost:8080
@@ -116,11 +127,12 @@ cd ../lumen-marsh-app && flutter run -d chrome \
 
 | Script | Purpose |
 | --- | --- |
-| `scripts/dev-up.sh [--oidc]` | Validate `.env`, start the offline stack or Cognito-backed console/API subset, wait for readiness, print URLs |
+| `scripts/dev-up.sh [--oidc]` | Validate `.env`, start the offline stack or Cognito-backed full stack, wait for readiness, print URLs |
 | `scripts/dev-down.sh` | Compose down (keeps volumes) |
 | `scripts/wait-for-ready.sh` | Poll health endpoints |
 | `scripts/reset-demo.sh --confirm [--oidc]` | Delete demo volumes and recreate |
 | `scripts/storm-lifecycle-acceptance.sh` | Repeatable storm lifecycle + leak/failure checks |
+| `scripts/maintenance-lifecycle-acceptance.sh` | Repeatable reliability ingest → accept → inspect → testing + leak/failure checks |
 | `scripts/storm-demo.sh` | Shorter HTTP storm → incident → hold → clear → recover |
 | `scripts/smoke-test.sh` | Health, ingest idempotency, incident, advisory, SSE |
 | `scripts/security-scan.sh` | Trivy filesystem + local image scan (requires `trivy`) |
@@ -135,6 +147,7 @@ cd ../lumen-marsh-app && flutter run -d chrome \
 
 - VenueOps: `GET /actuator/health`
 - Environmental Monitor: `GET /health/live`, `GET /health/ready`
+- Park Flow Intelligence: `GET /health/live`, `GET /health/ready`
 - Console / guest: `GET /health`
 
 ## Container inventory
@@ -143,7 +156,7 @@ See [docs/container-inventory.md](docs/container-inventory.md).
 
 ## Observability
 
-See [docs/observability.md](docs/observability.md). Follow `recommendation_id` across Monitor → VenueOps → incident → attraction command → SSE.
+See [docs/observability.md](docs/observability.md). Follow `recommendation_id` across Monitor → VenueOps → incident → attraction command → SSE, and `observation_id` across reliability ingest or park-flow → VenueOps.
 
 ## Security (identity milestone)
 
@@ -156,6 +169,7 @@ Identity and access control docs:
 - [docs/security/security-contract.md](docs/security/security-contract.md)
 - [docs/security/local-development.md](docs/security/local-development.md)
 - [docs/storm-lifecycle-demo.md](docs/storm-lifecycle-demo.md)
+- [docs/maintenance-lifecycle-demo.md](docs/maintenance-lifecycle-demo.md)
 - [docs/security/public-deployment-gate.md](docs/security/public-deployment-gate.md)
 
 Public AWS demo remains blocked until the [public deployment gate](docs/security/public-deployment-gate.md) is signed off.
@@ -196,6 +210,8 @@ Local:
 3. Open Control Tower and guest app side by side
 4. `./scripts/storm-lifecycle-acceptance.sh` or follow [docs/storm-lifecycle-demo.md](docs/storm-lifecycle-demo.md)
 5. Watch recommendation → incident → hold → advisory → clearance → recovery
+6. `./scripts/maintenance-lifecycle-acceptance.sh` or follow [docs/maintenance-lifecycle-demo.md](docs/maintenance-lifecycle-demo.md)
+7. Watch reliability ingest → accept → inspect → operations testing
 
 Hosted AWS demo is Phase 10–12 and is not provisioned by default.
 
@@ -203,10 +219,12 @@ Hosted AWS demo is Phase 10–12 and is not provisioned by default.
 
 - VenueOps SSE is in-memory → one API instance only
 - Environmental Monitor polling is not multi-replica safe
+- Park Flow Intelligence is stateless; VenueOps stores observations, projections, forecasts, and recommendations
+- There is no reliability producer process; ingest is a VenueOps integration endpoint
 - Frontend API origins are build-time (`VITE_*` / `--dart-define`) until runtime config lands
 - Self-managed Postgres on the future EC2 demo lacks managed HA/PITR
 - Phase 13 managed AWS (Fargate/ALB/RDS) is optional and cost-sensitive
-- Stop native `bootRun` / `fastapi` / `npm run dev` before Compose if ports 8080/8000/3000/3001 are already taken
+- Stop native `bootRun` / `fastapi` / `npm run dev` before Compose if ports 8080/8000/8100/3000/3001 are already taken
 - Public AWS demo stays blocked until [docs/security/public-deployment-gate.md](docs/security/public-deployment-gate.md) is signed off
 
 ## Delivery status

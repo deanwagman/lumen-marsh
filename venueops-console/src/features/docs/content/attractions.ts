@@ -36,8 +36,8 @@ export const attractionsArticle: DocArticle = {
       id: 'supervisor',
       title: 'When a supervisor is required',
       body: [
-        'State transitions such as testing, hold, reopen, and close require a supervisor.',
-        'If you are an operator and a needed transition is unavailable, escalate to a supervisor rather than forcing a workaround.',
+        'Control Tower hides state-change commands (testing, hold, reopen, close) from operators. The API still authorizes them with venueops/attractions.command; no attraction command is supervisor-only.',
+        'If you are an operator and a needed transition is hidden, escalate to a supervisor in the UI rather than forcing a workaround.',
       ],
       roles: ['operator', 'supervisor'],
     },

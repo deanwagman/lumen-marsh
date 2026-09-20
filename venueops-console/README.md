@@ -1,8 +1,8 @@
 # Lumen Marsh Control
 
-Operator console for **Lumen Marsh**, a fictional eco-futurist wetlands destination. It is a separate Vite/React/TypeScript application alongside [VenueOps API](../venueops-api) and the [guest companion](../lumen-marsh-app).
+Operator console for **Lumen Marsh**, a fictional eco-futurist wetlands destination. It is a separate Vite/React/TypeScript application alongside [VenueOps API](../venueops-api), [Park Flow Intelligence](../park-flow-intelligence), and the [guest companion](../lumen-marsh-app).
 
-The first operator feature is the **Mangrove Run command workspace**: current state, valid commands, wait-time updates, version conflicts, and the activity timeline. Live SSE updates write through the TanStack Query cache rather than a second operational store.
+Control Tower covers attractions, incidents, weather inbox, maintenance, and park flow. The attraction command workspace (Mangrove Run is the usual demo) still owns current state, valid commands, wait-time updates, version conflicts, and the activity timeline. Live SSE updates write through the TanStack Query cache rather than a second operational store.
 
 ## Requirements
 
@@ -68,7 +68,7 @@ All `import.meta.env` access is centralized in `src/config/environment.ts`. Inva
 
 Configure Cognito with an app client that has no secret, enables authorization code grant, and allows the callback/logout URLs above. Tokens are held in memory; only short-lived OAuth transaction state (including the PKCE verifier) uses `sessionStorage`. API and SSE requests send the access token as `Authorization: Bearer …`; tokens are never put in URLs.
 
-Roles are read from `cognito:groups`, `custom:role`, or `role`. A `supervisor` can issue state-changing and weather commands; an `operator` can update wait times. The API remains the authorization boundary.
+Roles are read from `cognito:groups`, `custom:role`, or `role`. Control Tower hides attraction state-change commands unless the signed-in role is `supervisor`; operators can still update wait times. The API is the authorization boundary: `CommandAuthorization.requireAttractionCommand()` only requires `venueops/attractions.command`. No attraction command is supervisor-only.
 
 `VITE_AUTH_MODE=local` enables an explicit development-only session with a mock token. Do not use it in deployed builds. Automated tests inject authenticated or unauthenticated sessions directly.
 
@@ -90,13 +90,15 @@ src/
 ├── app/                 # shell providers, router, fallback page
 ├── auth/                # Cognito OIDC session, routes, and role model
 ├── config/              # validated environment configuration
-├── features/attractions # catalog, command workspace, SSE
-├── features/dashboard   # park-wide status, attention queue, shift handoff
-├── features/docs        # contextual operator procedures
-├── features/incidents   # incident center, commands, advisories, activity
-├── features/weather     # recommendation inbox, review, incident prefill
-├── shared/              # API client, layout, tokens, small UI
-└── test/                # Vitest / MSW setup
+├── features/attractions  # catalog, command workspace, SSE
+├── features/dashboard    # park-wide status, attention queue, shift handoff
+├── features/docs         # contextual operator procedures
+├── features/incidents    # incident center, commands, advisories, activity
+├── features/weather      # recommendation inbox, review, incident prefill
+├── features/maintenance  # reliability inbox, work orders, inspection handoff
+├── features/flow         # queue forecasts, flow recommendations, guest publish
+├── shared/               # API client, layout, tokens, small UI
+└── test/                 # Vitest / MSW setup
 ```
 
 - **React Router** owns console navigation.

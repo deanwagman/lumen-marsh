@@ -1,7 +1,7 @@
 # Lumen Marsh security contract
 
-**Status:** Accepted for implementation (Phase 0)  
-**Owners:** VenueOps API, VenueOps Console, Environmental Monitor, Platform  
+**Status:** Implemented for the running stack (Phases 4–11 in application code)  
+**Owners:** VenueOps API, VenueOps Console, Environmental Monitor, Park Flow Intelligence, Platform  
 **Related ADR:** [ADR 0001 — Cognito and JWT](./adr/0001-cognito-jwt.md)
 
 This document is the shared security boundary. The Java API and React console implement it independently. The API remains authoritative: hiding a console button is not authorization.
@@ -12,6 +12,8 @@ This document is the shared security boundary. The Java API and React console im
 - Operators sign in before using Control Tower.
 - Supervisors receive elevated operational permissions.
 - Environmental Monitor authenticates as a service, not a human.
+- Park Flow Intelligence authenticates as a service, not a human.
+- Reliability ingest uses a machine token; there is no Compose reliability producer.
 - VenueOps derives audit identities from verified credentials — never from `X-Actor`.
 - REST commands and the operator event stream enforce the same rules.
 
@@ -29,7 +31,8 @@ Internal routes are unavailable outside trusted local/dev tooling and must be di
 | Operator | Cognito user access token (group `operators`) | Day-to-day Control Tower work |
 | Supervisor | Cognito user access token (group `supervisors`) | Guest-facing publish and high-impact resolution |
 | Weather service | Cognito client-credentials token | Submit weather recommendations only |
-| Reliability service | Cognito client-credentials token | Submit reliability recommendations only |
+| Reliability ingest | Cognito client-credentials token | Submit reliability recommendations only. Not a running Compose service. |
+| Park Flow Intelligence | Cognito client-credentials token | Submit queue observations and forecasts only |
 | VenueOps system | Internal process identity | Automated system events (no external token) |
 
 ### Cognito groups
@@ -73,7 +76,7 @@ VenueOps validates access tokens with at least:
 |---|---|
 | `iss` | Exact Cognito user-pool issuer URL |
 | `token_use` | Must be `access` |
-| `client_id` | Must match an allowed app client (console now; Environmental Monitor later) |
+| `client_id` | Must match an allowed app client (console, Environmental Monitor, Park Flow Intelligence, or reliability ingest) |
 | `sub` | Present; durable subject for humans and services |
 | `scope` / `scp` | Space-delimited scopes used for authorization |
 | `cognito:groups` | Mapped to `ROLE_OPERATOR` / `ROLE_SUPERVISOR` |
@@ -119,6 +122,9 @@ Full inventory: [endpoint-inventory.md](./endpoint-inventory.md).
 - `GET /api/v1/attractions/events`
 - `GET /api/v1/advisories` (guest advisory contract: [guest-advisory-contract.md](../guest-advisory-contract.md); not `/api/v1/guest/advisories`)
 - `GET /api/v1/events`
+- `GET /api/v1/flow/overview`
+- `GET /api/v1/flow/recommendations`
+- `GET /api/v1/attractions/{id}/wait-forecast`
 - `GET /media/**`
 - `GET /actuator/health` (and liveness/readiness equivalents if exposed)
 
@@ -133,6 +139,7 @@ Requires authenticated operator or supervisor with matching scopes:
 - Weather recommendation inbox + `ACKNOWLEDGE` / `DISMISS` / `LINK_INCIDENT`
 - Maintenance asset and work-order reads
 - Maintenance commands except supervisor inspection/completion (`OPEN`, `ASSIGN`, `START_WORK`, `REQUEST_INSPECTION`, `SET_ESTIMATED_RESTORE`, recommendation `ACCEPT` / `DISMISS`)
+- Flow reads and `APPROVE` / `DISMISS`
 
 ### Supervisor
 
@@ -143,6 +150,7 @@ Requires supervisor group **and** `venueops/advisories.publish` (for advisory co
 - Incident command `RESOLVE` when severity is `MAJOR` or `CRITICAL`
 - Maintenance `APPROVE_INSPECTION`, `REJECT_INSPECTION`, and `COMPLETE`
 - Maintenance `CANCEL` for P1/P2 work orders
+- Flow `PUBLISH` / `WITHDRAW` (requires `venueops/flow.publish`)
 - Future emergency / override commands (none yet)
 
 `RESOLVE` for `MINOR` / `MODERATE` remains an operator capability.
@@ -170,27 +178,27 @@ Requires scope `venueops/flow-ingest.write`:
 
 ## Role × permission matrix
 
-| Capability | Guest | Operator | Supervisor | Weather service | Reliability service |
-|---|---|---|---|---|---|
-| Guest attraction/advisory/media/SSE reads | ✓ | ✓ | ✓ | ✓ (unnecessary) | ✓ (unnecessary) |
-| Operator reads + operator SSE | | ✓ | ✓ | | |
-| Attraction commands | | ✓ | ✓ | | |
-| Report / manage incidents (non-supervisor cmds) | | ✓ | ✓ | | |
-| Publish / withdraw guest advisory | | | ✓ | | |
-| Resolve MAJOR/CRITICAL incident | | | ✓ | | |
-| Resolve MINOR/MODERATE incident | | ✓ | ✓ | | |
-| Review weather recommendations | | ✓ | ✓ | | |
-| Write weather recommendations | | | | ✓ | |
-| Read maintenance data | | ✓ | ✓ | | |
-| Create / assign / update maintenance work | | ✓ | ✓ | | |
-| Approve inspection or complete work orders | | | ✓ | | |
-| Write reliability recommendations | | | | | ✓ |
-| Read park flow | | ✓ | ✓ | | |
-| Approve / dismiss flow recommendations | | ✓ | ✓ | | |
-| Publish / withdraw guest flow guidance | | | ✓ | | |
-| Write flow observations and forecasts | | | | | |
+| Capability | Guest | Operator | Supervisor | Weather service | Reliability ingest | Park Flow Intelligence |
+|---|---|---|---|---|---|---|
+| Guest attraction/advisory/media/SSE/flow reads | ✓ | ✓ | ✓ | ✓ (unnecessary) | ✓ (unnecessary) | ✓ (unnecessary) |
+| Operator reads + operator SSE | | ✓ | ✓ | | | |
+| Attraction commands | | ✓ | ✓ | | | |
+| Report / manage incidents (non-supervisor cmds) | | ✓ | ✓ | | | |
+| Publish / withdraw guest advisory | | | ✓ | | | |
+| Resolve MAJOR/CRITICAL incident | | | ✓ | | | |
+| Resolve MINOR/MODERATE incident | | ✓ | ✓ | | | |
+| Review weather recommendations | | ✓ | ✓ | | | |
+| Write weather recommendations | | | | ✓ | | |
+| Read maintenance data | | ✓ | ✓ | | | |
+| Create / assign / update maintenance work | | ✓ | ✓ | | | |
+| Approve inspection or complete work orders | | | ✓ | | | |
+| Write reliability recommendations | | | | | ✓ | |
+| Read park flow | | ✓ | ✓ | | | |
+| Approve / dismiss flow recommendations | | ✓ | ✓ | | | |
+| Publish / withdraw guest flow guidance | | | ✓ | | | |
+| Write flow observations and forecasts | | | | | | ✓ |
 
-Park Flow Intelligence is a separate machine client. It may call only the flow ingest routes and cannot use operator endpoints.
+Park Flow Intelligence is a Compose producer and a machine client. It may call only the flow ingest routes and cannot use operator endpoints. Reliability ingest is the same kind of machine identity without a Compose process.
 
 ## Client architecture
 
@@ -212,6 +220,13 @@ Park Flow Intelligence is a separate machine client. It may call only the flow i
 - Client secret via local env / Secrets Manager / SSM — never Git or ordinary Compose files
 - Client Credentials
 - Scope: `venueops/reliability.write` only
+- Not a Compose service. Scripts and tests POST ingest with `local-reliability-token` in `LOCAL_JWT` mode.
+
+### `park-flow-intelligence` (confidential Cognito app client)
+
+- Client secret via local env / Secrets Manager / SSM — never Git or ordinary Compose files
+- Client Credentials
+- Scope: `venueops/flow-ingest.write` only
 
 ## Error contract
 
@@ -221,12 +236,12 @@ Park Flow Intelligence is a separate machine client. It may call only the flow i
 | Valid token, insufficient role/scope | `403` | Problem Details JSON |
 | Public route | `200`/`…` | No auth required |
 
-## Explicit non-goals (Phase 0)
+## Explicit non-goals
 
-- Implementing Spring Security or Cognito infra (later phases)
 - Guest Cognito login
 - Fine-grained per-attraction ACLs
 - Mutual TLS between services
+- A reliability producer process (ingest identity only)
 
 ## Acceptance anchors
 
@@ -238,6 +253,8 @@ These scenarios must remain true after Phases 1–9:
 4. Operator cannot publish a guest advisory (`403`).
 5. Supervisor can publish advisories and resolve major incidents.
 6. Weather service can POST recommendations and cannot call `/api/v1/operator/**` (`403`).
-7. Reliability service can POST recommendations and cannot call `/api/v1/operator/**` (`403`).
-8. Forged `X-Actor` does not change audit identity after Phase 4.
+7. Reliability ingest can POST recommendations and cannot call `/api/v1/operator/**` (`403`).
+8. Forged `X-Actor` does not change audit identity.
 9. Operator SSE requires the same session as REST; expired tokens stop reconnect and request sign-in.
+10. Park Flow Intelligence can POST observations/forecasts and cannot call `/api/v1/operator/**` (`403`).
+11. Operator cannot approve maintenance inspection (`403`); supervisor can.

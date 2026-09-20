@@ -29,7 +29,7 @@ Anonymous command is rejected
 Activity history records the authenticated operator
 ```
 
-Keep Flutter, Environmental Monitor, and operator SSE out of that checkpoint.
+That checkpoint shipped. Flutter, Environmental Monitor, Park Flow Intelligence, and operator SSE are part of the running stack.
 
 Native console loop (not Compose on :3001):
 
