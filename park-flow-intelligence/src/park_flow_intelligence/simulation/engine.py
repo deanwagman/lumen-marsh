@@ -190,8 +190,7 @@ class FlowSimulator:
                     "Simulated telemetry shows Mangrove Run boarding no guests. Forecasts rise at "
                     "Cypress Coil and Stormglass Station before posted waits catch up. "
                     "Weather holds, incidents, and maintenance work remain "
-                    "human-owned in VenueOps. "
-                    + " ".join(extra[self.settings.mangrove_run_id])
+                    "human-owned in VenueOps. " + " ".join(extra[self.settings.mangrove_run_id])
                 ),
                 guest_message=(
                     "Mangrove Run is temporarily unavailable. Cypress Coil and Stormglass Station "
