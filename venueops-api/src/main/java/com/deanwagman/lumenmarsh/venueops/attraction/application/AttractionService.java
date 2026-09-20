@@ -4,23 +4,29 @@ import com.deanwagman.lumenmarsh.venueops.attraction.domain.Attraction;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.AttractionActivity;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.AttractionCommand;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.AttractionId;
+import com.deanwagman.lumenmarsh.venueops.support.AfterCommit;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 public class AttractionService {
 
     private final AttractionRepository repository;
+    private final AttractionProcessedCommandRepository processedCommands;
     private final Clock clock;
     private final AttractionUpdatePublisher updatePublisher;
 
     public AttractionService(
             AttractionRepository repository,
+            AttractionProcessedCommandRepository processedCommands,
             Clock clock,
             AttractionUpdatePublisher updatePublisher
     ) {
         this.repository = Objects.requireNonNull(repository);
+        this.processedCommands = Objects.requireNonNull(processedCommands);
         this.clock = Objects.requireNonNull(clock);
         this.updatePublisher = Objects.requireNonNull(updatePublisher);
     }
@@ -37,8 +43,25 @@ public class AttractionService {
         return get(id).activity();
     }
 
+    @Transactional
     public Attraction execute(
             AttractionId id,
+            UUID commandId,
+            AttractionCommand command,
+            String actor,
+            String reason,
+            Integer waitMinutes,
+            long expectedVersion
+    ) {
+        Objects.requireNonNull(commandId, "commandId is required");
+        return processedCommands.findByCommandId(commandId)
+                .map(processed -> replay(processed, id))
+                .orElseGet(() -> executeNew(id, commandId, command, actor, reason, waitMinutes, expectedVersion));
+    }
+
+    private Attraction executeNew(
+            AttractionId id,
+            UUID commandId,
             AttractionCommand command,
             String actor,
             String reason,
@@ -52,8 +75,30 @@ public class AttractionService {
         apply(attraction, command, actor, reason, waitMinutes);
         AttractionActivity activity = lastUncommitted(attraction);
         repository.save(attraction);
-        updatePublisher.publish(AttractionOperationalUpdate.from(activity, attraction));
+        processedCommands.save(new AttractionProcessedCommandRepository.ProcessedCommand(
+                commandId,
+                attraction.id(),
+                activity.type(),
+                activity.resultingVersion(),
+                activity.occurredAt(),
+                AttractionCommandSnapshot.write(attraction)
+        ));
+        AfterCommit.run(() -> updatePublisher.publish(AttractionOperationalUpdate.from(activity, attraction)));
         return attraction;
+    }
+
+    private Attraction replay(
+            AttractionProcessedCommandRepository.ProcessedCommand processed,
+            AttractionId requestedId
+    ) {
+        if (!processed.attractionId().value().equals(requestedId.value())) {
+            throw new ConflictingAttractionCommandException(
+                    processed.commandId(),
+                    processed.attractionId().value(),
+                    requestedId.value()
+            );
+        }
+        return AttractionCommandSnapshot.read(processed.resultJson());
     }
 
     private static AttractionActivity lastUncommitted(Attraction attraction) {

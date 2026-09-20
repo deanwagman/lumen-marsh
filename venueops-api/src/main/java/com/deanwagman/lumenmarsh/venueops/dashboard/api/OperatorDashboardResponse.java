@@ -31,7 +31,9 @@ public record OperatorDashboardResponse(
             int openIncidents,
             int majorOrCriticalIncidents,
             int pendingWeatherRecommendations,
-            int publishedGuestAdvisories
+            int publishedGuestAdvisories,
+            int openP1WorkOrders,
+            int unpublishedFlowRecommendations
     ) {
     }
 

@@ -94,7 +94,8 @@ public class OperatorIncidentController {
                     ACKNOWLEDGE: optional reason. ASSIGN: assignee. START_MITIGATION: optional reason. \
                     CHANGE_SEVERITY: severity and required reason. LINK_ATTRACTION: attractionId. \
                     UNLINK_ATTRACTION: attractionId and required reason. PUBLISH_GUEST_ADVISORY: guestTitle and guestMessage. \
-                    WITHDRAW_GUEST_ADVISORY: required reason. RESOLVE: required reason. Every command requires expectedVersion."""
+                    WITHDRAW_GUEST_ADVISORY: required reason. RESOLVE: required reason. \
+                    Every command requires commandId and expectedVersion. Extra fields belong in data."""
     )
     public OperatorIncidentResponse command(
             @PathVariable String incidentId,
@@ -105,6 +106,7 @@ public class OperatorIncidentController {
         ActorIdentity actor = actorResolver.requireActor();
         return ActorAuditContext.call(actor, () -> OperatorIncidentResponse.from(incidentService.execute(
                 new IncidentId(incidentId),
+                request.commandId(),
                 request.type(),
                 actor.auditLabel(),
                 request.reason(),
@@ -114,7 +116,7 @@ public class OperatorIncidentController {
                 request.attractionId(),
                 request.guestTitle(),
                 request.guestMessage(),
-                Boolean.TRUE.equals(request.confirmActiveWorkOrders())
+                request.confirmActiveWorkOrders()
         )));
     }
 }

@@ -1,6 +1,7 @@
 package com.deanwagman.lumenmarsh.venueops.weather;
 
 import com.deanwagman.lumenmarsh.venueops.security.TestAuth;
+import com.deanwagman.lumenmarsh.venueops.testsupport.CommandJson;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -105,13 +106,13 @@ class WeatherRecommendationHandoffIntegrationTest {
         mockMvc.perform(post("/api/v1/operator/attractions/mangrove-run/commands")
                         .with(TestAuth.operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {
                                   "type": "PLACE_WEATHER_HOLD",
                                   "reason": "Lightning detected within operating radius",
                                   "expectedVersion": %d
                                 }
-                                """.formatted(mangroveVersion)))
+                                """.formatted(mangroveVersion))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("WEATHER_HOLD"));
 

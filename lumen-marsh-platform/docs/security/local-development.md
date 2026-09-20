@@ -12,7 +12,7 @@ The one-command Compose path reads public issuer/client values from the applied 
 ./scripts/dev-up.sh --oidc
 ```
 
-This starts the full stack: VenueOps validates console, monitor, park-flow, and reliability ingest client IDs, the operator console runs on `http://127.0.0.1:5173`, Environmental Monitor exchanges its client credentials for cached access tokens, and Park Flow Intelligence does the same for flow ingest. The launcher reads machine secrets from AWS Secrets Manager with `AWS_PROFILE` (default: `lumen-marsh`) and does not write secrets to `.env`.
+This starts the full stack: VenueOps validates console, monitor, park-flow, and reliability ingest client IDs, the operator console runs on `http://127.0.0.1:5173`, and Environmental Monitor, Park Flow Intelligence, and Reliability Intelligence exchange client credentials for cached access tokens. The launcher reads machine secrets from AWS Secrets Manager with `AWS_PROFILE` (default: `lumen-marsh`) and does not write secrets to `.env`.
 
 For a faster native-code loop instead:
 
@@ -39,10 +39,11 @@ OpenTofu does not create users or store passwords. `create-dev-operator.sh` and 
 | Console image build | `VITE_AUTH_MODE=local` → bearer `local-development-token` |
 | Environmental Monitor | `OIDC_DISABLED=true` + `VENUEOPS_BEARER_TOKEN=local-weather-token` |
 | Park Flow Intelligence | `OIDC_DISABLED=true` + `VENUEOPS_BEARER_TOKEN=local-flow-token` |
+| Reliability Intelligence | `OIDC_DISABLED=true` + `VENUEOPS_BEARER_TOKEN=local-reliability-token` |
 
-These opaque tokens are accepted **only** when the API runs in `LOCAL_JWT` mode. They are not Cognito tokens and must never be used with `OIDC` mode. Reliability ingest uses `local-reliability-token` from scripts and tests; there is no Compose reliability producer.
+These opaque tokens are accepted **only** when the API runs in `LOCAL_JWT` mode. They are not Cognito tokens and must never be used with `OIDC` mode. Reliability Intelligence and the maintenance scripts use `local-reliability-token` for ingest.
 
-Smoke/storm/maintenance scripts default to `OPERATOR_TOKEN=local-development-token` (supervisor-equivalent). `storm-lifecycle-acceptance.sh` and `maintenance-lifecycle-acceptance.sh` also use `OPERATOR_LIMITED_TOKEN=local-operator-token` for operator-only 403 checks. The maintenance script uses `RELIABILITY_TOKEN=local-reliability-token` for ingest.
+Smoke/storm/maintenance/flow scripts default to `OPERATOR_TOKEN=local-development-token` (supervisor-equivalent). `storm-lifecycle-acceptance.sh`, `maintenance-lifecycle-acceptance.sh`, and `flow-lifecycle-acceptance.sh` also use `OPERATOR_LIMITED_TOKEN=local-operator-token` for operator-only 403 checks. The maintenance script uses `RELIABILITY_TOKEN=local-reliability-token` for ingest. The flow script uses `FLOW_TOKEN=local-flow-token` for machine-identity checks.
 
 ## Automated testing
 

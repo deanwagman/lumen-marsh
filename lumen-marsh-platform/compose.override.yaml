@@ -26,6 +26,14 @@ services:
       OIDC_DISABLED: "true"
       VENUEOPS_BEARER_TOKEN: local-flow-token
 
+  reliability-intelligence:
+    environment:
+      APP_ENV: development
+      SIMULATION_ENABLED: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OIDC_DISABLED: "true"
+      VENUEOPS_BEARER_TOKEN: local-reliability-token
+
   environmental-migrate:
     environment:
       APP_ENV: development

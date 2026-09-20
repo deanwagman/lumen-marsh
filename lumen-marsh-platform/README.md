@@ -6,7 +6,7 @@ Application source lives in sibling directories in the Lumen Marsh monorepo. Thi
 
 ## Architecture
 
-Six pieces, one Compose graph, two databases:
+Seven pieces, one Compose graph, two databases:
 
 ```text
 Guest browser                 Control Tower browser
@@ -17,16 +17,16 @@ lumen-marsh-app :3000          venueops-console :3001
    └──────────────┬─────────────────────┘
                   ▼
            venueops-api :8080
-          ▲               ▲
- weather  │               │  observations / forecasts
-          │               │
-environmental-monitor   park-flow-intelligence
-         :8000                 :8100
+          ▲               ▲               ▲
+ weather  │               │  observations │  vibration
+          │               │  / forecasts  │
+environmental-monitor   park-flow-intelligence   reliability-intelligence
+         :8000                 :8100                    :8200
           │
 venueops-db / environmental-db (private)
 ```
 
-Reliability recommendations are ingested on VenueOps (`POST /api/v1/integrations/reliability/recommendations`) with `local-reliability-token` in `LOCAL_JWT` mode. There is no reliability producer in Compose.
+Reliability Intelligence posts Cypress Coil vibration to VenueOps (`POST /api/v1/integrations/reliability/recommendations`) with `local-reliability-token` in `LOCAL_JWT` mode. It never creates a work order.
 
 ## Repository map
 
@@ -37,6 +37,7 @@ lumen-marsh/
 ├── venueops-api/             Spring Boot operational API
 ├── environmental-monitor/    Python weather monitor and recommender
 ├── park-flow-intelligence/   Python queue simulator and flow recommender
+├── reliability-intelligence/ Python vibration simulator and reliability recommender
 └── lumen-marsh-platform/     This repository
 ```
 
@@ -47,6 +48,7 @@ lumen-marsh/
 | **venueops-api** | Attractions, incidents, advisories, weather inbox, maintenance, flow, SSE |
 | **environmental-monitor** | Weather → recommendations to VenueOps. Never commands a ride. |
 | **park-flow-intelligence** | Simulated queues and forecasts → VenueOps. Never changes attraction state. |
+| **reliability-intelligence** | Simulated Cypress Coil vibration → VenueOps. Never creates a work order. |
 | **lumen-marsh-platform** | Local integration, demos, OpenTofu, platform CI |
 
 ## Prerequisites
@@ -65,6 +67,7 @@ cp .env.example .env
 ./scripts/smoke-test.sh
 ./scripts/storm-lifecycle-acceptance.sh
 ./scripts/maintenance-lifecycle-acceptance.sh
+./scripts/flow-lifecycle-acceptance.sh
 ```
 
 To run the browser console against the applied development Cognito user pool:
@@ -73,7 +76,7 @@ To run the browser console against the applied development Cognito user pool:
 ./scripts/dev-up.sh --oidc
 ```
 
-OIDC mode starts the full stack. The console is available at `http://127.0.0.1:5173`; human users authenticate with Authorization Code + PKCE. Environmental Monitor and Park Flow Intelligence use separate client-credentials grants. The launcher reads machine secrets from AWS Secrets Manager with `AWS_PROFILE` (default: `lumen-marsh`) and never writes them to `.env`. The default command remains the complete offline `LOCAL_JWT` stack.
+OIDC mode starts the full stack. The console is available at `http://127.0.0.1:5173`; human users authenticate with Authorization Code + PKCE. Environmental Monitor, Park Flow Intelligence, and Reliability Intelligence use separate client-credentials grants. The launcher reads machine secrets from AWS Secrets Manager with `AWS_PROFILE` (default: `lumen-marsh`) and never writes them to `.env`. The default command remains the complete offline `LOCAL_JWT` stack.
 
 Service URLs:
 
@@ -84,6 +87,7 @@ Service URLs:
 | VenueOps API | http://localhost:8080 |
 | Environmental Monitor | http://localhost:8000 |
 | Park Flow Intelligence | http://localhost:8100 |
+| Reliability Intelligence | http://localhost:8200 |
 
 Stop without deleting data:
 
@@ -118,6 +122,7 @@ Compose does not replace fast local loops:
 cd ../venueops-api && ./gradlew bootRun
 cd ../environmental-monitor && uv run fastapi dev src/environmental_monitor/main.py
 cd ../park-flow-intelligence && uv run fastapi dev src/park_flow_intelligence/main.py --port 8100
+cd ../reliability-intelligence && uv run fastapi dev src/reliability_intelligence/main.py --port 8200
 cd ../venueops-console && npm run dev
 cd ../lumen-marsh-app && flutter run -d chrome \
   --dart-define=VENUEOPS_API_BASE_URL=http://localhost:8080
@@ -133,6 +138,7 @@ cd ../lumen-marsh-app && flutter run -d chrome \
 | `scripts/reset-demo.sh --confirm [--oidc]` | Delete demo volumes and recreate |
 | `scripts/storm-lifecycle-acceptance.sh` | Repeatable storm lifecycle + leak/failure checks |
 | `scripts/maintenance-lifecycle-acceptance.sh` | Repeatable reliability ingest → accept → inspect → testing + leak/failure checks |
+| `scripts/flow-lifecycle-acceptance.sh` | Repeatable mangrove disruption → publish → guest Best Next + leak/failure checks |
 | `scripts/storm-demo.sh` | Shorter HTTP storm → incident → hold → clear → recover |
 | `scripts/smoke-test.sh` | Health, ingest idempotency, incident, advisory, SSE |
 | `scripts/security-scan.sh` | Trivy filesystem + local image scan (requires `trivy`) |
@@ -148,6 +154,7 @@ cd ../lumen-marsh-app && flutter run -d chrome \
 - VenueOps: `GET /actuator/health`
 - Environmental Monitor: `GET /health/live`, `GET /health/ready`
 - Park Flow Intelligence: `GET /health/live`, `GET /health/ready`
+- Reliability Intelligence: `GET /health/live`, `GET /health/ready`
 - Console / guest: `GET /health`
 
 ## Container inventory
@@ -170,6 +177,7 @@ Identity and access control docs:
 - [docs/security/local-development.md](docs/security/local-development.md)
 - [docs/storm-lifecycle-demo.md](docs/storm-lifecycle-demo.md)
 - [docs/maintenance-lifecycle-demo.md](docs/maintenance-lifecycle-demo.md)
+- [docs/flow-lifecycle-demo.md](docs/flow-lifecycle-demo.md)
 - [docs/security/public-deployment-gate.md](docs/security/public-deployment-gate.md)
 
 Public AWS demo remains blocked until the [public deployment gate](docs/security/public-deployment-gate.md) is signed off.
@@ -212,6 +220,7 @@ Local:
 5. Watch recommendation → incident → hold → advisory → clearance → recovery
 6. `./scripts/maintenance-lifecycle-acceptance.sh` or follow [docs/maintenance-lifecycle-demo.md](docs/maintenance-lifecycle-demo.md)
 7. Watch reliability ingest → accept → inspect → operations testing
+8. `./scripts/flow-lifecycle-acceptance.sh` or follow [docs/flow-lifecycle-demo.md](docs/flow-lifecycle-demo.md) for disruption → publish → Best Next
 
 Hosted AWS demo is Phase 10–12 and is not provisioned by default.
 
@@ -220,11 +229,11 @@ Hosted AWS demo is Phase 10–12 and is not provisioned by default.
 - VenueOps SSE is in-memory → one API instance only
 - Environmental Monitor polling is not multi-replica safe
 - Park Flow Intelligence is stateless; VenueOps stores observations, projections, forecasts, and recommendations
-- There is no reliability producer process; ingest is a VenueOps integration endpoint
+- Reliability Intelligence is a local simulator; it never creates a work order
 - Frontend API origins are build-time (`VITE_*` / `--dart-define`) until runtime config lands
 - Self-managed Postgres on the future EC2 demo lacks managed HA/PITR
 - Phase 13 managed AWS (Fargate/ALB/RDS) is optional and cost-sensitive
-- Stop native `bootRun` / `fastapi` / `npm run dev` before Compose if ports 8080/8000/8100/3000/3001 are already taken
+- Stop native `bootRun` / `fastapi` / `npm run dev` before Compose if ports 8080/8000/8100/8200/3000/3001 are already taken
 - Public AWS demo stays blocked until [docs/security/public-deployment-gate.md](docs/security/public-deployment-gate.md) is signed off
 
 ## Delivery status

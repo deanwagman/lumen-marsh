@@ -12,6 +12,7 @@ import com.deanwagman.lumenmarsh.venueops.flow.domain.QueueForecast;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.QueueFreshness;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.QueueProjection;
 import com.deanwagman.lumenmarsh.venueops.security.ActorIdentity;
+import com.deanwagman.lumenmarsh.venueops.support.AfterCommit;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;

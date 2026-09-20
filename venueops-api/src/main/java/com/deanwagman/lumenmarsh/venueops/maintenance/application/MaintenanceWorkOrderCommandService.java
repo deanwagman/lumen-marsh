@@ -21,6 +21,7 @@ import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.Maintenan
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenanceWorkOrderCommand;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenanceWorkOrderId;
 import com.deanwagman.lumenmarsh.venueops.security.ActorIdentity;
+import com.deanwagman.lumenmarsh.venueops.support.AfterCommit;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;

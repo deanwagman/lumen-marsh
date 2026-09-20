@@ -1,6 +1,7 @@
 package com.deanwagman.lumenmarsh.venueops.attraction;
 
 import com.deanwagman.lumenmarsh.venueops.security.TestAuth;
+import com.deanwagman.lumenmarsh.venueops.testsupport.CommandJson;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -77,9 +78,9 @@ class AttractionSseIntegrationTest {
             mockMvc.perform(post("/api/v1/operator/attractions/mangrove-run/commands")
                             .with(TestAuth.operator())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
+                            .content(CommandJson.envelope("""
                                     {"type":"UPDATE_WAIT_TIME","waitMinutes":35,"expectedVersion":0}
-                                    """))
+                                    """)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.waitMinutes").value(35))
                     .andExpect(jsonPath("$.version").value(1));
@@ -97,9 +98,9 @@ class AttractionSseIntegrationTest {
             mockMvc.perform(post("/api/v1/operator/attractions/mangrove-run/commands")
                             .with(TestAuth.operator())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
+                            .content(CommandJson.envelope("""
                                     {"type":"PLACE_WEATHER_HOLD","reason":"Lightning detected within operating radius","expectedVersion":1}
-                                    """))
+                                    """)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("WEATHER_HOLD"));
 

@@ -34,6 +34,8 @@ const summarySchema = z.object({
   majorOrCriticalIncidents: z.number().int().nonnegative(),
   pendingWeatherRecommendations: z.number().int().nonnegative(),
   publishedGuestAdvisories: z.number().int().nonnegative(),
+  openP1WorkOrders: z.number().int().nonnegative(),
+  unpublishedFlowRecommendations: z.number().int().nonnegative(),
 });
 
 const attentionItemSchema = z.object({

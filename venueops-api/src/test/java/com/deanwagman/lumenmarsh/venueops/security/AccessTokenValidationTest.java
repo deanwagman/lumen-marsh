@@ -6,6 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import com.deanwagman.lumenmarsh.venueops.testsupport.CommandJson;
 
 import java.util.List;
 
@@ -86,8 +87,8 @@ class AccessTokenValidationTest {
         return post("/api/v1/operator/attractions/mangrove-run/commands")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""
+                .content(CommandJson.envelope("""
                         {"type":"UPDATE_WAIT_TIME","waitMinutes":5,"expectedVersion":0}
-                        """);
+                        """));
     }
 }

@@ -13,6 +13,7 @@ import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatus;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentType;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.InvalidIncidentTransitionException;
+import com.deanwagman.lumenmarsh.venueops.incident.infrastructure.InMemoryIncidentProcessedCommandRepository;
 import com.deanwagman.lumenmarsh.venueops.incident.infrastructure.InMemoryIncidentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,6 +40,7 @@ class IncidentServiceTest {
 
     private InMemoryIncidentRepository incidents;
     private InMemoryAttractionRepository attractions;
+    private InMemoryIncidentProcessedCommandRepository processedCommands;
     private RecordingPublisher publisher;
     private RecordingIncidentPublisher incidentPublisher;
     private IncidentService service;
@@ -46,10 +49,19 @@ class IncidentServiceTest {
     void setUp() {
         incidents = new InMemoryIncidentRepository();
         attractions = new InMemoryAttractionRepository();
+        processedCommands = new InMemoryIncidentProcessedCommandRepository();
         publisher = new RecordingPublisher();
         incidentPublisher = new RecordingIncidentPublisher();
-        service = new IncidentService(incidents, attractions, CLOCK, publisher, incidentPublisher, (incident, confirm) -> {
-        });
+        service = new IncidentService(
+                incidents,
+                attractions,
+                processedCommands,
+                CLOCK,
+                publisher,
+                incidentPublisher,
+                (incident, confirm) -> {
+                }
+        );
         attractions.save(Attraction.create(new AttractionId("mangrove-run"), "Mangrove Run", "Luminous Wetlands", AttractionType.BOAT_EXPEDITION, CLOCK));
         attractions.save(Attraction.create(new AttractionId("cypress-coil"), "Cypress Coil", "Cypress Basin", AttractionType.LAUNCH_COASTER, CLOCK));
     }
@@ -152,8 +164,16 @@ class IncidentServiceTest {
     void repositoryFailuresPublishNothing() {
         IncidentRepository failingRepository = mock(IncidentRepository.class);
         when(failingRepository.findById(any())).thenReturn(Optional.empty());
-        IncidentService reporting = new IncidentService(failingRepository, attractions, CLOCK, publisher, incidentPublisher, (incident, confirm) -> {
-        });
+        IncidentService reporting = new IncidentService(
+                failingRepository,
+                attractions,
+                processedCommands,
+                CLOCK,
+                publisher,
+                incidentPublisher,
+                (incident, confirm) -> {
+                }
+        );
         doThrow(new RuntimeException("write failed")).when(failingRepository).save(any());
 
         assertThatThrownBy(() -> reporting.report(
@@ -187,6 +207,46 @@ class IncidentServiceTest {
                 .containsExactly("incident.reported");
     }
 
+    @Test
+    void duplicateCommandIdReplaysWithoutPublishingAgain() {
+        Incident incident = reported();
+        UUID commandId = UUID.fromString("11111111-1111-4111-8111-111111111111");
+        Incident first = service.execute(
+                incident.id(),
+                commandId,
+                IncidentCommand.ACKNOWLEDGE,
+                "Operator One",
+                null,
+                1L,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false
+        );
+        Incident replayed = service.execute(
+                incident.id(),
+                commandId,
+                IncidentCommand.ACKNOWLEDGE,
+                "Operator One",
+                null,
+                1L,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false
+        );
+
+        assertThat(replayed.status()).isEqualTo(first.status());
+        assertThat(replayed.version()).isEqualTo(first.version());
+        assertThat(incidentPublisher.updates).extracting(IncidentOperationalUpdate::sseEventName)
+                .containsExactly("incident.reported", "incident.updated");
+        assertThat(service.get(incident.id()).activity()).hasSize(2);
+    }
+
     private Incident reported() {
         return service.report(
                 "Lightning activity near western basin",
@@ -210,6 +270,7 @@ class IncidentServiceTest {
     ) {
         return service.execute(
                 id,
+                UUID.randomUUID(),
                 command,
                 "Operator One",
                 reason,

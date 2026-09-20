@@ -31,7 +31,7 @@ export const gettingStartedArticle: DocArticle = {
         'Use Attractions for the shift overview and per-attraction command workspace.',
         'Use Incidents for the incident center and detail commands.',
         'Use Maintenance for reliability recommendations, work orders, checklists, and inspection handoff to Operations.',
-        'Use Park Flow for queue forecasts and operator-reviewed guest guidance.',
+        'Use Park Flow for queue forecasts and operator-reviewed guest guidance. Publishing guest guidance is supervisor-only.',
         'Weather recommendations appear on the Attractions overview. Docs (this section) holds procedures and deep links from help controls next to key panels.',
       ],
     },

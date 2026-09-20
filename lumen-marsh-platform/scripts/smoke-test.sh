@@ -113,18 +113,18 @@ VERSION="$(curl -fsS "$VENUEOPS_URL/api/v1/operator/attractions/mangrove-run" "$
 HOLD="$(curl -fsS -o /tmp/lm-smoke-hold.json -w '%{http_code}' \
   -X POST "$VENUEOPS_URL/api/v1/operator/attractions/mangrove-run/commands" \
   -H 'Content-Type: application/json' "${AUTH_HEADER[@]}" \
-  -d "{\"type\":\"PLACE_WEATHER_HOLD\",\"reason\":\"Smoke test hold\",\"expectedVersion\":$VERSION}")"
+  -d "$(envelope_command "{\"type\":\"PLACE_WEATHER_HOLD\",\"reason\":\"Smoke test hold\",\"expectedVersion\":$VERSION}")")"
 check "attraction weather hold command" bash -c "[[ '$HOLD' == '200' ]]"
 
 # Advisory path: publish on the smoke incident
 ACK="$(curl -fsS -o /dev/null -w '%{http_code}' \
   -X POST "$VENUEOPS_URL/api/v1/operator/incidents/$INCIDENT_ID/commands" \
   -H 'Content-Type: application/json' "${AUTH_HEADER[@]}" \
-  -d '{"type":"ACKNOWLEDGE","expectedVersion":1}')"
+  -d "$(envelope_command '{"type":"ACKNOWLEDGE","expectedVersion":1}')")"
 PUB="$(curl -fsS -o /dev/null -w '%{http_code}' \
   -X POST "$VENUEOPS_URL/api/v1/operator/incidents/$INCIDENT_ID/commands" \
   -H 'Content-Type: application/json' "${AUTH_HEADER[@]}" \
-  -d '{"type":"PUBLISH_GUEST_ADVISORY","guestTitle":"Smoke advisory","guestMessage":"Temporary pause for testing.","expectedVersion":2}')"
+  -d "$(envelope_command '{"type":"PUBLISH_GUEST_ADVISORY","guestTitle":"Smoke advisory","guestMessage":"Temporary pause for testing.","expectedVersion":2}')")"
 check "incident acknowledge" bash -c "[[ '$ACK' == '200' ]]"
 check "guest advisory publish" bash -c "[[ '$PUB' == '200' ]]"
 check "guest advisories list" http_ok "$VENUEOPS_URL/api/v1/advisories"

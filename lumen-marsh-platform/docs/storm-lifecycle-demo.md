@@ -1,6 +1,6 @@
 # Storm lifecycle demo (Control Tower + Flutter)
 
-UI-driven walkthrough of the integrated weather hold → advisory → recovery path. Automated HTTP proof: [`../scripts/storm-lifecycle-acceptance.sh`](../scripts/storm-lifecycle-acceptance.sh). Guest contract: [`guest-advisory-contract.md`](./guest-advisory-contract.md). Cypress Coil maintenance uses the same stack and leak/authz style: [`maintenance-lifecycle-demo.md`](./maintenance-lifecycle-demo.md).
+UI-driven walkthrough of the integrated weather hold → advisory → recovery path. Automated HTTP proof: [`../scripts/storm-lifecycle-acceptance.sh`](../scripts/storm-lifecycle-acceptance.sh). Guest contract: [`guest-advisory-contract.md`](./guest-advisory-contract.md). Cypress Coil maintenance uses the same stack and leak/authz style: [`maintenance-lifecycle-demo.md`](./maintenance-lifecycle-demo.md). Park Flow sibling: [`flow-lifecycle-demo.md`](./flow-lifecycle-demo.md).
 
 This is the portfolio demo. Do not start the [AWS public deployment gate](./security/public-deployment-gate.md) until this pass is reliable.
 
@@ -147,6 +147,8 @@ Reset deletes only `lumen-marsh_venueops-data` and `lumen-marsh_environmental-da
 
 - All ten UI steps complete on a clean seed without database edits.
 - `./scripts/storm-lifecycle-acceptance.sh` exits 0 on the same stack (LOCAL_JWT, or OIDC with exported tokens).
+- `./scripts/maintenance-lifecycle-acceptance.sh` is the matching proof for Cypress Coil reliability ingest → inspect → testing.
+- `./scripts/flow-lifecycle-acceptance.sh` is the matching proof for mangrove disruption → guest Best Next.
 - Guest REST and SSE never carry internal incident data.
 - Audit actors come from the verified token, and versions are monotonic.
 - Screenshots or a short walkthrough video exist for the ten slots above.

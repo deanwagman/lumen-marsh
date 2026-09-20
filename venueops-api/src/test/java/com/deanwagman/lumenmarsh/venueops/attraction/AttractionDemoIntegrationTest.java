@@ -1,6 +1,7 @@
 package com.deanwagman.lumenmarsh.venueops.attraction;
 
 import com.deanwagman.lumenmarsh.venueops.security.TestAuth;
+import com.deanwagman.lumenmarsh.venueops.testsupport.CommandJson;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -117,6 +118,6 @@ class AttractionDemoIntegrationTest {
         return mockMvc.perform(post("/api/v1/operator/attractions/mangrove-run/commands")
                 .with(TestAuth.operator())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(body.toString()));
+                .content(CommandJson.envelope(body.toString())));
     }
 }

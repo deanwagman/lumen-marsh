@@ -27,6 +27,7 @@ fi
 wait_http "$VENUEOPS_URL/actuator/health" "venueops-api"
 wait_http "$MONITOR_URL/health/ready" "environmental-monitor"
 wait_http "${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}/health/ready" "park-flow-intelligence"
+wait_http "${RELIABILITY_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8200}/health/ready" "reliability-intelligence"
 wait_http "$CONSOLE_URL/health" "venueops-console"
 wait_http "$GUEST_URL/health" "lumen-marsh-app"
 

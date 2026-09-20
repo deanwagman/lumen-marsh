@@ -16,7 +16,7 @@
 | `attraction_id` | VenueOps | Explicit hold/recovery/testing commands |
 | `event_id` | VenueOps SSE | Guest and operator streams |
 | `actor_id` | VenueOps (JWT `sub` via `ActorIdentity`) | Human subject, machine client subject, or `venueops-system`. Client `X-Actor` is ignored. |
-| `source_service` | each backend | `environmental-monitor`, `park-flow-intelligence`, or `venueops-api` |
+| `source_service` | each backend | `environmental-monitor`, `park-flow-intelligence`, `reliability-intelligence`, or `venueops-api` |
 
 ## Expected flows
 
@@ -56,6 +56,7 @@ exception bodies in guest responses.
 ./scripts/logs.sh venueops-api
 ./scripts/logs.sh environmental-monitor
 ./scripts/logs.sh park-flow-intelligence
+./scripts/logs.sh reliability-intelligence
 ```
 
 ## Initial metrics (application-owned)
@@ -69,3 +70,6 @@ success/failure, active recommendations, VenueOps delivery failures.
 
 Park Flow Intelligence: simulation tick age, VenueOps observation/forecast
 delivery failures. The service is stateless; durable counts live in VenueOps.
+
+Reliability Intelligence: simulation tick age, VenueOps recommendation
+delivery failures. It never creates a work order.

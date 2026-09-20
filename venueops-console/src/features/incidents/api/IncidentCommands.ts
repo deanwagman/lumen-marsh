@@ -14,6 +14,7 @@ export type ReportIncidentInput = {
 
 export type IncidentCommandInput = {
   incidentId: string;
+  commandId: string;
   type: IncidentCommandType;
   expectedVersion: number;
   reason?: string;
@@ -22,6 +23,7 @@ export type IncidentCommandInput = {
   attractionId?: string;
   guestTitle?: string;
   guestMessage?: string;
+  confirmActiveWorkOrders?: boolean;
 };
 
 export const IncidentCommands = {
@@ -36,19 +38,38 @@ export const IncidentCommands = {
   },
 
   async execute(client: ApiClient, input: IncidentCommandInput): Promise<Incident> {
+    const data: Record<string, unknown> = {};
+    if (input.assignee) {
+      data.assignee = input.assignee;
+    }
+    if (input.severity) {
+      data.severity = input.severity;
+    }
+    if (input.attractionId) {
+      data.attractionId = input.attractionId;
+    }
+    if (input.guestTitle) {
+      data.guestTitle = input.guestTitle;
+    }
+    if (input.guestMessage) {
+      data.guestMessage = input.guestMessage;
+    }
+    if (input.confirmActiveWorkOrders) {
+      data.confirmActiveWorkOrders = true;
+    }
+    const body: Record<string, unknown> = {
+      commandId: input.commandId,
+      type: input.type,
+      expectedVersion: input.expectedVersion,
+      reason: input.reason || undefined,
+    };
+    if (Object.keys(data).length > 0) {
+      body.data = data;
+    }
     return client.post(
       `/api/v1/operator/incidents/${encodeURIComponent(input.incidentId)}/commands`,
       incidentSchema,
-      {
-        type: input.type,
-        expectedVersion: input.expectedVersion,
-        reason: input.reason || undefined,
-        assignee: input.assignee || undefined,
-        severity: input.severity,
-        attractionId: input.attractionId,
-        guestTitle: input.guestTitle,
-        guestMessage: input.guestMessage,
-      },
+      body,
     );
   },
 };

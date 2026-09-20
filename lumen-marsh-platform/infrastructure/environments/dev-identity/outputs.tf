@@ -24,6 +24,11 @@ output "FLOW_SECRET_ARN" {
   value       = module.identity.flow_secret_arn
 }
 
+output "RELIABILITY_SECRET_ARN" {
+  description = "Secrets Manager ARN containing the Reliability Intelligence client credentials."
+  value       = module.identity.reliability_secret_arn
+}
+
 output "aws_region" {
   value = var.aws_region
 }
