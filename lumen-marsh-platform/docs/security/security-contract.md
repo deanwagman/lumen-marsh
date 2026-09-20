@@ -53,12 +53,17 @@ Resource server identifier (scope prefix): `venueops`. Cognito access tokens ide
 | `venueops/maintenance.read` | Console | Maintenance asset and work-order reads |
 | `venueops/maintenance.command` | Console | Create, assign, and update maintenance work |
 | `venueops/maintenance.inspect` | Console (supervisors) | Approve/reject inspection and complete work orders |
+| `venueops/flow.read` | Console | Park flow reads and operator flow SSE events |
+| `venueops/flow.command` | Console | Approve or dismiss flow recommendations |
+| `venueops/flow.publish` | Console (supervisors) | Publish or withdraw guest flow guidance |
 | `venueops/weather-recommendations.write` | Environmental Monitor only | `POST /api/v1/integrations/weather/recommendations` |
 | `venueops/reliability.write` | Reliability integration only | `POST /api/v1/integrations/reliability/recommendations` |
+| `venueops/flow-ingest.write` | Park Flow Intelligence only | `POST /api/v1/integrations/flow/observations` and `/forecasts` |
 
-Human tokens must never receive `venueops/weather-recommendations.write` or `venueops/reliability.write`.
+Human tokens must never receive `venueops/weather-recommendations.write`, `venueops/reliability.write`, or `venueops/flow-ingest.write`.
 The weather-service client must receive only the weather write scope.
 The reliability-integration client must receive only `venueops/reliability.write`.
+The park-flow-intelligence client must receive only `venueops/flow-ingest.write`.
 
 ## Token claims
 
@@ -152,6 +157,11 @@ Requires scope `venueops/reliability.write`:
 
 - `POST /api/v1/integrations/reliability/recommendations`
 
+Requires scope `venueops/flow-ingest.write`:
+
+- `POST /api/v1/integrations/flow/observations`
+- `POST /api/v1/integrations/flow/forecasts`
+
 ### Denied / not public
 
 - `GET /api/hello` — legacy probe; deny in secured deployments
@@ -175,6 +185,12 @@ Requires scope `venueops/reliability.write`:
 | Create / assign / update maintenance work | | ✓ | ✓ | | |
 | Approve inspection or complete work orders | | | ✓ | | |
 | Write reliability recommendations | | | | | ✓ |
+| Read park flow | | ✓ | ✓ | | |
+| Approve / dismiss flow recommendations | | ✓ | ✓ | | |
+| Publish / withdraw guest flow guidance | | | ✓ | | |
+| Write flow observations and forecasts | | | | | |
+
+Park Flow Intelligence is a separate machine client. It may call only the flow ingest routes and cannot use operator endpoints.
 
 ## Client architecture
 

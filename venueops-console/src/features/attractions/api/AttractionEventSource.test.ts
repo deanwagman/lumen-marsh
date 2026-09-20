@@ -238,6 +238,18 @@ describe('handleAttractionStreamEvent', () => {
     vi.useRealTimers();
   });
 
+  it('ignores flow events when the subscriber cannot read park flow', () => {
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    handleAttractionStreamEvent(
+      queryClient,
+      'flow.snapshot',
+      JSON.stringify({ guestsInQueues: 1 }),
+      { flowRead: false },
+    );
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
   it('ignores maintenance events when the subscriber cannot read maintenance', () => {
     const queryClient = new QueryClient();
     handleAttractionStreamEvent(

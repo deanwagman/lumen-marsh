@@ -11,6 +11,7 @@ import com.deanwagman.lumenmarsh.venueops.attraction.domain.Environment;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.ExperienceMedia;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.Intensity;
 import com.deanwagman.lumenmarsh.venueops.attraction.infrastructure.streaming.SseAttractionUpdateBroadcaster;
+import com.deanwagman.lumenmarsh.venueops.flow.application.FlowQueryService;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentService;
 import com.deanwagman.lumenmarsh.venueops.security.ImportVenueOpsSecurity;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -54,12 +55,21 @@ class ParkEventControllerTest {
     @MockitoBean
     private IncidentService incidentService;
 
+    @MockitoBean
+    private FlowQueryService flowQueries;
+
     @Test
     void parkStreamSendsAttractionAndAdvisorySnapshots() throws Exception {
         when(guestAttractionReadService.listForGuest()).thenReturn(List.of(
                 new GuestAttractionReadService.AttractionDetail(operatingMangroveRun(), mangroveRunExperience())
         ));
         when(incidentService.listActiveGuestAdvisories()).thenReturn(List.of());
+        when(flowQueries.guestOverview()).thenReturn(new FlowQueryService.GuestOverview(
+                List.of(),
+                List.of(),
+                Instant.parse("2026-09-15T18:00:00Z"),
+                true
+        ));
 
         MvcResult result = mockMvc.perform(get("/api/v1/events").accept(MediaType.TEXT_EVENT_STREAM))
                 .andExpect(request().asyncStarted())
@@ -75,6 +85,7 @@ class ParkEventControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM))
                 .andExpect(content().string(containsString("event:attractions.snapshot")))
                 .andExpect(content().string(containsString("event:advisories.snapshot")))
+                .andExpect(content().string(containsString("event:guest.flow.updated")))
                 .andExpect(content().string(containsString("\"id\":\"mangrove-run\"")));
     }
 

@@ -1,0 +1,34 @@
+.chart {
+  position: relative;
+  margin: 0;
+}
+
+.line {
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.posted {
+  stroke: currentColor;
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
+  opacity: 0.55;
+}
+
+.point {
+  fill: currentColor;
+}
+
+.tick,
+.value {
+  font-size: 9px;
+  fill: currentColor;
+}
+
+.caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

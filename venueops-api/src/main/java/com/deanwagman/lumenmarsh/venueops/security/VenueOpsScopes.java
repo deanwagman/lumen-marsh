@@ -11,6 +11,10 @@ public final class VenueOpsScopes {
     public static final String MAINTENANCE_COMMAND = "venueops/maintenance.command";
     public static final String MAINTENANCE_INSPECT = "venueops/maintenance.inspect";
     public static final String RELIABILITY_WRITE = "venueops/reliability.write";
+    public static final String FLOW_READ = "venueops/flow.read";
+    public static final String FLOW_COMMAND = "venueops/flow.command";
+    public static final String FLOW_PUBLISH = "venueops/flow.publish";
+    public static final String FLOW_INGEST_WRITE = "venueops/flow-ingest.write";
 
     public static final String SCOPE_OPERATOR_READ = "SCOPE_" + OPERATOR_READ;
     public static final String SCOPE_ATTRACTIONS_COMMAND = "SCOPE_" + ATTRACTIONS_COMMAND;
@@ -22,6 +26,10 @@ public final class VenueOpsScopes {
     public static final String SCOPE_MAINTENANCE_COMMAND = "SCOPE_" + MAINTENANCE_COMMAND;
     public static final String SCOPE_MAINTENANCE_INSPECT = "SCOPE_" + MAINTENANCE_INSPECT;
     public static final String SCOPE_RELIABILITY_WRITE = "SCOPE_" + RELIABILITY_WRITE;
+    public static final String SCOPE_FLOW_READ = "SCOPE_" + FLOW_READ;
+    public static final String SCOPE_FLOW_COMMAND = "SCOPE_" + FLOW_COMMAND;
+    public static final String SCOPE_FLOW_PUBLISH = "SCOPE_" + FLOW_PUBLISH;
+    public static final String SCOPE_FLOW_INGEST_WRITE = "SCOPE_" + FLOW_INGEST_WRITE;
 
     public static final String ROLE_OPERATOR = "ROLE_OPERATOR";
     public static final String ROLE_SUPERVISOR = "ROLE_SUPERVISOR";

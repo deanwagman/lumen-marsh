@@ -10,8 +10,8 @@ export const gettingStartedArticle: DocArticle = {
       id: 'what-this-is',
       title: 'What this console is',
       body: [
-        'Lumen Marsh Control is the operator workstation for attraction status, incidents, weather recommendations, and maintenance.',
-        'Use it during a shift to keep posted waits accurate, escalate issues, follow weather guidance, and work reliability-driven maintenance. Guests never see this console.',
+        'Lumen Marsh Control is the operator workstation for attraction status, incidents, weather recommendations, maintenance, and park flow.',
+        'Use it during a shift to keep posted waits accurate, escalate issues, follow weather guidance, work reliability-driven maintenance, and review queue forecasts. Guests never see this console.',
       ],
     },
     {

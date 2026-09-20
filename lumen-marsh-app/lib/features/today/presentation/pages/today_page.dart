@@ -15,6 +15,11 @@ import '../../../attractions/presentation/widgets/attraction_status_banner.dart'
 import '../../../attractions/presentation/widgets/live_connection_banner.dart';
 import '../../../favorites/presentation/bloc/favorites_bloc.dart';
 import '../../../favorites/presentation/bloc/favorites_state.dart';
+import '../../../flow/presentation/bloc/flow_bloc.dart';
+import '../../../flow/presentation/bloc/flow_event.dart';
+import '../../../flow/presentation/bloc/flow_state.dart';
+import '../../../flow/presentation/flow_scope.dart';
+import '../../../flow/presentation/widgets/best_next_section.dart';
 import '../../../../core/errors/app_failure.dart';
 import '../../../../core/formatters/timestamp_formatter.dart';
 import '../../../../design_system/components/feedback/lumen_feedback.dart';
@@ -39,6 +44,7 @@ class TodayPage extends StatelessWidget {
           onPressed: () {
             context.read<AttractionsBloc>().add(const AttractionsRefreshed());
             context.read<AdvisoriesBloc>().add(const AdvisoriesRefreshed());
+            maybeFlowBloc(context)?.add(const FlowRefreshed());
           },
           icon: const Icon(Icons.refresh),
         ),
@@ -111,8 +117,10 @@ class _TodayDashboard extends StatelessWidget {
           onRefresh: () {
             final attractionsBloc = context.read<AttractionsBloc>();
             final advisoriesBloc = context.read<AdvisoriesBloc>();
+            final flowBloc = maybeFlowBloc(context);
             attractionsBloc.add(const AttractionsRefreshed());
             advisoriesBloc.add(const AdvisoriesRefreshed());
+            flowBloc?.add(const FlowRefreshed());
             return Future.wait([
               attractionsBloc.stream.firstWhere(
                 (state) =>
@@ -126,6 +134,13 @@ class _TodayDashboard extends StatelessWidget {
                     state is AdvisoriesEmpty ||
                     state is AdvisoriesFailure,
               ),
+              if (flowBloc != null)
+                flowBloc.stream.firstWhere(
+                  (state) =>
+                      state is FlowLoaded ||
+                      state is FlowEmpty ||
+                      state is FlowFailure,
+                ),
             ]);
           },
           child: ListView(
@@ -201,6 +216,11 @@ class _TodayDashboard extends StatelessWidget {
                 title: 'Park conditions',
                 child: _SummaryFacts(viewModel: viewModel, wide: wide),
               ),
+              BestNextSection(
+                catalog: attractions,
+                favoriteIds: favoriteIds.toSet(),
+                onAttractionPressed: (id) => context.push('/attractions/$id'),
+              ),
               if (viewModel.savedAdventures.isNotEmpty) ...[
                 const SizedBox(height: LumenSpacing.lg),
                 LumenSection(
@@ -252,16 +272,9 @@ class _TodayDashboard extends StatelessWidget {
               ],
               if (viewModel.recommended != null) ...[
                 const SizedBox(height: LumenSpacing.lg),
-                LumenSection(
-                  title: 'Best next adventure',
-                  child: AttractionCard(
-                    key: const Key('today-recommendation'),
-                    attraction: viewModel.recommended!,
-                    isFavorite: favoriteIds.contains(viewModel.recommended!.id),
-                    onPressed: () => context.push(
-                      '/attractions/${viewModel.recommended!.id}',
-                    ),
-                  ),
+                _CatalogFallbackRecommendation(
+                  attraction: viewModel.recommended!,
+                  isFavorite: favoriteIds.contains(viewModel.recommended!.id),
                 ),
               ],
               const SizedBox(height: LumenSpacing.lg),
@@ -275,6 +288,52 @@ class _TodayDashboard extends StatelessWidget {
       },
     );
   }
+}
+
+class _CatalogFallbackRecommendation extends StatelessWidget {
+  const _CatalogFallbackRecommendation({
+    required this.attraction,
+    required this.isFavorite,
+  });
+
+  final AttractionSummary attraction;
+  final bool isFavorite;
+
+  @override
+  Widget build(BuildContext context) {
+    final flowBloc = maybeFlowBloc(context);
+    if (flowBloc == null) {
+      return _card(context);
+    }
+    return BlocBuilder<FlowBloc, FlowState>(
+      builder: (context, state) {
+        if (_hasPublishedFlowSuggestions(state)) {
+          return const SizedBox.shrink();
+        }
+        return _card(context);
+      },
+    );
+  }
+
+  Widget _card(BuildContext context) {
+    return LumenSection(
+      title: 'Best next adventure',
+      child: AttractionCard(
+        key: const Key('today-recommendation'),
+        attraction: attraction,
+        isFavorite: isFavorite,
+        onPressed: () => context.push('/attractions/${attraction.id}'),
+      ),
+    );
+  }
+}
+
+bool _hasPublishedFlowSuggestions(FlowState state) {
+  if (state is! FlowLoaded) {
+    return false;
+  }
+  return state.guidance.isNotEmpty ||
+      state.waits.any((wait) => wait.availability.isOperating);
 }
 
 class _SummaryFacts extends StatelessWidget {

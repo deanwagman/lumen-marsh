@@ -5,7 +5,8 @@ export type DocCategory =
   | 'attractions'
   | 'incidents'
   | 'weather'
-  | 'maintenance';
+  | 'maintenance'
+  | 'flow';
 
 export type DocSection = {
   id: string;

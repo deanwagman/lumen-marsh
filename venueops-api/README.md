@@ -153,6 +153,12 @@ The stream is a live projection of committed changes. Internal activity records 
 | `weather.recommendation.cleared` | Operator | Environmental Monitor sent a cleared source version |
 | `maintenance.work-orders.snapshot` | Operator with `venueops/maintenance.read` | Current work-order summaries |
 | `maintenance.work-order.updated` | Operator with `venueops/maintenance.read` | One work order changed after a successful maintenance command |
+| `flow.snapshot` | Operator with `venueops/flow.read` | Current park-flow overview |
+| `flow.queue.updated` | Operator with `venueops/flow.read` | Latest queue projection for an attraction |
+| `flow.forecast.updated` | Operator with `venueops/flow.read` | Latest 15/30/60-minute forecasts |
+| `flow.recommendation.created` / `flow.recommendation.updated` | Operator with `venueops/flow.read` | Flow recommendation lifecycle |
+| `guest.flow.updated` | Guest park stream | Guest-safe waits and published guidance |
+| `guest.flow.recommendation.published` / `guest.flow.recommendation.withdrawn` | Guest park stream | Supervisor-published flow guidance |
 | heartbeat comment | Guest and operator | Keeps proxies from closing an idle connection |
 
 Each `attraction.updated` payload includes the complete operational state so clients can apply it independently:

@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import '../../../features/advisories/domain/guest_advisory.dart';
 import '../../../features/attractions/domain/attraction_operational_update.dart';
 import '../../../features/attractions/domain/attraction_summary.dart';
+import '../../../features/flow/domain/guest_wait.dart';
 
 sealed class VenueStreamMessage extends Equatable {
   const VenueStreamMessage();
@@ -64,6 +65,42 @@ final class AdvisoryWithdrawnMessage extends VenueStreamMessage {
 
   @override
   List<Object?> get props => [advisoryId, version];
+}
+
+final class GuestFlowOverviewMessage extends VenueStreamMessage {
+  const GuestFlowOverviewMessage(this.overview);
+
+  final GuestFlowOverview overview;
+
+  @override
+  List<Object?> get props => [overview];
+}
+
+final class GuestFlowWaitUpdatedMessage extends VenueStreamMessage {
+  const GuestFlowWaitUpdatedMessage(this.wait);
+
+  final GuestWait wait;
+
+  @override
+  List<Object?> get props => [wait];
+}
+
+final class GuestFlowRecommendationPublishedMessage extends VenueStreamMessage {
+  const GuestFlowRecommendationPublishedMessage(this.guidance);
+
+  final GuestGuidance guidance;
+
+  @override
+  List<Object?> get props => [guidance];
+}
+
+final class GuestFlowRecommendationWithdrawnMessage extends VenueStreamMessage {
+  const GuestFlowRecommendationWithdrawnMessage(this.recommendationId);
+
+  final String recommendationId;
+
+  @override
+  List<Object?> get props => [recommendationId];
 }
 
 /// Ignored events (heartbeats, unknown names) are dropped by the codec.

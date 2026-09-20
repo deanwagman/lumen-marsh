@@ -11,6 +11,8 @@ import 'features/attractions/data/attraction_api_client.dart';
 import 'features/attractions/data/attraction_repository.dart';
 import 'features/favorites/data/shared_preferences_favorites_repository.dart';
 import 'features/field_guide/data/asset_field_guide_repository.dart';
+import 'features/flow/data/flow_api_client.dart';
+import 'features/flow/data/flow_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +29,10 @@ Future<void> main() async {
     AdvisoryApiClient(client: http.Client(), baseUrl: config.apiBaseUrl),
     eventHub,
   );
+  final flowRepository = HttpFlowRepository(
+    FlowApiClient(client: http.Client(), baseUrl: config.apiBaseUrl),
+    eventHub,
+  );
   final favoritesRepository = SharedPreferencesFavoritesRepository(
     preferences: preferences,
   );
@@ -40,6 +46,7 @@ Future<void> main() async {
       advisoryRepository: advisoryRepository,
       favoritesRepository: favoritesRepository,
       fieldGuideRepository: fieldGuideRepository,
+      flowRepository: flowRepository,
     ),
   );
 }

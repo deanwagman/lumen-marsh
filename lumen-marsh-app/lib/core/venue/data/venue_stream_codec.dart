@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../features/advisories/domain/guest_advisory.dart';
 import '../../../features/attractions/domain/attraction_operational_update.dart';
 import '../../../features/attractions/domain/attraction_summary.dart';
+import '../../../features/flow/domain/guest_wait.dart';
 import '../domain/venue_stream_message.dart';
 
 class VenueStreamCodec {
@@ -41,6 +42,13 @@ class VenueStreamCodec {
         ),
       ),
       'advisory.withdrawn' => _parseWithdrawn(decoded),
+      'guest.flow.updated' => _parseGuestFlowUpdated(decoded),
+      'guest.flow.recommendation.published' =>
+        GuestFlowRecommendationPublishedMessage(_parseGuidance(decoded)),
+      'guest.flow.recommendation.withdrawn' =>
+        GuestFlowRecommendationWithdrawnMessage(
+          _parseGuidance(decoded).recommendationId,
+        ),
       _ => VenueStreamUnknownMessage(trimmedEvent),
     };
   }
@@ -77,5 +85,33 @@ class VenueStreamCodec {
       advisory['id'] as String,
       (advisory['version'] as num).toInt(),
     );
+  }
+
+  VenueStreamMessage _parseGuestFlowUpdated(Object? decoded) {
+    final map = _asObject(decoded);
+    if (map['attractions'] is List) {
+      return GuestFlowOverviewMessage(GuestFlowOverview.fromJson(map));
+    }
+    final wait = GuestWait.fromJson(_unwrapPayload(map));
+    return GuestFlowWaitUpdatedMessage(wait);
+  }
+
+  GuestGuidance _parseGuidance(Object? decoded) {
+    return GuestGuidance.fromJson(_unwrapPayload(_asObject(decoded)));
+  }
+
+  Map<String, dynamic> _asObject(Object? decoded) {
+    if (decoded is! Map) {
+      throw const FormatException('Payload must be a JSON object');
+    }
+    return Map<String, dynamic>.from(decoded);
+  }
+
+  Map<String, dynamic> _unwrapPayload(Map<String, dynamic> map) {
+    final payload = map['payload'];
+    if (payload is Map) {
+      return Map<String, dynamic>.from(payload);
+    }
+    return map;
   }
 }

@@ -34,7 +34,9 @@ public final class TestAuth {
                 VenueOpsScopes.INCIDENTS_COMMAND,
                 VenueOpsScopes.WEATHER_REVIEW,
                 VenueOpsScopes.MAINTENANCE_READ,
-                VenueOpsScopes.MAINTENANCE_COMMAND
+                VenueOpsScopes.MAINTENANCE_COMMAND,
+                VenueOpsScopes.FLOW_READ,
+                VenueOpsScopes.FLOW_COMMAND
         );
     }
 
@@ -62,7 +64,10 @@ public final class TestAuth {
                 VenueOpsScopes.WEATHER_REVIEW,
                 VenueOpsScopes.MAINTENANCE_READ,
                 VenueOpsScopes.MAINTENANCE_COMMAND,
-                VenueOpsScopes.MAINTENANCE_INSPECT
+                VenueOpsScopes.MAINTENANCE_INSPECT,
+                VenueOpsScopes.FLOW_READ,
+                VenueOpsScopes.FLOW_COMMAND,
+                VenueOpsScopes.FLOW_PUBLISH
         );
     }
 
@@ -81,6 +86,29 @@ public final class TestAuth {
                 ActorIdentity.RELIABILITY_SERVICE_DISPLAY,
                 List.of(),
                 VenueOpsScopes.RELIABILITY_WRITE
+        );
+    }
+
+    public static RequestPostProcessor flowService() {
+        return jwt(
+                "park-flow-intelligence-client",
+                ActorIdentity.FLOW_SERVICE_DISPLAY,
+                List.of(),
+                VenueOpsScopes.FLOW_INGEST_WRITE
+        );
+    }
+
+    public static RequestPostProcessor operatorWithoutFlow() {
+        return jwt(
+                "operator-sub-no-flow",
+                "Operator Without Flow",
+                List.of("operators"),
+                VenueOpsScopes.OPERATOR_READ,
+                VenueOpsScopes.ATTRACTIONS_COMMAND,
+                VenueOpsScopes.INCIDENTS_COMMAND,
+                VenueOpsScopes.WEATHER_REVIEW,
+                VenueOpsScopes.MAINTENANCE_READ,
+                VenueOpsScopes.MAINTENANCE_COMMAND
         );
     }
 
@@ -122,8 +150,12 @@ public final class TestAuth {
 
     private static String clientIdFor(List<String> groups, String... scopes) {
         boolean machineOnly = Arrays.asList(scopes).contains(VenueOpsScopes.WEATHER_WRITE)
-                || Arrays.asList(scopes).contains(VenueOpsScopes.RELIABILITY_WRITE);
+                || Arrays.asList(scopes).contains(VenueOpsScopes.RELIABILITY_WRITE)
+                || Arrays.asList(scopes).contains(VenueOpsScopes.FLOW_INGEST_WRITE);
         if (machineOnly && groups.isEmpty()) {
+            if (Arrays.asList(scopes).contains(VenueOpsScopes.FLOW_INGEST_WRITE)) {
+                return VenueOpsSecurityProperties.LOCAL_FLOW_CLIENT_ID;
+            }
             return Arrays.asList(scopes).contains(VenueOpsScopes.RELIABILITY_WRITE)
                     ? VenueOpsSecurityProperties.LOCAL_RELIABILITY_CLIENT_ID
                     : MONITOR_CLIENT_ID;

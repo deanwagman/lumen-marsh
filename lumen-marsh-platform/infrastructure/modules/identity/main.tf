@@ -71,10 +71,14 @@ locals {
       { name = "maintenance.read", description = "Operator maintenance reads" },
       { name = "maintenance.command", description = "Operator maintenance commands" },
       { name = "maintenance.inspect", description = "Supervisor maintenance inspection" },
+      { name = "flow.read", description = "Operator park flow reads" },
+      { name = "flow.command", description = "Operator flow recommendation review" },
+      { name = "flow.publish", description = "Supervisor guest flow publication" },
     ],
     var.enable_machine_client ? [
       { name = "weather-recommendations.write", description = "Environmental Monitor ingest" },
       { name = "reliability.write", description = "Reliability recommendation ingest" },
+      { name = "flow-ingest.write", description = "Park Flow Intelligence ingest" },
     ] : [],
   )
   console_scopes = [
@@ -86,12 +90,18 @@ locals {
     "${local.resource_server_identifier}/maintenance.read",
     "${local.resource_server_identifier}/maintenance.command",
     "${local.resource_server_identifier}/maintenance.inspect",
+    "${local.resource_server_identifier}/flow.read",
+    "${local.resource_server_identifier}/flow.command",
+    "${local.resource_server_identifier}/flow.publish",
   ]
   monitor_scopes = [
     "${local.resource_server_identifier}/weather-recommendations.write",
   ]
   reliability_scopes = [
     "${local.resource_server_identifier}/reliability.write",
+  ]
+  flow_scopes = [
+    "${local.resource_server_identifier}/flow-ingest.write",
   ]
   callback_urls = concat(var.console_callback_urls, var.additional_console_callback_urls)
   logout_urls   = concat(var.console_logout_urls, var.additional_console_logout_urls)
@@ -312,6 +322,57 @@ output "monitor_secret_arn" {
 output "reliability_secret_arn" {
   description = "Secrets Manager ARN for the reliability machine client, if enabled."
   value       = try(aws_secretsmanager_secret.reliability_client[0].arn, null)
+}
+
+resource "aws_cognito_user_pool_client" "park_flow" {
+  count = var.enable_machine_client ? 1 : 0
+
+  name         = "park-flow-intelligence"
+  user_pool_id = aws_cognito_user_pool.venueops.id
+
+  generate_secret                      = true
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_flows                  = ["client_credentials"]
+  allowed_oauth_scopes                 = local.flow_scopes
+  supported_identity_providers         = ["COGNITO"]
+  explicit_auth_flows                  = []
+
+  prevent_user_existence_errors = "ENABLED"
+  enable_token_revocation       = true
+  access_token_validity         = 60
+
+  token_validity_units {
+    access_token = "minutes"
+  }
+
+  depends_on = [aws_cognito_resource_server.venueops]
+}
+
+resource "aws_secretsmanager_secret" "flow_client" {
+  count = var.enable_machine_client ? 1 : 0
+  name  = "${local.name_prefix}/park-flow-intelligence/oidc"
+
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    Component   = "identity"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "flow_client" {
+  count     = var.enable_machine_client ? 1 : 0
+  secret_id = aws_secretsmanager_secret.flow_client[0].id
+  secret_string = jsonencode({
+    client_id     = aws_cognito_user_pool_client.park_flow[0].id
+    client_secret = aws_cognito_user_pool_client.park_flow[0].client_secret
+    token_url     = "https://${aws_cognito_user_pool_domain.venueops.domain}.auth.${var.aws_region}.amazoncognito.com/oauth2/token"
+    scope         = join(" ", local.flow_scopes)
+  })
+}
+
+output "flow_secret_arn" {
+  description = "Secrets Manager ARN for the Park Flow Intelligence machine client, if enabled."
+  value       = try(aws_secretsmanager_secret.flow_client[0].arn, null)
 }
 
 output "token_url" {

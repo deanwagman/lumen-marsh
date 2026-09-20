@@ -1,6 +1,7 @@
 import type { OperatorRole } from '@/auth/session';
 import { attractionsArticle } from '@/features/docs/content/attractions';
 import { dashboardArticle } from '@/features/docs/content/dashboard';
+import { parkFlowArticle } from '@/features/docs/content/flow';
 import { gettingStartedArticle } from '@/features/docs/content/getting-started';
 import { incidentsArticle } from '@/features/docs/content/incidents';
 import { maintenanceArticle } from '@/features/docs/content/maintenance';
@@ -14,6 +15,7 @@ const articles: DocArticle[] = [
   incidentsArticle,
   weatherArticle,
   maintenanceArticle,
+  parkFlowArticle,
 ];
 
 function isVisibleToRole(

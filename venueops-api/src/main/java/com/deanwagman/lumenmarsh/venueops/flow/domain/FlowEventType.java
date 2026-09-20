@@ -1,0 +1,10 @@
+package com.deanwagman.lumenmarsh.venueops.flow.domain;
+
+public enum FlowEventType {
+    RECOMMENDATION_CREATED,
+    RECOMMENDATION_APPROVED,
+    RECOMMENDATION_DISMISSED,
+    RECOMMENDATION_PUBLISHED,
+    RECOMMENDATION_WITHDRAWN,
+    RECOMMENDATION_EXPIRED
+}

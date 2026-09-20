@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { CommandReceiptBanner } from '@/features/attractions/components/CommandReceiptBanner';
 import { useIncidents } from '@/features/incidents/hooks/useIncidents';
 import { isOpenIncident } from '@/features/incidents/domain/incident';
+import { useFlowNavBadge } from '@/features/flow/hooks/useFlowNavBadge';
 import { useMaintenanceNavBadge } from '@/features/maintenance/hooks/useMaintenanceNavBadge';
 import { Button } from '@/shared/ui/Button';
 
@@ -15,6 +16,7 @@ export function AppShell() {
   const operator = auth.session!;
   const incidents = useIncidents();
   const maintenance = useMaintenanceNavBadge();
+  const flow = useFlowNavBadge();
   const openCount = (incidents.data ?? []).filter(isOpenIncident).length;
   const initials = operator.displayName
     .split(/\s+/)
@@ -92,6 +94,21 @@ export function AppShell() {
                   aria-label={`${maintenance.count} pending maintenance items`}
                 >
                   {maintenance.count}
+                </span>
+              ) : null}
+            </NavLink>
+          ) : null}
+          {flow.visible ? (
+            <NavLink
+              className={({ isActive }) =>
+                isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+              }
+              to="/park-flow"
+            >
+              Park Flow
+              {flow.count > 0 ? (
+                <span className={styles.badge} aria-label={`${flow.count} pending flow recommendations`}>
+                  {flow.count}
                 </span>
               ) : null}
             </NavLink>

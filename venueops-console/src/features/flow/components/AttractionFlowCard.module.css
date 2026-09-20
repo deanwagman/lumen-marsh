@@ -1,0 +1,60 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.header h3,
+.header p {
+  margin: 0;
+}
+
+.header a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.header a:hover,
+.header a:focus-visible {
+  text-decoration: underline;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.facts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+}
+
+.badge {
+  margin-left: var(--space-sm);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

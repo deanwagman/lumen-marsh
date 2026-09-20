@@ -18,3 +18,7 @@ services:
   environmental-monitor:
     environment:
       LOG_LEVEL: DEBUG
+
+  park-flow-intelligence:
+    environment:
+      LOG_LEVEL: DEBUG

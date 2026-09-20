@@ -49,6 +49,16 @@ class VenueEventHub {
     );
   }
 
+  Stream<VenueStreamMessage> watchFlow() {
+    return watchAll().where(
+      (message) =>
+          message is GuestFlowOverviewMessage ||
+          message is GuestFlowWaitUpdatedMessage ||
+          message is GuestFlowRecommendationPublishedMessage ||
+          message is GuestFlowRecommendationWithdrawnMessage,
+    );
+  }
+
   Stream<LiveConnectionStatus> watchConnectionStatus() =>
       _connectionController.stream;
 

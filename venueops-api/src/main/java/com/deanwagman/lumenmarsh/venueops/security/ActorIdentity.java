@@ -15,6 +15,7 @@ public record ActorIdentity(
     public static final String SYSTEM_ISSUER = "venueops";
     public static final String WEATHER_SERVICE_DISPLAY = "environmental-monitor";
     public static final String RELIABILITY_SERVICE_DISPLAY = "reliability-integration";
+    public static final String FLOW_SERVICE_DISPLAY = "park-flow-intelligence";
 
     public ActorIdentity {
         Objects.requireNonNull(subject, "subject is required");

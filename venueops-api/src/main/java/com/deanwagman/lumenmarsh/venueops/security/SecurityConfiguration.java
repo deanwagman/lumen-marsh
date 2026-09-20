@@ -65,10 +65,13 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/v1/attractions", "/api/v1/attractions/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/advisories", "/api/v1/advisories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/events").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/flow", "/api/v1/flow/**").permitAll()
                         .requestMatchers("/api/v1/integrations/weather/**")
                         .hasAuthority(VenueOpsScopes.SCOPE_WEATHER_WRITE)
                         .requestMatchers("/api/v1/integrations/reliability/**")
                         .hasAuthority(VenueOpsScopes.SCOPE_RELIABILITY_WRITE)
+                        .requestMatchers("/api/v1/integrations/flow/**")
+                        .hasAuthority(VenueOpsScopes.SCOPE_FLOW_INGEST_WRITE)
                         .requestMatchers("/api/v1/operator/**")
                         .hasAuthority(VenueOpsScopes.ROLE_OPERATOR)
                         .anyRequest().denyAll();

@@ -1,0 +1,119 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.header,
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.kicker {
+  margin: 0 0 var(--space-xxs);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lede,
+.muted {
+  margin: var(--space-xs) 0 0;
+  color: var(--color-text-muted);
+  max-width: 46rem;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.metrics li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  padding: var(--space-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.metrics span {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.metrics strong {
+  font-family: var(--font-mono);
+  font-size: 1.45rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-md);
+}
+
+.inbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inbox article {
+  padding: var(--space-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.inbox h3,
+.inbox p {
+  margin: 0 0 var(--space-xs);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.badge {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid rgba(224, 138, 118, 0.4);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-soft);
+}
+
+.inbox textarea,
+.inbox label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  width: 100%;
+}

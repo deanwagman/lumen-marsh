@@ -6,6 +6,8 @@ import 'package:lumen_marsh_app/core/venue/domain/venue_stream_message.dart';
 import 'package:lumen_marsh_app/features/advisories/domain/advisory_severity.dart';
 import 'package:lumen_marsh_app/features/advisories/domain/guest_advisory.dart';
 
+import '../../../helpers/seeded_flow.dart';
+
 const _advisoryRestPayload = '''
 {
   "id": "weather-1",
@@ -123,6 +125,76 @@ void main() {
       expect(
         () => GuestAdvisory.fromJson(json),
         throwsA(isA<FormatException>()),
+      );
+    });
+  });
+
+  group('VenueStreamCodec guest flow', () {
+    test('parses a guest flow overview snapshot', () {
+      final message = codec.decodeEvent(
+        event: 'guest.flow.updated',
+        data: guestFlowOverviewJson,
+      );
+
+      expect(message, isA<GuestFlowOverviewMessage>());
+      final snapshot = message as GuestFlowOverviewMessage;
+      expect(snapshot.overview.attractions, hasLength(2));
+      expect(snapshot.overview.simulated, isTrue);
+    });
+
+    test('parses wrapped live wait updates', () {
+      final message = codec.decodeEvent(
+        event: 'guest.flow.updated',
+        data:
+            '''
+{
+  "eventId": "obs-1",
+  "eventType": "UPDATED",
+  "occurredAt": "2026-09-15T18:32:00Z",
+  "payload": $guestWaitJson
+}
+''',
+      );
+
+      expect(message, isA<GuestFlowWaitUpdatedMessage>());
+      expect(
+        (message as GuestFlowWaitUpdatedMessage).wait.attractionId,
+        'mangrove-run',
+      );
+    });
+
+    test('parses published and withdrawn guest guidance', () {
+      final published = codec.decodeEvent(
+        event: 'guest.flow.recommendation.published',
+        data:
+            '''
+{
+  "eventId": "act-1",
+  "eventType": "RECOMMENDATION_PUBLISHED",
+  "payload": $guestGuidanceJson
+}
+''',
+      );
+      final withdrawn = codec.decodeEvent(
+        event: 'guest.flow.recommendation.withdrawn',
+        data:
+            '''
+{
+  "payload": $guestGuidanceJson
+}
+''',
+      );
+
+      expect(published, isA<GuestFlowRecommendationPublishedMessage>());
+      expect(
+        (published as GuestFlowRecommendationPublishedMessage)
+            .guidance
+            .recommendationId,
+        'rec-1',
+      );
+      expect(
+        (withdrawn as GuestFlowRecommendationWithdrawnMessage).recommendationId,
+        'rec-1',
       );
     });
   });

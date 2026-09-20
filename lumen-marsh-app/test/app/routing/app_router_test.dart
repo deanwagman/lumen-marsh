@@ -7,6 +7,7 @@ import 'package:lumen_marsh_app/app/routing/app_router.dart';
 import 'package:lumen_marsh_app/core/venue/data/venue_event_hub.dart';
 import 'package:lumen_marsh_app/features/advisories/data/advisory_repository.dart';
 import 'package:lumen_marsh_app/features/attractions/data/attraction_repository.dart';
+import 'package:lumen_marsh_app/features/flow/data/flow_repository.dart';
 
 import '../../helpers/seeded_attractions.dart';
 import '../../helpers/mock_favorites_repository.dart';
@@ -17,11 +18,14 @@ class _MockAttractionRepository extends Mock implements AttractionRepository {}
 
 class _MockAdvisoryRepository extends Mock implements AdvisoryRepository {}
 
+class _MockFlowRepository extends Mock implements FlowRepository {}
+
 class _FakeVenueHub extends Mock implements VenueEventHub {}
 
 void main() {
   late _MockAttractionRepository repository;
   late _MockAdvisoryRepository advisoryRepository;
+  late _MockFlowRepository flowRepository;
   late _FakeVenueHub eventHub;
   late MockFavoritesRepository favoritesRepository;
   late MockFieldGuideRepository fieldGuideRepository;
@@ -29,6 +33,7 @@ void main() {
   setUp(() {
     repository = _MockAttractionRepository();
     advisoryRepository = _MockAdvisoryRepository();
+    flowRepository = _MockFlowRepository();
     eventHub = _FakeVenueHub();
     favoritesRepository = MockFavoritesRepository();
     fieldGuideRepository = MockFieldGuideRepository();
@@ -38,6 +43,7 @@ void main() {
     when(() => advisoryRepository.listActive()).thenAnswer((_) async => []);
     stubIdleAttractionLiveStream(repository);
     stubIdleAdvisoryLiveStream(advisoryRepository);
+    stubEmptyFlow(flowRepository);
     stubIdleVenueLiveStream(eventHub);
     stubEmptyFavorites(favoritesRepository);
     stubFieldGuideCatalog(fieldGuideRepository);
@@ -59,6 +65,7 @@ void main() {
         advisoryRepository: advisoryRepository,
         favoritesRepository: favoritesRepository,
         fieldGuideRepository: fieldGuideRepository,
+        flowRepository: flowRepository,
       ),
     );
     await tester.pumpAndSettle();
@@ -98,6 +105,7 @@ void main() {
         advisoryRepository: advisoryRepository,
         favoritesRepository: favoritesRepository,
         fieldGuideRepository: fieldGuideRepository,
+        flowRepository: flowRepository,
         router: router,
       ),
     );

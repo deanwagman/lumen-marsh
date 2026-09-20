@@ -30,6 +30,7 @@ public class LocalDevBearerAuthenticationFilter extends OncePerRequestFilter {
     public static final String OPERATOR_LIMITED_TOKEN = "local-operator-token";
     public static final String WEATHER_TOKEN = "local-weather-token";
     public static final String RELIABILITY_TOKEN = "local-reliability-token";
+    public static final String FLOW_TOKEN = "local-flow-token";
 
     private final VenueOpsSecurityProperties properties;
 
@@ -85,7 +86,9 @@ public class LocalDevBearerAuthenticationFilter extends OncePerRequestFilter {
                     VenueOpsScopes.OPERATOR_READ + " " + VenueOpsScopes.ATTRACTIONS_COMMAND + " "
                             + VenueOpsScopes.INCIDENTS_COMMAND + " " + VenueOpsScopes.ADVISORIES_PUBLISH + " "
                             + VenueOpsScopes.WEATHER_REVIEW + " " + VenueOpsScopes.MAINTENANCE_READ + " "
-                            + VenueOpsScopes.MAINTENANCE_COMMAND + " " + VenueOpsScopes.MAINTENANCE_INSPECT,
+                            + VenueOpsScopes.MAINTENANCE_COMMAND + " " + VenueOpsScopes.MAINTENANCE_INSPECT + " "
+                            + VenueOpsScopes.FLOW_READ + " " + VenueOpsScopes.FLOW_COMMAND + " "
+                            + VenueOpsScopes.FLOW_PUBLISH,
                     VenueOpsSecurityProperties.LOCAL_CONSOLE_CLIENT_ID
             );
             return new JwtAuthenticationToken(jwt, List.of(
@@ -97,6 +100,9 @@ public class LocalDevBearerAuthenticationFilter extends OncePerRequestFilter {
                     new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_MAINTENANCE_READ),
                     new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_MAINTENANCE_COMMAND),
                     new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_MAINTENANCE_INSPECT),
+                    new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_FLOW_READ),
+                    new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_FLOW_COMMAND),
+                    new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_FLOW_PUBLISH),
                     new SimpleGrantedAuthority(VenueOpsScopes.ROLE_OPERATOR),
                     new SimpleGrantedAuthority(VenueOpsScopes.ROLE_SUPERVISOR)
             ), jwt.getSubject());
@@ -108,7 +114,8 @@ public class LocalDevBearerAuthenticationFilter extends OncePerRequestFilter {
                     List.of("operators"),
                     VenueOpsScopes.OPERATOR_READ + " " + VenueOpsScopes.ATTRACTIONS_COMMAND + " "
                             + VenueOpsScopes.INCIDENTS_COMMAND + " " + VenueOpsScopes.WEATHER_REVIEW + " "
-                            + VenueOpsScopes.MAINTENANCE_READ + " " + VenueOpsScopes.MAINTENANCE_COMMAND,
+                            + VenueOpsScopes.MAINTENANCE_READ + " " + VenueOpsScopes.MAINTENANCE_COMMAND + " "
+                            + VenueOpsScopes.FLOW_READ + " " + VenueOpsScopes.FLOW_COMMAND,
                     VenueOpsSecurityProperties.LOCAL_CONSOLE_CLIENT_ID
             );
             return new JwtAuthenticationToken(jwt, List.of(
@@ -118,6 +125,8 @@ public class LocalDevBearerAuthenticationFilter extends OncePerRequestFilter {
                     new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_WEATHER_REVIEW),
                     new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_MAINTENANCE_READ),
                     new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_MAINTENANCE_COMMAND),
+                    new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_FLOW_READ),
+                    new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_FLOW_COMMAND),
                     new SimpleGrantedAuthority(VenueOpsScopes.ROLE_OPERATOR)
             ), jwt.getSubject());
         }
@@ -143,6 +152,18 @@ public class LocalDevBearerAuthenticationFilter extends OncePerRequestFilter {
             );
             return new JwtAuthenticationToken(jwt, List.of(
                     new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_RELIABILITY_WRITE)
+            ), jwt.getSubject());
+        }
+        if (FLOW_TOKEN.equals(token)) {
+            Jwt jwt = baseJwt(
+                    "park-flow-intelligence-local",
+                    ActorIdentity.FLOW_SERVICE_DISPLAY,
+                    List.of(),
+                    VenueOpsScopes.FLOW_INGEST_WRITE,
+                    VenueOpsSecurityProperties.LOCAL_FLOW_CLIENT_ID
+            );
+            return new JwtAuthenticationToken(jwt, List.of(
+                    new SimpleGrantedAuthority(VenueOpsScopes.SCOPE_FLOW_INGEST_WRITE)
             ), jwt.getSubject());
         }
         return null;

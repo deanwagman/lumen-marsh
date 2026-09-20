@@ -109,14 +109,16 @@ print_urls() {
 
 Lumen Marsh is up (Cognito OIDC):
 
-  Guest app              ${GUEST_APP_ORIGIN:-http://localhost:3000}
-  Operator console       ${OPERATOR_CONSOLE_ORIGIN:-http://127.0.0.1:5173}
-  VenueOps API           ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}
-  Environmental Monitor  ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}
+  Guest app               ${GUEST_APP_ORIGIN:-http://localhost:3000}
+  Operator console        ${OPERATOR_CONSOLE_ORIGIN:-http://127.0.0.1:5173}
+  VenueOps API            ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}
+  Environmental Monitor   ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}
+  Park Flow Intelligence  ${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}
 
   Health:
     curl ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}/actuator/health
     curl ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}/health/ready
+    curl ${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}/health/ready
     curl ${OPERATOR_CONSOLE_ORIGIN:-http://127.0.0.1:5173}/health
 
 EOF
@@ -127,14 +129,16 @@ EOF
 
 Lumen Marsh is up:
 
-  Guest app              ${GUEST_APP_ORIGIN:-http://localhost:3000}
-  Operator console       ${OPERATOR_CONSOLE_ORIGIN:-http://localhost:3001}
-  VenueOps API           ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}
-  Environmental Monitor  ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}
+  Guest app               ${GUEST_APP_ORIGIN:-http://localhost:3000}
+  Operator console        ${OPERATOR_CONSOLE_ORIGIN:-http://localhost:3001}
+  VenueOps API            ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}
+  Environmental Monitor   ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}
+  Park Flow Intelligence  ${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}
 
   Health:
     curl ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}/actuator/health
     curl ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}/health/ready
+    curl ${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}/health/ready
 
 EOF
 }

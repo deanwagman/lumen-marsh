@@ -131,6 +131,41 @@ class SecurityAuthorizationMatrixTest {
     }
 
     @Test
+    void flowServiceCannotCallOperatorEndpoints() throws Exception {
+        mockMvc.perform(get("/api/v1/operator/flow/overview").with(TestAuth.flowService()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void operatorCannotCallFlowIngest() throws Exception {
+        mockMvc.perform(post("/api/v1/integrations/flow/observations")
+                        .with(TestAuth.operator())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "observationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                                  "attractionId": "mangrove-run",
+                                  "observedAt": "2026-09-15T18:00:00Z",
+                                  "windowSeconds": 60,
+                                  "queueLength": 10,
+                                  "arrivals": 1,
+                                  "boarded": 1,
+                                  "operatingUnits": 1,
+                                  "configuredUnits": 8,
+                                  "sourceType": "SIMULATOR",
+                                  "simulated": true
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void guestCanReadFlowWithoutToken() throws Exception {
+        mockMvc.perform(get("/api/v1/flow/overview")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/attractions/mangrove-run/wait-forecast")).andExpect(status().isOk());
+    }
+
+    @Test
     void helloIsDenied() throws Exception {
         mockMvc.perform(get("/api/hello")).andExpect(status().isUnauthorized());
     }

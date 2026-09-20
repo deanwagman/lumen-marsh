@@ -9,6 +9,9 @@ export const venueOpsScopes = {
   maintenanceRead: 'venueops/maintenance.read',
   maintenanceCommand: 'venueops/maintenance.command',
   maintenanceInspect: 'venueops/maintenance.inspect',
+  flowRead: 'venueops/flow.read',
+  flowCommand: 'venueops/flow.command',
+  flowPublish: 'venueops/flow.publish',
 } as const;
 
 export type VenueOpsScope =

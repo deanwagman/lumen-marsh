@@ -1,0 +1,56 @@
+[project]
+name = "park-flow-intelligence"
+version = "0.1.0"
+description = "Simulates Lumen Marsh queue telemetry, generates explainable wait forecasts, and proposes flow recommendations to VenueOps. It never changes attraction state."
+readme = "README.md"
+authors = [
+    { name = "Dean Wagman", email = "deanwagman@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.128.8",
+    "httpx>=0.28.1",
+    "prometheus-client>=0.23.1",
+    "pydantic-settings>=2.11.0",
+]
+
+[project.scripts]
+park-flow-intelligence = "park_flow_intelligence.main:run"
+
+[build-system]
+requires = ["uv_build>=0.12.8,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "respx>=0.23.1",
+    "ruff>=0.16.5",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+mypy_path = "src"
+packages = ["park_flow_intelligence"]
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true

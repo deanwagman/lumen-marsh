@@ -3,9 +3,9 @@ package com.deanwagman.lumenmarsh.venueops.incident.api;
 import com.deanwagman.lumenmarsh.venueops.attraction.api.AttractionResponse;
 import com.deanwagman.lumenmarsh.venueops.attraction.application.GuestAttractionReadService;
 import com.deanwagman.lumenmarsh.venueops.attraction.infrastructure.streaming.SseAttractionUpdateBroadcaster;
+import com.deanwagman.lumenmarsh.venueops.flow.application.FlowQueryService;
+import com.deanwagman.lumenmarsh.venueops.flow.application.GuestFlowOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.incident.application.GuestAdvisoryOperationalSnapshot;
-import com.deanwagman.lumenmarsh.venueops.incident.application.GuestAdvisoryOperationalUpdate;
-import com.deanwagman.lumenmarsh.venueops.incident.application.GuestAdvisoryUpdatePublisher;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,21 +27,24 @@ public class ParkEventController {
     private final SseAttractionUpdateBroadcaster broadcaster;
     private final GuestAttractionReadService guestAttractionReadService;
     private final IncidentService incidentService;
+    private final FlowQueryService flowQueries;
 
     public ParkEventController(
             SseAttractionUpdateBroadcaster broadcaster,
             GuestAttractionReadService guestAttractionReadService,
-            IncidentService incidentService
+            IncidentService incidentService,
+            FlowQueryService flowQueries
     ) {
         this.broadcaster = broadcaster;
         this.guestAttractionReadService = guestAttractionReadService;
         this.incidentService = incidentService;
+        this.flowQueries = flowQueries;
     }
 
     @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(
             summary = "Stream park-wide operational updates",
-            description = "Server-sent events for attractions and guest advisories. The first events are attractions.snapshot and advisories.snapshot. Later events are attraction.updated, advisory.published, advisory.updated, and advisory.withdrawn. GET /api/v1/attractions/events remains available for attraction-only clients. Reconnection receives fresh snapshots rather than replayed history."
+            description = "Server-sent events for attractions, guest advisories, and guest-safe flow updates. The first events are attractions.snapshot, advisories.snapshot, and guest.flow.updated. Reconnection receives fresh snapshots rather than replayed history."
     )
     public SseEmitter events(HttpServletResponse response) {
         response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-store");
@@ -56,6 +59,7 @@ public class ParkEventController {
                     .map(GuestAdvisoryOperationalSnapshot::from)
                     .toList();
             broadcaster.sendAdvisoriesSnapshot(emitter, advisories);
+            broadcaster.sendNamed(emitter, GuestFlowOperationalUpdate.UPDATED_EVENT, null, flowQueries.guestOverview());
         } catch (RuntimeException ex) {
             broadcaster.unsubscribe(emitter);
             throw ex;

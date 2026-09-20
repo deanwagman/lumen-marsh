@@ -50,8 +50,12 @@ Client-supplied `X-Actor` is not identity. Protected commands must ignore or rej
 | `venueops/maintenance.read` | Operators, supervisors | Maintenance asset and work-order reads |
 | `venueops/maintenance.command` | Operators, supervisors | Create, assign, and update work orders |
 | `venueops/maintenance.inspect` | Supervisors | Inspection approval and work-order completion |
+| `venueops/flow.read` | Operators, supervisors | Internal park-flow reads and operator flow SSE events |
+| `venueops/flow.command` | Operators, supervisors | Approve or dismiss flow recommendations |
+| `venueops/flow.publish` | Supervisors | Publish or withdraw guest flow guidance |
 | `venueops/weather-recommendations.write` | Weather service only | Recommendation ingest |
 | `venueops/reliability.write` | Reliability service only | Reliability recommendation ingest |
+| `venueops/flow-ingest.write` | Park Flow Intelligence only | Observation and forecast ingest |
 
 ### Claims VenueOps will require on access tokens
 

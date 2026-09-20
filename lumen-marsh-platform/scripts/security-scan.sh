@@ -15,6 +15,7 @@ images=(
   "${VENUEOPS_IMAGE:-venueops-api:local}"
   "${OPERATOR_CONSOLE_IMAGE:-venueops-console:local}"
   "${ENVIRONMENTAL_MONITOR_IMAGE:-environmental-monitor:local}"
+  "${PARK_FLOW_INTELLIGENCE_IMAGE:-park-flow-intelligence:local}"
   "${GUEST_APP_IMAGE:-lumen-marsh-app:local}"
 )
 

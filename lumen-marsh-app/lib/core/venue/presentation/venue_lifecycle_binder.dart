@@ -5,6 +5,8 @@ import '../../../features/attractions/presentation/bloc/attractions_bloc.dart';
 import '../../../features/attractions/presentation/bloc/attractions_event.dart';
 import '../../../features/advisories/presentation/bloc/advisories_bloc.dart';
 import '../../../features/advisories/presentation/bloc/advisories_event.dart';
+import '../../../features/flow/presentation/bloc/flow_bloc.dart';
+import '../../../features/flow/presentation/bloc/flow_event.dart';
 
 class VenueLifecycleBinder extends StatefulWidget {
   const VenueLifecycleBinder({super.key, required this.child});
@@ -38,6 +40,7 @@ class _VenueLifecycleBinderState extends State<VenueLifecycleBinder>
       context.read<AdvisoriesBloc>().add(
         const AdvisoriesLiveReconnectRequested(),
       );
+      context.read<FlowBloc>().add(const FlowLiveReconnectRequested());
     }
   }
 

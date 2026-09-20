@@ -18,6 +18,7 @@ import {
   weatherRecommendationListSchema,
   weatherRecommendationSseUpdateSchema,
 } from '@/features/weather/api/weatherRecommendationSchema';
+import { FlowQueries } from '@/features/flow/api/FlowQueries';
 import {
   applyWorkOrderSummaryUpdate,
   replaceWorkOrderSummaries,
@@ -45,12 +46,19 @@ export function handleAttractionStreamEvent(
   queryClient: QueryClient,
   eventName: string,
   data: string,
-  capabilities: { maintenanceRead?: boolean } = {},
+  capabilities: { maintenanceRead?: boolean; flowRead?: boolean } = {},
 ): void {
   const maintenanceRead = capabilities.maintenanceRead !== false;
+  const flowRead = capabilities.flowRead !== false;
   if (
     !maintenanceRead &&
     (eventName === 'maintenance.work-orders.snapshot' || eventName === 'maintenance.work-order.updated')
+  ) {
+    return;
+  }
+  if (
+    !flowRead &&
+    eventName.startsWith('flow.')
   ) {
     return;
   }
@@ -90,6 +98,8 @@ export function handleAttractionStreamEvent(
     applyWorkOrderSummaryUpdate(queryClient, update.workOrder, {
       incidentId: update.incidentId ?? null,
     });
+  } else if (eventName.startsWith('flow.')) {
+    void queryClient.invalidateQueries({ queryKey: FlowQueries.all });
   }
 
   if (dashboardStreamEvents.has(eventName)) {
@@ -115,6 +125,7 @@ export const AttractionEventSource = {
       onForbidden?: () => void;
       reconnectDelayMs?: number;
       includeMaintenanceEvents?: boolean;
+      includeFlowEvents?: boolean;
     },
   ): () => void {
     let staleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -155,6 +166,7 @@ export const AttractionEventSource = {
       try {
         handleAttractionStreamEvent(queryClient, eventName, data, {
           maintenanceRead: options.includeMaintenanceEvents !== false,
+          flowRead: options.includeFlowEvents !== false,
         });
         clearStaleTimer();
         setStreamHealth(queryClient, { type: 'message', at: Date.now() });

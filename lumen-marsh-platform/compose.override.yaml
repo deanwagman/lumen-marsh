@@ -7,7 +7,7 @@ services:
     environment:
       VENUEOPS_SECURITY_MODE: LOCAL_JWT
       VENUEOPS_ISSUER_URI: http://venueops.local/test
-      VENUEOPS_ALLOWED_CLIENT_IDS: venueops-console-local,environmental-monitor-local
+      VENUEOPS_ALLOWED_CLIENT_IDS: venueops-console-local,environmental-monitor-local,reliability-integration-local,park-flow-intelligence-local
       VENUEOPS_CORS_ORIGINS: http://localhost:*,http://127.0.0.1:*
 
   environmental-monitor:
@@ -17,6 +17,14 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       OIDC_DISABLED: "true"
       VENUEOPS_BEARER_TOKEN: local-weather-token
+
+  park-flow-intelligence:
+    environment:
+      APP_ENV: development
+      SIMULATION_ENABLED: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OIDC_DISABLED: "true"
+      VENUEOPS_BEARER_TOKEN: local-flow-token
 
   environmental-migrate:
     environment:

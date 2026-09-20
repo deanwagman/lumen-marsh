@@ -16,6 +16,11 @@ export const dashboardStreamEvents = new Set([
   'incident.resolved',
   'maintenance.work-orders.snapshot',
   'maintenance.work-order.updated',
+  'flow.snapshot',
+  'flow.queue.updated',
+  'flow.forecast.updated',
+  'flow.recommendation.created',
+  'flow.recommendation.updated',
 ]);
 
 let invalidateTimer: ReturnType<typeof setTimeout> | null = null;

@@ -16,6 +16,9 @@ import '../features/favorites/presentation/bloc/favorites_event.dart';
 import '../features/field_guide/domain/field_guide_repository.dart';
 import '../features/field_guide/presentation/bloc/field_guide_bloc.dart';
 import '../features/field_guide/presentation/bloc/field_guide_event.dart';
+import '../features/flow/data/flow_repository.dart';
+import '../features/flow/presentation/bloc/flow_bloc.dart';
+import '../features/flow/presentation/bloc/flow_event.dart';
 import 'config/app_config.dart';
 import 'routing/app_router.dart';
 import '../design_system/theme/lumen_theme.dart';
@@ -29,6 +32,7 @@ class LumenMarshApp extends StatelessWidget {
     required this.advisoryRepository,
     required this.favoritesRepository,
     required this.fieldGuideRepository,
+    required this.flowRepository,
     GoRouter? router,
   }) : router = router ?? createRouter();
 
@@ -38,6 +42,7 @@ class LumenMarshApp extends StatelessWidget {
   final AdvisoryRepository advisoryRepository;
   final FavoritesRepository favoritesRepository;
   final FieldGuideRepository fieldGuideRepository;
+  final FlowRepository flowRepository;
   final GoRouter router;
 
   @override
@@ -54,36 +59,44 @@ class LumenMarshApp extends StatelessWidget {
               value: favoritesRepository,
               child: RepositoryProvider<FieldGuideRepository>.value(
                 value: fieldGuideRepository,
-                child: MultiBlocProvider(
-                  providers: [
-                    BlocProvider(
-                      create: (context) => AttractionsBloc(
-                        repository: context.read<AttractionRepository>(),
-                      )..add(const AttractionsRequested()),
-                    ),
-                    BlocProvider(
-                      create: (context) => AdvisoriesBloc(
-                        repository: context.read<AdvisoryRepository>(),
-                      )..add(const AdvisoriesRequested()),
-                    ),
-                    BlocProvider(
-                      create: (context) => FavoritesBloc(
-                        repository: context.read<FavoritesRepository>(),
-                      )..add(const FavoritesHydrated()),
-                    ),
-                    BlocProvider(
-                      create: (context) => FieldGuideBloc(
-                        repository: context.read<FieldGuideRepository>(),
-                      )..add(const FieldGuideRequested()),
-                    ),
-                  ],
-                  child: VenueLifecycleBinder(
-                    child: MaterialApp.router(
-                      title: 'Lumen Marsh',
-                      debugShowCheckedModeBanner: false,
-                      theme: LumenTheme.light(),
-                      darkTheme: LumenTheme.dark(),
-                      routerConfig: router,
+                child: RepositoryProvider<FlowRepository>.value(
+                  value: flowRepository,
+                  child: MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (context) => AttractionsBloc(
+                          repository: context.read<AttractionRepository>(),
+                        )..add(const AttractionsRequested()),
+                      ),
+                      BlocProvider(
+                        create: (context) => AdvisoriesBloc(
+                          repository: context.read<AdvisoryRepository>(),
+                        )..add(const AdvisoriesRequested()),
+                      ),
+                      BlocProvider(
+                        create: (context) => FavoritesBloc(
+                          repository: context.read<FavoritesRepository>(),
+                        )..add(const FavoritesHydrated()),
+                      ),
+                      BlocProvider(
+                        create: (context) => FieldGuideBloc(
+                          repository: context.read<FieldGuideRepository>(),
+                        )..add(const FieldGuideRequested()),
+                      ),
+                      BlocProvider(
+                        create: (context) =>
+                            FlowBloc(repository: context.read<FlowRepository>())
+                              ..add(const FlowRequested()),
+                      ),
+                    ],
+                    child: VenueLifecycleBinder(
+                      child: MaterialApp.router(
+                        title: 'Lumen Marsh',
+                        debugShowCheckedModeBanner: false,
+                        theme: LumenTheme.light(),
+                        darkTheme: LumenTheme.dark(),
+                        routerConfig: router,
+                      ),
                     ),
                   ),
                 ),

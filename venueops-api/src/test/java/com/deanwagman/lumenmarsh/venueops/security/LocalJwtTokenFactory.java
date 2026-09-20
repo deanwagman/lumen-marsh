@@ -31,7 +31,8 @@ public class LocalJwtTokenFactory {
                 List.of("operators"),
                 VenueOpsScopes.OPERATOR_READ + " " + VenueOpsScopes.ATTRACTIONS_COMMAND + " "
                         + VenueOpsScopes.INCIDENTS_COMMAND + " " + VenueOpsScopes.WEATHER_REVIEW + " "
-                        + VenueOpsScopes.MAINTENANCE_READ + " " + VenueOpsScopes.MAINTENANCE_COMMAND
+                        + VenueOpsScopes.MAINTENANCE_READ + " " + VenueOpsScopes.MAINTENANCE_COMMAND + " "
+                        + VenueOpsScopes.FLOW_READ + " " + VenueOpsScopes.FLOW_COMMAND
         );
     }
 
@@ -53,7 +54,9 @@ public class LocalJwtTokenFactory {
                 VenueOpsScopes.OPERATOR_READ + " " + VenueOpsScopes.ATTRACTIONS_COMMAND + " "
                         + VenueOpsScopes.INCIDENTS_COMMAND + " " + VenueOpsScopes.ADVISORIES_PUBLISH + " "
                         + VenueOpsScopes.WEATHER_REVIEW + " " + VenueOpsScopes.MAINTENANCE_READ + " "
-                        + VenueOpsScopes.MAINTENANCE_COMMAND + " " + VenueOpsScopes.MAINTENANCE_INSPECT
+                        + VenueOpsScopes.MAINTENANCE_COMMAND + " " + VenueOpsScopes.MAINTENANCE_INSPECT + " "
+                        + VenueOpsScopes.FLOW_READ + " " + VenueOpsScopes.FLOW_COMMAND + " "
+                        + VenueOpsScopes.FLOW_PUBLISH
         );
     }
 
@@ -75,13 +78,25 @@ public class LocalJwtTokenFactory {
         );
     }
 
+    public String flowServiceToken() {
+        return token(
+                "park-flow-intelligence-client",
+                ActorIdentity.FLOW_SERVICE_DISPLAY,
+                List.of(),
+                VenueOpsScopes.FLOW_INGEST_WRITE
+        );
+    }
+
     public String token(String subject, String name, List<String> groups, String scope) {
         boolean weatherOnly = VenueOpsScopes.WEATHER_WRITE.equals(scope);
         boolean reliabilityOnly = VenueOpsScopes.RELIABILITY_WRITE.equals(scope);
+        boolean flowOnly = VenueOpsScopes.FLOW_INGEST_WRITE.equals(scope);
         String clientId = weatherOnly
                 ? TestAuth.MONITOR_CLIENT_ID
                 : reliabilityOnly
                 ? VenueOpsSecurityProperties.LOCAL_RELIABILITY_CLIENT_ID
+                : flowOnly
+                ? VenueOpsSecurityProperties.LOCAL_FLOW_CLIENT_ID
                 : TestAuth.CONSOLE_CLIENT_ID;
         return token(subject, name, groups, scope, clientId, "access");
     }

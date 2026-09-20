@@ -30,3 +30,12 @@ services:
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?OIDC_CLIENT_SECRET is required}
       OIDC_SCOPE: ${OIDC_SCOPE:-venueops/weather-recommendations.write}
       VENUEOPS_BEARER_TOKEN: ""
+
+  park-flow-intelligence:
+    environment:
+      OIDC_DISABLED: "false"
+      OIDC_TOKEN_URL: ${FLOW_OIDC_TOKEN_URL:?FLOW_OIDC_TOKEN_URL is required}
+      OIDC_CLIENT_ID: ${FLOW_OIDC_CLIENT_ID:?FLOW_OIDC_CLIENT_ID is required}
+      OIDC_CLIENT_SECRET: ${FLOW_OIDC_CLIENT_SECRET:?FLOW_OIDC_CLIENT_SECRET is required}
+      OIDC_SCOPE: ${FLOW_OIDC_SCOPE:-venueops/flow-ingest.write}
+      VENUEOPS_BEARER_TOKEN: ""

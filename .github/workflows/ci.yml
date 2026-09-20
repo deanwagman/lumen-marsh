@@ -51,6 +51,29 @@ jobs:
       - name: Test
         run: uv run pytest
 
+  park-flow-intelligence:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: park-flow-intelligence
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install Python
+        run: uv python install 3.13
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format
+        run: uv run ruff format --check .
+      - name: Type check
+        run: uv run mypy src
+      - name: Test
+        run: uv run pytest
+
   operator-console:
     runs-on: ubuntu-latest
     defaults:
@@ -106,6 +129,9 @@ jobs:
           OIDC_TOKEN_URL: https://example.invalid/oauth2/token
           OIDC_CLIENT_ID: validation-monitor
           OIDC_CLIENT_SECRET: validation-placeholder
+          FLOW_OIDC_TOKEN_URL: https://example.invalid/oauth2/token
+          FLOW_OIDC_CLIENT_ID: validation-flow
+          FLOW_OIDC_CLIENT_SECRET: validation-placeholder
         run: |
           docker compose -f compose.yaml config >/dev/null
           docker compose -f compose.yaml -f compose.override.yaml -f compose.oidc.yaml config >/dev/null

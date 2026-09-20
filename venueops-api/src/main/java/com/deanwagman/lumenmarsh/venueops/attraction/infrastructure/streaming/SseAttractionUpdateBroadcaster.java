@@ -2,6 +2,9 @@ package com.deanwagman.lumenmarsh.venueops.attraction.infrastructure.streaming;
 
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionUpdatePublisher;
+import com.deanwagman.lumenmarsh.venueops.flow.application.FlowOperationalUpdate;
+import com.deanwagman.lumenmarsh.venueops.flow.application.FlowUpdatePublisher;
+import com.deanwagman.lumenmarsh.venueops.flow.application.GuestFlowOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.incident.application.GuestAdvisoryOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.incident.application.GuestAdvisoryUpdatePublisher;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentOperationalUpdate;
@@ -25,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class SseAttractionUpdateBroadcaster
-        implements AttractionUpdatePublisher, GuestAdvisoryUpdatePublisher, WeatherRecommendationUpdatePublisher, IncidentUpdatePublisher, MaintenanceUpdatePublisher {
+        implements AttractionUpdatePublisher, GuestAdvisoryUpdatePublisher, WeatherRecommendationUpdatePublisher, IncidentUpdatePublisher, MaintenanceUpdatePublisher, FlowUpdatePublisher {
 
     public static final String UPDATE_EVENT = "attraction.updated";
     public static final String SNAPSHOT_EVENT = "attractions.snapshot";
@@ -58,35 +61,45 @@ public class SseAttractionUpdateBroadcaster
     }
 
     private final ConcurrentHashMap<String, Boolean> operatorMaintenanceRead = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Boolean> operatorFlowRead = new ConcurrentHashMap<>();
 
     public SseEmitter subscribe() {
-        return subscribe(guestEmitters, new SseEmitter(timeoutMs), null);
+        return subscribe(guestEmitters, new SseEmitter(timeoutMs), null, null);
     }
 
     public SseEmitter subscribeOperator() {
-        return subscribeOperator(false);
+        return subscribeOperator(false, false);
     }
 
     public SseEmitter subscribeOperator(boolean maintenanceRead) {
-        return subscribeOperator(new SseEmitter(timeoutMs), maintenanceRead);
+        return subscribeOperator(maintenanceRead, false);
+    }
+
+    public SseEmitter subscribeOperator(boolean maintenanceRead, boolean flowRead) {
+        return subscribeOperator(new SseEmitter(timeoutMs), maintenanceRead, flowRead);
     }
 
     SseEmitter subscribe(SseEmitter emitter) {
-        return subscribe(guestEmitters, emitter, null);
+        return subscribe(guestEmitters, emitter, null, null);
     }
 
     SseEmitter subscribeOperator(SseEmitter emitter) {
-        return subscribeOperator(emitter, false);
+        return subscribeOperator(emitter, false, false);
     }
 
     SseEmitter subscribeOperator(SseEmitter emitter, boolean maintenanceRead) {
-        return subscribe(operatorEmitters, emitter, maintenanceRead);
+        return subscribeOperator(emitter, maintenanceRead, false);
+    }
+
+    SseEmitter subscribeOperator(SseEmitter emitter, boolean maintenanceRead, boolean flowRead) {
+        return subscribe(operatorEmitters, emitter, maintenanceRead, flowRead);
     }
 
     private SseEmitter subscribe(
             ConcurrentHashMap<String, SseEmitter> emitters,
             SseEmitter emitter,
-            Boolean maintenanceRead
+            Boolean maintenanceRead,
+            Boolean flowRead
     ) {
         String id = UUID.randomUUID().toString();
         emitter.onCompletion(() -> drop(id));
@@ -95,6 +108,9 @@ public class SseAttractionUpdateBroadcaster
         emitters.put(id, emitter);
         if (maintenanceRead != null) {
             operatorMaintenanceRead.put(id, maintenanceRead);
+        }
+        if (flowRead != null) {
+            operatorFlowRead.put(id, flowRead);
         }
         return emitter;
     }
@@ -157,6 +173,22 @@ public class SseAttractionUpdateBroadcaster
                 update,
                 id -> Boolean.TRUE.equals(operatorMaintenanceRead.get(id))
         );
+    }
+
+    @Override
+    public void publish(FlowOperationalUpdate update) {
+        broadcast(
+                operatorEmitters,
+                update.eventId(),
+                update.sseEventName(),
+                update,
+                id -> Boolean.TRUE.equals(operatorFlowRead.get(id))
+        );
+    }
+
+    @Override
+    public void publish(GuestFlowOperationalUpdate update) {
+        broadcast(guestEmitters, update.eventId(), update.sseEventName(), update);
     }
 
     private void broadcast(ConcurrentHashMap<String, SseEmitter> emitters, String eventId, String eventName, Object payload) {
@@ -234,6 +266,7 @@ public class SseAttractionUpdateBroadcaster
 
     private void drop(String id) {
         operatorMaintenanceRead.remove(id);
+        operatorFlowRead.remove(id);
         SseEmitter removed = guestEmitters.remove(id);
         if (removed == null) {
             removed = operatorEmitters.remove(id);

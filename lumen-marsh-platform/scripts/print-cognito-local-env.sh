@@ -34,7 +34,7 @@ VITE_OIDC_AUTHORITY=${issuer}
 VITE_OIDC_CLIENT_ID=${client}
 VITE_OIDC_REDIRECT_URI=http://127.0.0.1:5173/auth/callback
 VITE_OIDC_LOGOUT_URI=http://127.0.0.1:5173/
-VITE_OIDC_SCOPES=openid profile email venueops/operator.read venueops/attractions.command venueops/incidents.command venueops/advisories.publish venueops/weather-recommendations.review venueops/maintenance.read venueops/maintenance.command venueops/maintenance.inspect
+VITE_OIDC_SCOPES=openid profile email venueops/operator.read venueops/attractions.command venueops/incidents.command venueops/advisories.publish venueops/weather-recommendations.review venueops/maintenance.read venueops/maintenance.command venueops/maintenance.inspect venueops/flow.read venueops/flow.command venueops/flow.publish
 
 # VenueOps API (OIDC mode; do not mix with LOCAL_JWT)
 VENUEOPS_SECURITY_MODE=OIDC
@@ -45,5 +45,5 @@ VENUEOPS_ALLOWED_CLIENT_IDS=${client}
 COGNITO_DOMAIN=${domain}
 COGNITO_USER_POOL_ID=${pool}
 AWS_REGION=${region}
-# Add the Environmental Monitor client_id to VENUEOPS_ALLOWED_CLIENT_IDS when that path is in scope.
+# Add the Environmental Monitor and Park Flow Intelligence client_ids to VENUEOPS_ALLOWED_CLIENT_IDS when those paths are in scope.
 EOF

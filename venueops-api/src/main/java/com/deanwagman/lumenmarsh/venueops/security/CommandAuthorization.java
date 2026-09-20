@@ -38,6 +38,16 @@ public class CommandAuthorization {
         require(requireAuthentication(), VenueOpsScopes.SCOPE_WEATHER_REVIEW);
     }
 
+    public void requireFlowCommand() {
+        require(requireAuthentication(), VenueOpsScopes.SCOPE_FLOW_COMMAND);
+    }
+
+    public void requireFlowPublish() {
+        Authentication authentication = requireAuthentication();
+        require(authentication, VenueOpsScopes.SCOPE_FLOW_PUBLISH);
+        require(authentication, VenueOpsScopes.ROLE_SUPERVISOR);
+    }
+
     public void requireMaintenanceCommand(MaintenanceWorkOrderCommand command, MaintenancePriority priority) {
         Authentication authentication = requireAuthentication();
         if (command.requiresSupervisor()) {

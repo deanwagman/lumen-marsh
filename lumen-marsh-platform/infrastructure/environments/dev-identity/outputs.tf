@@ -19,6 +19,11 @@ output "MONITOR_SECRET_ARN" {
   value       = module.identity.monitor_secret_arn
 }
 
+output "FLOW_SECRET_ARN" {
+  description = "Secrets Manager ARN containing the Park Flow Intelligence client credentials."
+  value       = module.identity.flow_secret_arn
+}
+
 output "aws_region" {
   value = var.aws_region
 }

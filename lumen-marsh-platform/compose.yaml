@@ -76,7 +76,7 @@ services:
       VENUEOPS_ATTRACTIONS_SEED: ${VENUEOPS_SEED:-true}
       VENUEOPS_SECURITY_MODE: ${VENUEOPS_SECURITY_MODE:-LOCAL_JWT}
       VENUEOPS_ISSUER_URI: ${VENUEOPS_ISSUER_URI:-http://venueops.local/test}
-      VENUEOPS_ALLOWED_CLIENT_IDS: ${VENUEOPS_ALLOWED_CLIENT_IDS:-venueops-console-local,environmental-monitor-local}
+      VENUEOPS_ALLOWED_CLIENT_IDS: ${VENUEOPS_ALLOWED_CLIENT_IDS:-venueops-console-local,environmental-monitor-local,reliability-integration-local,park-flow-intelligence-local}
       VENUEOPS_CORS_ORIGINS: ${VENUEOPS_CORS_ORIGINS:-http://localhost:*,http://127.0.0.1:*}
       VENUEOPS_WEATHER_INGEST_RATE_LIMIT_PER_MINUTE: ${VENUEOPS_WEATHER_INGEST_RATE_LIMIT_PER_MINUTE:-120}
       SERVER_SHUTDOWN: graceful
@@ -127,6 +127,37 @@ services:
     depends_on:
       environmental-migrate:
         condition: service_completed_successfully
+      venueops-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    restart: on-failure:5
+
+  park-flow-intelligence:
+    build:
+      context: ../park-flow-intelligence
+    image: ${PARK_FLOW_INTELLIGENCE_IMAGE:-park-flow-intelligence:local}
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SIMULATION_ENABLED: ${PARK_FLOW_SIMULATION_ENABLED:-false}
+      VENUEOPS_BASE_URL: http://venueops-api:8080
+      OIDC_TOKEN_URL: ${FLOW_OIDC_TOKEN_URL:-}
+      OIDC_CLIENT_ID: ${FLOW_OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${FLOW_OIDC_CLIENT_SECRET:-}
+      OIDC_SCOPE: ${FLOW_OIDC_SCOPE:-venueops/flow-ingest.write}
+      OIDC_DISABLED: ${FLOW_OIDC_DISABLED:-true}
+      VENUEOPS_BEARER_TOKEN: ${FLOW_VENUEOPS_BEARER_TOKEN:-}
+    ports:
+      - "${PARK_FLOW_INTELLIGENCE_HOST_PORT:-8100}:8080"
+    networks:
+      - public
+      - services
+    depends_on:
       venueops-api:
         condition: service_healthy
     healthcheck:

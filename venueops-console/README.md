@@ -104,7 +104,7 @@ src/
 - **Zod** validates Spring Boot payloads before they reach the UI.
 - **MSW** stands in for Java in tests.
 
-The operations dashboard summarizes park conditions and links into the Attractions, Incidents, and weather-recommendation workspaces. Live operator SSE (`GET /api/v1/operator/events`) writes attraction, incident, and weather-recommendation updates through the Query cache and triggers a debounced dashboard refresh. Guest Flutter streams are not used.
+The operations dashboard summarizes park conditions and links into the Attractions, Incidents, weather, maintenance, and park-flow workspaces. Live operator SSE (`GET /api/v1/operator/events`) writes attraction, incident, weather, maintenance, and flow updates through the Query cache and triggers a debounced dashboard refresh. Guest Flutter streams are not used.
 
 Live events:
 
@@ -128,6 +128,9 @@ list and detail rerender
 | `/attractions/:id` | Command workspace (`GET` operator attraction + activity, `POST` commands) |
 | `/incidents` | Incident center |
 | `/incidents/:incidentId` | Incident detail |
+| `/maintenance` | Maintenance workspace |
+| `/park-flow` | Park flow overview and recommendation inbox |
+| `/park-flow/:attractionId` | Attraction queue and forecast detail |
 | `/docs` | Operator procedures and contextual help |
 | `/docs/:slug` | Procedure article |
 | `/not-found` | Unknown-route fallback |

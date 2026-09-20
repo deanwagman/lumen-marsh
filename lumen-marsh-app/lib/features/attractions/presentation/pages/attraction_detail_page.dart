@@ -7,6 +7,8 @@ import '../../../../core/errors/app_failure.dart';
 import '../../../../core/formatters/timestamp_formatter.dart';
 import '../../../../design_system/components/feedback/lumen_feedback.dart';
 import '../../../../design_system/components/layout/lumen_page.dart';
+import '../../../../design_system/components/status/lumen_notice_banner.dart';
+import '../../../../design_system/components/status/lumen_tone.dart';
 import '../../../../design_system/foundations/lumen_spacing.dart';
 import '../../../../design_system/motion/lumen_entrance.dart';
 import '../../../favorites/presentation/bloc/favorites_bloc.dart';
@@ -16,6 +18,10 @@ import '../../../advisories/presentation/bloc/advisories_bloc.dart';
 import '../../../advisories/presentation/bloc/advisories_state.dart';
 import '../../../advisories/presentation/bloc/advisory_catalog_merge.dart';
 import '../../../advisories/presentation/widgets/guest_advisory_banner.dart';
+import '../../../flow/presentation/bloc/flow_bloc.dart';
+import '../../../flow/presentation/bloc/flow_state.dart';
+import '../../../flow/presentation/flow_scope.dart';
+import '../../../flow/presentation/widgets/wait_outlook.dart';
 import '../../domain/attraction_detail.dart';
 import '../../domain/attraction_summary.dart';
 import '../bloc/attraction_detail_bloc.dart';
@@ -155,6 +161,10 @@ class _AttractionDetailBody extends StatelessWidget {
               ),
             ),
           ),
+          _WaitOutlookSection(
+            attractionId: effective.id,
+            isOperating: effective.status.isOperating,
+          ),
           if (relevantAdvisories.isNotEmpty) ...[
             const SizedBox(height: LumenSpacing.lg),
             for (final advisory in relevantAdvisories) ...[
@@ -171,6 +181,65 @@ class _AttractionDetailBody extends StatelessWidget {
           AttractionFactGrid(detail: effective),
         ],
       ),
+    );
+  }
+}
+
+class _WaitOutlookSection extends StatelessWidget {
+  const _WaitOutlookSection({
+    required this.attractionId,
+    required this.isOperating,
+  });
+
+  final String attractionId;
+  final bool isOperating;
+
+  @override
+  Widget build(BuildContext context) {
+    final flowBloc = maybeFlowBloc(context);
+    if (flowBloc == null) {
+      return const SizedBox.shrink();
+    }
+    return BlocBuilder<FlowBloc, FlowState>(
+      builder: (context, state) {
+        if (state is! FlowLoaded) {
+          return const SizedBox.shrink();
+        }
+        final wait = state.waitFor(attractionId);
+        final alternatives = isOperating ? const [] : state.guidance;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (wait != null) ...[
+              const SizedBox(height: LumenSpacing.lg),
+              WaitOutlook(wait: wait),
+            ],
+            if (!isOperating && alternatives.isNotEmpty) ...[
+              const SizedBox(height: LumenSpacing.lg),
+              LumenSection(
+                title: 'Published alternatives',
+                child: Column(
+                  children: [
+                    for (final item in alternatives) ...[
+                      LumenNoticeBanner(
+                        tone: LumenTone.informational,
+                        title: 'Park guidance',
+                        message:
+                            item.guestMessage ??
+                            'Park operators published an alternate experience.',
+                        footer: item.simulated
+                            ? 'Simulated demonstration data'
+                            : null,
+                      ),
+                      const SizedBox(height: LumenSpacing.sm),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

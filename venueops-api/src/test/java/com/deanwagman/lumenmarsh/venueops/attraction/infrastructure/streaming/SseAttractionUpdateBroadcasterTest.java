@@ -14,6 +14,10 @@ import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentUpdateEve
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatus;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentType;
+import com.deanwagman.lumenmarsh.venueops.flow.application.FlowOperationalUpdate;
+import com.deanwagman.lumenmarsh.venueops.flow.application.FlowUpdateEventType;
+import com.deanwagman.lumenmarsh.venueops.flow.application.GuestFlowOperationalUpdate;
+import com.deanwagman.lumenmarsh.venueops.flow.application.GuestFlowUpdateEventType;
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationOperationalSnapshot;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationOperationalUpdate;
@@ -139,6 +143,34 @@ class SseAttractionUpdateBroadcasterTest {
     }
 
     @Test
+    void flowUpdatesReachFlowReadersOnly() {
+        RecordingEmitter operator = new RecordingEmitter();
+        RecordingEmitter flow = new RecordingEmitter();
+        broadcaster.subscribeOperator(operator);
+        broadcaster.subscribeOperator(flow, false, true);
+
+        FlowOperationalUpdate update = sampleFlow();
+        broadcaster.publish(update);
+
+        assertThat(flow.flowPayloads).containsExactly(update);
+        assertThat(operator.flowPayloads).isEmpty();
+    }
+
+    @Test
+    void guestFlowUpdatesReachGuestSubscribersOnly() {
+        RecordingEmitter guest = new RecordingEmitter();
+        RecordingEmitter operator = new RecordingEmitter();
+        broadcaster.subscribe(guest);
+        broadcaster.subscribeOperator(operator, false, true);
+
+        GuestFlowOperationalUpdate update = sampleGuestFlow();
+        broadcaster.publish(update);
+
+        assertThat(guest.guestFlowPayloads).containsExactly(update);
+        assertThat(operator.guestFlowPayloads).isEmpty();
+    }
+
+    @Test
     void heartbeatsDoNotRemoveHealthySubscribers() {
         RecordingEmitter healthy = new RecordingEmitter();
         RecordingEmitter failing = new RecordingEmitter(new IOException("disconnected"));
@@ -257,12 +289,32 @@ class SseAttractionUpdateBroadcasterTest {
         );
     }
 
+    private static FlowOperationalUpdate sampleFlow() {
+        return new FlowOperationalUpdate(
+                "flow-evt-1",
+                FlowUpdateEventType.QUEUE_UPDATED,
+                NOW,
+                "mangrove-run"
+        );
+    }
+
+    private static GuestFlowOperationalUpdate sampleGuestFlow() {
+        return new GuestFlowOperationalUpdate(
+                "guest-flow-evt-1",
+                GuestFlowUpdateEventType.UPDATED,
+                NOW,
+                "mangrove-run"
+        );
+    }
+
     private static class RecordingEmitter extends SseEmitter {
         private final List<Object> payloads = new CopyOnWriteArrayList<>();
         private final List<Object> weatherPayloads = new CopyOnWriteArrayList<>();
         private final List<Object> advisoryPayloads = new CopyOnWriteArrayList<>();
         private final List<Object> incidentPayloads = new CopyOnWriteArrayList<>();
         private final List<Object> maintenancePayloads = new CopyOnWriteArrayList<>();
+        private final List<Object> flowPayloads = new CopyOnWriteArrayList<>();
+        private final List<Object> guestFlowPayloads = new CopyOnWriteArrayList<>();
         private final List<String> comments = new CopyOnWriteArrayList<>();
         private final IOException failure;
 
@@ -292,6 +344,10 @@ class SseAttractionUpdateBroadcasterTest {
                     incidentPayloads.add(update);
                 } else if (data instanceof MaintenanceOperationalUpdate update) {
                     maintenancePayloads.add(update);
+                } else if (data instanceof FlowOperationalUpdate update) {
+                    flowPayloads.add(update);
+                } else if (data instanceof GuestFlowOperationalUpdate update) {
+                    guestFlowPayloads.add(update);
                 } else if (data instanceof String text && text.startsWith(":")) {
                     comments.add(text.replace(":", "").trim());
                 }

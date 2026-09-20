@@ -7,7 +7,9 @@ import { applyIncidentCommandSideEffects } from './applyIncidentCommandSideEffec
 import { catalogAttractions, lightningIncident, lightningIncidentActivity, toOperatorAttraction } from './fixtures';
 import { calmDashboard } from '@/features/dashboard/test/fixtures';
 import { maintenanceHandlers } from './maintenanceHandlers';
+import { flowHandlers } from './flowHandlers';
 import { resetMaintenanceStores } from './maintenanceStore';
+import { resetFlowStores } from './flowStore';
 
 export const weatherInbox: WeatherRecommendation[] = [];
 export const incidentStore: IncidentRecord[] = [];
@@ -22,7 +24,7 @@ export function resetIncidents() {
   incidentStore.splice(0, incidentStore.length);
 }
 
-export { resetMaintenanceStores };
+export { resetMaintenanceStores, resetFlowStores };
 
 export const handlers = [
   http.get('/api/v1/operator/dashboard', () => HttpResponse.json(calmDashboard)),
@@ -179,6 +181,7 @@ export const handlers = [
     return HttpResponse.json(next);
   }),
   ...maintenanceHandlers,
+  ...flowHandlers,
 ];
 
 export const server = setupServer(...handlers);

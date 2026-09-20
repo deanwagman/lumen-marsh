@@ -11,6 +11,7 @@ const categoryLabels: Record<string, string> = {
   incidents: 'Incidents',
   weather: 'Weather',
   maintenance: 'Maintenance',
+  flow: 'Park Flow',
 };
 
 export default function DocsIndexPage() {
