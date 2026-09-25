@@ -18,6 +18,10 @@ Maintenance work orders answer a fourth:
 
 > What repair or inspection work is in progress, and is the attraction ready for operational testing?
 
+Park flow answers a fifth:
+
+> What did Park Flow Intelligence observe, what wait is projected, and has Control Tower published guest guidance?
+
 ## Technology
 
 - Java 21
@@ -365,6 +369,7 @@ Spring `ProblemDetail` JSON with a stable `code`:
 | Unknown incident | `404` | `INCIDENT_NOT_FOUND` |
 | Unknown weather recommendation | `404` | `WEATHER_RECOMMENDATION_NOT_FOUND` |
 | Unknown maintenance resource | `404` | `MAINTENANCE_NOT_FOUND` |
+| Unknown park-flow resource | `404` | `FLOW_NOT_FOUND` |
 | Invalid request | `400` | `INVALID_REQUEST` |
 | Invalid transition | `409` | `INVALID_TRANSITION` |
 | Stale expected version | `409` | `STALE_VERSION` |
@@ -578,6 +583,25 @@ Work-order commands: `OPEN`, `ASSIGN`, `START_WORK`, `REQUEST_INSPECTION`, `REJE
 
 Recommendation commands: `ACCEPT`, `DISMISS`. Every command requires `commandId` and `expectedVersion`. `ACCEPT` claims the recommendation before creating a work order so concurrent accepts cannot create duplicates.
 
+### Operator park flow
+
+```http
+GET  /api/v1/operator/flow/overview
+GET  /api/v1/operator/flow/attractions/{attractionId}
+GET  /api/v1/operator/flow/recommendations
+POST /api/v1/operator/flow/recommendations/{recommendationId}/commands
+GET  /api/v1/operator/flow/recommendations/{recommendationId}/activity
+POST /api/v1/integrations/flow/observations
+POST /api/v1/integrations/flow/forecasts
+GET  /api/v1/flow/overview
+GET  /api/v1/flow/recommendations
+GET  /api/v1/attractions/{attractionId}/wait-forecast
+```
+
+Park Flow Intelligence posts observations and forecasts with `venueops/flow-ingest.write` (`local-flow-token` in `LOCAL_JWT` mode). VenueOps stores projections and operator-reviewed recommendations. Supervisors publish guest guidance. Guests get rounded wait language and published guidance only — not operator identities, unpublished recommendations, or raw forecasts.
+
+Recommendation commands: `APPROVE`, `DISMISS`, `PUBLISH`, `WITHDRAW`. Every command requires `commandId` and `expectedVersion`. `PUBLISH` and `WITHDRAW` require `ROLE_SUPERVISOR` and `venueops/flow.publish`. Park Flow Intelligence never changes attraction status or capacity.
+
 ## Architecture
 
 ```text
@@ -593,15 +617,22 @@ com.deanwagman.lumenmarsh.venueops
 │   ├── api/              # operator API, guest advisories, park-wide SSE
 │   └── infrastructure/   # in-memory and JPA adapters
 ├── weather/
-    ├── domain/           # recommendation inbox aggregate and idempotent ingest
-    ├── application/      # service, repository port, operator SSE updates
-    ├── api/              # integration ingest, operator commands, operator SSE
-    └── infrastructure/   # in-memory and JPA adapters
-└── maintenance/
-    ├── domain/           # assets, work orders, checklists, recommendations
-    ├── application/      # commands, queries, incident/attraction gates
-    ├── api/              # operator maintenance API and reliability ingest
-    └── infrastructure/   # in-memory and JPA adapters, Cypress Coil seed
+│   ├── domain/           # recommendation inbox aggregate and idempotent ingest
+│   ├── application/      # service, repository port, operator SSE updates
+│   ├── api/              # integration ingest, operator commands, operator SSE
+│   └── infrastructure/   # in-memory and JPA adapters
+├── maintenance/
+│   ├── domain/           # assets, work orders, checklists, recommendations
+│   ├── application/      # commands, queries, incident/attraction gates
+│   ├── api/              # operator maintenance API and reliability ingest
+│   └── infrastructure/   # in-memory and JPA adapters, Cypress Coil seed
+├── flow/
+│   ├── domain/           # observations, forecasts, operator-reviewed recommendations
+│   ├── application/      # ingest, projections, guest-safe wait language
+│   ├── api/              # operator flow API, guest flow, observation/forecast ingest
+│   └── infrastructure/   # in-memory and JPA adapters
+├── dashboard/            # operator park snapshot (attractions, incidents, weather)
+└── security/             # OIDC resource server, scopes, command authorization
 ```
 
 The domain packages do not import Spring, JPA, HTTP, or JDBC. Persistence is selected with `venueops.attractions.persistence`:
@@ -613,4 +644,4 @@ Demo attractions are loaded only when `venueops.attractions.seed=true`. The in-m
 
 ## Deferred scope
 
-Maps, show schedules, wait prediction, notifications, Kafka/SQS, AI, multiple parks, food ordering, purchasing, and technician workforce identity.
+Maps, show schedules, notifications, Kafka/SQS, AI, multiple parks, food ordering, purchasing, technician workforce identity, and a reliability producer process. Posted waits and Park Flow's deterministic 15/30/60-minute forecasts are in scope; they are not a general wait-prediction product.

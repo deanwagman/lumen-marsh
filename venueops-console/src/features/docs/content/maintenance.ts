@@ -61,6 +61,7 @@ export const maintenanceArticle: DocArticle = {
         'A work order can recommend an attraction action without performing it. Ready for testing recommends Start testing. Active P1 corrective work can recommend Report technical fault.',
         'Start testing from the handoff card or the attraction workspace. Complete testing and approve return to service remain Operations and supervisor attraction commands.',
         'Maintenance cannot reopen an attraction. Return-to-service approval belongs to the attraction workflow so Control Tower does not skip testing.',
+        'Scripted HTTP proof: from lumen-marsh-platform, ./scripts/maintenance-lifecycle-acceptance.sh after the stack is up.',
       ],
     },
     {

@@ -14,7 +14,8 @@ Identity and access control for the Lumen Marsh control plane.
 | [hardening.md](./hardening.md) | Phase 9 hardening checklist |
 | [secret-rotation.md](./secret-rotation.md) | Credential rotation |
 | [acceptance-matrix.md](./acceptance-matrix.md) | Acceptance scenarios |
-| [../storm-lifecycle-demo.md](../storm-lifecycle-demo.md) | Integrated UI demo + failure checks |
+| [../storm-lifecycle-demo.md](../storm-lifecycle-demo.md) | Integrated weather UI demo + failure checks |
+| [../maintenance-lifecycle-demo.md](../maintenance-lifecycle-demo.md) | Reliability ingest → inspect → testing HTTP proof |
 | [public-deployment-gate.md](./public-deployment-gate.md) | Phase 10 public demo gate |
 
 See [rollout.md](./rollout.md) for the 12-phase Cognito plan. Snapshot:

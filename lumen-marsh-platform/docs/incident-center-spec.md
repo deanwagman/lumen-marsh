@@ -1,9 +1,9 @@
 # Lumen Marsh Incident Center
 
-Status: Proposed  
+Status: Implemented  
 Owner: VenueOps Console  
-Supporting systems: VenueOps API, Flutter guest app  
-Target milestone: Weather recommendation to guest communication
+Supporting systems: VenueOps API, Environmental Monitor, Flutter guest app  
+Shipped with: weather recommendation → incident → attraction hold → guest advisory ([storm-lifecycle-demo.md](./storm-lifecycle-demo.md))
 
 ## 1. Purpose
 
@@ -321,6 +321,8 @@ Use TanStack Query keys rooted at `['incidents']`. Command success updates detai
 - Badge text states the full severity/status independently of color.
 - Activity is a semantic ordered list with actor, action, time, reason, and resulting version.
 - Target WCAG 2.2 AA contrast and interaction behavior.
+
+Delivery phases 1–5 below shipped with the incident center, operator SSE, and storm lifecycle. Keep this section as the original slice definition.
 
 ## 12. Delivery phases
 

@@ -4,7 +4,7 @@
 
 - Keep operational commands explicit, authorized, versioned, and auditable.
 - Keep internal incident data out of guest-facing projections.
-- Treat weather output as a recommendation requiring human review.
+- Treat weather and reliability output as recommendations requiring human review.
 - Preserve the fictional-project and non-life-safety disclaimers.
 - Never place credentials in source, examples, tests, URLs, screenshots, or logs.
 
@@ -19,10 +19,23 @@ cd venueops-api
 ./gradlew test
 ```
 
+If you touch persistence, also run with Docker available so the PostgreSQL Testcontainers suite is not skipped. Compose uses `SPRING_PROFILES_ACTIVE=postgres`; native `bootRun` defaults to in-memory.
+
 ### Environmental Monitor
 
 ```bash
 cd environmental-monitor
+uv sync --frozen
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run pytest
+```
+
+### Park Flow Intelligence
+
+```bash
+cd park-flow-intelligence
 uv sync --frozen
 uv run ruff check .
 uv run ruff format --check .
@@ -62,7 +75,13 @@ tofu init -backend=false
 tofu validate
 ```
 
-For a full local integration check, start the stack and run `lumen-marsh-platform/scripts/storm-lifecycle-acceptance.sh`.
+For a full local integration check, start the stack and run:
+
+```bash
+cd lumen-marsh-platform
+./scripts/storm-lifecycle-acceptance.sh
+./scripts/maintenance-lifecycle-acceptance.sh
+```
 
 ## Pull requests
 

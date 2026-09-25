@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted.
+
+Current tree: audit identity is the JWT subject (`ActorResolver`); client-supplied `X-Actor` is ignored. Operator SSE uses fetch plus an `Authorization` header. When `enable_machine_client` is true, Cognito also has `reliability-integration` and `park-flow-intelligence` confidential clients. Context below is the original decision record.
 
 ## Context
 

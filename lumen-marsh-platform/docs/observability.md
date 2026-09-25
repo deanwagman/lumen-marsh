@@ -9,14 +9,16 @@
 | Field | Owner | Notes |
 | --- | --- | --- |
 | `correlation_id` | originating request / demo script | Optional until HTTP propagation is wired |
-| `recommendation_id` | Environmental Monitor → VenueOps | Primary cross-service join key |
+| `recommendation_id` | Environmental Monitor or reliability ingest → VenueOps | Weather inbox or maintenance recommendation join key |
+| `observation_id` | Reliability ingest or Park Flow Intelligence → VenueOps | Idempotency key for vibration samples and queue observations |
 | `incident_id` | VenueOps | Created by Control Tower |
-| `attraction_id` | VenueOps | Explicit hold/recovery commands |
+| `work_order_id` | VenueOps | Created when an operator accepts a reliability recommendation |
+| `attraction_id` | VenueOps | Explicit hold/recovery/testing commands |
 | `event_id` | VenueOps SSE | Guest and operator streams |
-| `actor_id` | VenueOps (`X-Actor`) | Example: `control-tower` |
-| `source_service` | each backend | `environmental-monitor` or `venueops-api` |
+| `actor_id` | VenueOps (JWT `sub` via `ActorIdentity`) | Human subject, machine client subject, or `venueops-system`. Client `X-Actor` is ignored. |
+| `source_service` | each backend | `environmental-monitor`, `park-flow-intelligence`, or `venueops-api` |
 
-## Expected flow
+## Expected flows
 
 ```text
 weather observation
@@ -25,6 +27,17 @@ weather observation
   → incident (incident_id) + LINK_INCIDENT
   → attraction command (attraction_id)
   → SSE event (event_id)
+
+reliability ingest (observation_id)
+  → pending maintenance recommendation (recommendation_id)
+  → operator ACCEPT → work order (work_order_id)
+  → inspect → attraction START_TESTING
+  → operator SSE (maintenance.work-order.updated); guests never receive these events
+
+queue observation / forecast (observation_id)
+  → VenueOps projection + optional flow recommendation
+  → supervisor PUBLISH
+  → guest.flow.updated / guest.flow.recommendation.published
 ```
 
 ## Logging rules
@@ -42,12 +55,17 @@ exception bodies in guest responses.
 ./scripts/logs.sh
 ./scripts/logs.sh venueops-api
 ./scripts/logs.sh environmental-monitor
+./scripts/logs.sh park-flow-intelligence
 ```
 
 ## Initial metrics (application-owned)
 
 VenueOps: command counts/failures, stale-version conflicts, active SSE
-subscribers, SSE send failures, active incidents, pending weather recommendations.
+subscribers, SSE send failures, active incidents, pending weather
+recommendations, open work orders, unpublished flow recommendations.
 
 Environmental Monitor: provider latency/failures, observation age, poll
 success/failure, active recommendations, VenueOps delivery failures.
+
+Park Flow Intelligence: simulation tick age, VenueOps observation/forecast
+delivery failures. The service is stateless; durable counts live in VenueOps.

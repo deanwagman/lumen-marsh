@@ -15,8 +15,9 @@ Outputs (non-secret):
 - `COGNITO_USER_POOL_ID`
 - `CONSOLE_CLIENT_ID`
 - `MONITOR_SECRET_ARN`
+- `FLOW_SECRET_ARN`
 
-OpenTofu creates the pool, groups, scopes, public console client, confidential Environmental Monitor client, and a Secrets Manager secret containing the monitor client credentials. OpenTofu does not create users or store human passwords.
+OpenTofu creates the pool, groups, scopes, the public console client, and — when `enable_machine_client` is true — confidential client-credentials apps for Environmental Monitor, Park Flow Intelligence, and reliability ingest, each with a Secrets Manager secret. There is no reliability producer process in Compose; that client exists only for `POST /api/v1/integrations/reliability/recommendations`. OpenTofu does not create users or store human passwords.
 
 Then create the operator (password stays in gitignored `.env.cognito.local`):
 
@@ -27,4 +28,4 @@ Then create the operator (password stays in gitignored `.env.cognito.local`):
 
 The hosted-UI domain prefix includes the AWS account suffix because Cognito domains are globally unique. The user pool name remains `lumen-marsh-dev`.
 
-`./scripts/dev-up.sh --oidc` reads the monitor secret through the configured AWS CLI profile and starts the full Cognito-backed stack.
+`./scripts/dev-up.sh --oidc` reads machine secrets through the configured AWS CLI profile and starts the full Cognito-backed stack.

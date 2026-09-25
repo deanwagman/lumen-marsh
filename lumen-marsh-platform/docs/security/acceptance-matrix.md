@@ -30,8 +30,9 @@ cd lumen-marsh-platform
 ./scripts/dev-up.sh
 ./scripts/smoke-test.sh
 ./scripts/storm-lifecycle-acceptance.sh
+./scripts/maintenance-lifecycle-acceptance.sh
 ```
 
-For Cognito demo, export real `SUPERVISOR_TOKEN` and `OPERATOR_LIMITED_TOKEN` access tokens before running the lifecycle script. Do not paste tokens into chat.
+For Cognito demo, export real `SUPERVISOR_TOKEN` and `OPERATOR_LIMITED_TOKEN` access tokens before running the lifecycle scripts. The maintenance script also needs `RELIABILITY_TOKEN` in OIDC mode. Do not paste tokens into chat.
 
 The older `./scripts/storm-demo.sh` HTTP path remains as a shorter happy-path demo (supervisor-equivalent `OPERATOR_TOKEN`).
