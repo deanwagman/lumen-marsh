@@ -9,6 +9,7 @@ import com.deanwagman.lumenmarsh.venueops.flow.domain.QueueObservation;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.QueueObservationSourceType;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.QueueProjection;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.QueueProjectionCalculator;
+import com.deanwagman.lumenmarsh.venueops.support.AfterCommit;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;

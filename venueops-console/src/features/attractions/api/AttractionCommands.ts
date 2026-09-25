@@ -5,6 +5,7 @@ import { operatorAttractionSchema } from './attractionSchema';
 
 export type AttractionCommandInput = {
   attractionId: string;
+  commandId: string;
   type: AttractionCommandType;
   expectedVersion: number;
   reason?: string;
@@ -14,6 +15,7 @@ export type AttractionCommandInput = {
 export const AttractionCommands = {
   execute(client: ApiClient, input: AttractionCommandInput) {
     const body: Record<string, unknown> = {
+      commandId: input.commandId,
       type: input.type,
       expectedVersion: input.expectedVersion,
     };
@@ -23,7 +25,7 @@ export const AttractionCommands = {
     }
 
     if (input.waitMinutes !== undefined) {
-      body.waitMinutes = input.waitMinutes;
+      body.data = { waitMinutes: input.waitMinutes };
     }
 
     return client.post(

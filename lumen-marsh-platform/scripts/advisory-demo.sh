@@ -77,13 +77,13 @@ check "incident created" bash -c "[[ -n '$INCIDENT_ID' ]]"
 ACK="$(curl -fsS -o /dev/null -w '%{http_code}' \
   -X POST "$VENUEOPS_URL/api/v1/operator/incidents/$INCIDENT_ID/commands" \
   -H 'Content-Type: application/json' "${AUTH_HEADER[@]}" \
-  -d '{"type":"ACKNOWLEDGE","expectedVersion":1}')"
+  -d "$(envelope_command '{"type":"ACKNOWLEDGE","expectedVersion":1}')")"
 check "acknowledge" bash -c "[[ '$ACK' == '200' ]]"
 
 PUB="$(curl -fsS -o /tmp/lm-advisory-pub.json -w '%{http_code}' \
   -X POST "$VENUEOPS_URL/api/v1/operator/incidents/$INCIDENT_ID/commands" \
   -H 'Content-Type: application/json' "${AUTH_HEADER[@]}" \
-  -d '{"type":"PUBLISH_GUEST_ADVISORY","guestTitle":"Advisory demo notice","guestMessage":"Temporary guest-safe pause for demo.","expectedVersion":2}')"
+  -d "$(envelope_command '{"type":"PUBLISH_GUEST_ADVISORY","guestTitle":"Advisory demo notice","guestMessage":"Temporary guest-safe pause for demo.","expectedVersion":2}')")"
 check "publish guest advisory" bash -c "[[ '$PUB' == '200' ]]"
 
 curl -fsS "$VENUEOPS_URL/api/v1/advisories" -o /tmp/lm-advisories-published.json
@@ -95,7 +95,7 @@ VERSION="$(python3 -c 'import json; print(json.load(open("/tmp/lm-advisory-pub.j
 WD="$(curl -fsS -o /tmp/lm-advisory-wd.json -w '%{http_code}' \
   -X POST "$VENUEOPS_URL/api/v1/operator/incidents/$INCIDENT_ID/commands" \
   -H 'Content-Type: application/json' "${AUTH_HEADER[@]}" \
-  -d "{\"type\":\"WITHDRAW_GUEST_ADVISORY\",\"reason\":\"Demo complete\",\"expectedVersion\":$VERSION}")"
+  -d "$(envelope_command "{\"type\":\"WITHDRAW_GUEST_ADVISORY\",\"reason\":\"Demo complete\",\"expectedVersion\":$VERSION}")")"
 check "withdraw guest advisory" bash -c "[[ '$WD' == '200' ]]"
 
 curl -fsS "$VENUEOPS_URL/api/v1/advisories" -o /tmp/lm-advisories-withdrawn.json

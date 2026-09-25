@@ -2,6 +2,7 @@ package com.deanwagman.lumenmarsh.venueops.incident.api;
 
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionNotFoundException;
 import com.deanwagman.lumenmarsh.venueops.incident.application.ActiveHighPriorityWorkOrdersException;
+import com.deanwagman.lumenmarsh.venueops.incident.application.ConflictingIncidentCommandException;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentNotFoundException;
 import com.deanwagman.lumenmarsh.venueops.incident.application.StaleIncidentVersionException;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.InvalidIncidentTransitionException;
@@ -23,6 +24,7 @@ public class IncidentExceptionHandler {
     public static final String CODE_INVALID_REQUEST = "INVALID_REQUEST";
     public static final String CODE_INVALID_TRANSITION = "INVALID_TRANSITION";
     public static final String CODE_STALE_VERSION = "STALE_VERSION";
+    public static final String CODE_DUPLICATE_COMMAND = "DUPLICATE_COMMAND";
     public static final String CODE_INTERNAL_ERROR = "INTERNAL_ERROR";
 
     @ExceptionHandler(IncidentNotFoundException.class)
@@ -70,6 +72,20 @@ public class IncidentExceptionHandler {
         );
         detail.setProperty("expectedVersion", ex.expectedVersion());
         detail.setProperty("actualVersion", ex.actualVersion());
+        return detail;
+    }
+
+    @ExceptionHandler(ConflictingIncidentCommandException.class)
+    public ProblemDetail handleDuplicateCommand(ConflictingIncidentCommandException ex) {
+        ProblemDetail detail = problem(
+                HttpStatus.CONFLICT,
+                CODE_DUPLICATE_COMMAND,
+                "Duplicate command",
+                ex.getMessage()
+        );
+        detail.setProperty("commandId", ex.commandId().toString());
+        detail.setProperty("existingAggregateId", ex.existingAggregateId());
+        detail.setProperty("requestedAggregateId", ex.requestedAggregateId());
         return detail;
     }
 

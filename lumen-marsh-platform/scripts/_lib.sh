@@ -102,6 +102,34 @@ path.write_text("".join(f"{key}={existing[key]}\n" for key in existing) + "")
 PY
 }
 
+new_uuid() {
+  python3 -c 'import uuid; print(uuid.uuid4())'
+}
+
+envelope_command() {
+  python3 -c '
+import json, sys, uuid
+body = json.loads(sys.argv[1])
+data_keys = (
+    "waitMinutes",
+    "assignee",
+    "severity",
+    "attractionId",
+    "guestTitle",
+    "guestMessage",
+    "confirmActiveWorkOrders",
+)
+body.setdefault("commandId", str(uuid.uuid4()))
+data = dict(body.get("data") or {})
+for key in data_keys:
+    if key in body:
+        data[key] = body.pop(key)
+if data:
+    body["data"] = data
+print(json.dumps(body))
+' "$1"
+}
+
 print_urls() {
   local auth_mode="${1:-local}"
   if [[ "$auth_mode" == "oidc" ]]; then
@@ -114,11 +142,13 @@ Lumen Marsh is up (Cognito OIDC):
   VenueOps API            ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}
   Environmental Monitor   ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}
   Park Flow Intelligence  ${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}
+  Reliability Intelligence ${RELIABILITY_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8200}
 
   Health:
     curl ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}/actuator/health
     curl ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}/health/ready
     curl ${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}/health/ready
+    curl ${RELIABILITY_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8200}/health/ready
     curl ${OPERATOR_CONSOLE_ORIGIN:-http://127.0.0.1:5173}/health
 
 EOF
@@ -134,11 +164,13 @@ Lumen Marsh is up:
   VenueOps API            ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}
   Environmental Monitor   ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}
   Park Flow Intelligence  ${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}
+  Reliability Intelligence ${RELIABILITY_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8200}
 
   Health:
     curl ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}/actuator/health
     curl ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}/health/ready
     curl ${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}/health/ready
+    curl ${RELIABILITY_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8200}/health/ready
 
 EOF
 }

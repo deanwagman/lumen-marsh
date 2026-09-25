@@ -45,7 +45,7 @@ export const parkFlowArticle: DocArticle = {
       body: [
         'Start the stack, then POST /simulation/scenarios/mangrove-disruption on Park Flow Intelligence. Simulated boarding at Mangrove Run drops to zero and a share of expected arrivals moves to Cypress Coil and Stormglass Station.',
         'Predicted waits rise before posted waits change. An operator reviews the recommendation; a supervisor publishes guest guidance. The Flutter app updates Best Next without exposing incidents, work orders, or operator identities.',
-        'Park Flow Intelligence never changes attraction status or capacity. Repeat the HTTP story against the running stack (POST /simulation/scenarios/mangrove-disruption on :8100), and reset with ./scripts/reset-demo.sh --confirm.',
+        'Park Flow Intelligence never changes attraction status or capacity. Repeat the HTTP story with ./scripts/flow-lifecycle-acceptance.sh after the stack is up (or POST /simulation/scenarios/mangrove-disruption on :8100), and reset with ./scripts/reset-demo.sh --confirm.',
       ],
     },
     {

@@ -1,8 +1,8 @@
 # Maintenance lifecycle demo (Cypress Coil)
 
-HTTP proof of the integrated reliability ingest → accept → inspect → operations testing path. Automated script: [`../scripts/maintenance-lifecycle-acceptance.sh`](../scripts/maintenance-lifecycle-acceptance.sh). Weather sibling: [`storm-lifecycle-demo.md`](./storm-lifecycle-demo.md).
+HTTP proof of the integrated reliability ingest → accept → inspect → operations testing path. Automated script: [`../scripts/maintenance-lifecycle-acceptance.sh`](../scripts/maintenance-lifecycle-acceptance.sh). Weather sibling: [`storm-lifecycle-demo.md`](./storm-lifecycle-demo.md). Park Flow sibling: [`flow-lifecycle-demo.md`](./flow-lifecycle-demo.md).
 
-This is not a second product. VenueOps remains the system of record. There is no reliability producer in Compose; the script posts ingest the same way Java acceptance tests do.
+This is not a second product. VenueOps remains the system of record. Reliability Intelligence can post ingest locally; this script posts the same payload the Java acceptance tests use so the proof does not depend on the simulator loop.
 
 ## Surfaces
 

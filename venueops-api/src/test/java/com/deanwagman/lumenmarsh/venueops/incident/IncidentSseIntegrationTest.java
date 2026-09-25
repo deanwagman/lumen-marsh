@@ -1,6 +1,7 @@
 package com.deanwagman.lumenmarsh.venueops.incident;
 
 import com.deanwagman.lumenmarsh.venueops.security.TestAuth;
+import com.deanwagman.lumenmarsh.venueops.testsupport.CommandJson;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -92,22 +93,22 @@ class IncidentSseIntegrationTest {
             mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                             .with(TestAuth.operator())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
+                            .content(CommandJson.envelope("""
                                     {"type":"ACKNOWLEDGE","expectedVersion":1}
-                                    """))
+                                    """)))
                     .andExpect(status().isOk());
 
             mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                             .with(TestAuth.supervisor())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
+                            .content(CommandJson.envelope("""
                                     {
                                       "type":"PUBLISH_GUEST_ADVISORY",
                                       "guestTitle":"Weather advisory",
                                       "guestMessage":"Some outdoor attractions are temporarily paused.",
                                       "expectedVersion":2
                                     }
-                                    """))
+                                    """)))
                     .andExpect(status().isOk());
 
             SseMessage published = take(messages, "advisory.published");
@@ -126,13 +127,13 @@ class IncidentSseIntegrationTest {
             mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                             .with(TestAuth.supervisor())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
+                            .content(CommandJson.envelope("""
                                     {
                                       "type":"WITHDRAW_GUEST_ADVISORY",
                                       "reason":"Hold cleared for guest demo",
                                       "expectedVersion":3
                                     }
-                                    """))
+                                    """)))
                     .andExpect(status().isOk());
 
             SseMessage withdrawn = take(messages, "advisory.withdrawn");

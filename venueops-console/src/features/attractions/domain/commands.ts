@@ -149,6 +149,10 @@ export function canUpdateWaitTime(status: AttractionStatus): boolean {
   return status === 'OPERATING';
 }
 
+export function newCommandId(): string {
+  return crypto.randomUUID();
+}
+
 export const guestStatusMessages: Record<AttractionStatus, string | null> = {
   CLOSED: 'Currently closed.',
   TESTING: 'Preparing to welcome explorers.',

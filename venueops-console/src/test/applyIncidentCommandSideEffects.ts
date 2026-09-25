@@ -3,13 +3,24 @@ import type { Incident } from '@/features/incidents/domain/incident';
 export type IncidentCommandBody = {
   type: string;
   expectedVersion: number;
+  commandId?: string;
+  reason?: string;
+  data?: Record<string, unknown>;
   guestTitle?: string;
   guestMessage?: string;
-  reason?: string;
   assignee?: string;
   severity?: Incident['severity'];
   attractionId?: string;
+  confirmActiveWorkOrders?: boolean;
 };
+
+function field<T>(command: IncidentCommandBody, key: string): T | undefined {
+  const fromData = command.data?.[key];
+  if (fromData !== undefined) {
+    return fromData as T;
+  }
+  return (command as Record<string, unknown>)[key] as T | undefined;
+}
 
 /**
  * Applies incident command side effects for local MSW / demos.
@@ -26,6 +37,11 @@ export function applyIncidentCommandSideEffects(
     version: nextVersion,
     updatedAt,
   };
+  const assignee = field<string>(command, 'assignee');
+  const severity = field<Incident['severity']>(command, 'severity');
+  const attractionId = field<string>(command, 'attractionId');
+  const guestTitle = field<string>(command, 'guestTitle');
+  const guestMessage = field<string>(command, 'guestMessage');
 
   switch (command.type) {
     case 'ACKNOWLEDGE':
@@ -33,14 +49,13 @@ export function applyIncidentCommandSideEffects(
     case 'START_MITIGATION':
       return { ...base, status: 'MITIGATING' };
     case 'ASSIGN':
-      return { ...base, assignedTo: command.assignee?.trim() || incident.assignedTo };
+      return { ...base, assignedTo: assignee?.trim() || incident.assignedTo };
     case 'CHANGE_SEVERITY':
       return {
         ...base,
-        severity: command.severity ?? incident.severity,
+        severity: severity ?? incident.severity,
       };
     case 'LINK_ATTRACTION': {
-      const attractionId = command.attractionId;
       if (!attractionId || incident.attractionIds.includes(attractionId)) {
         return base;
       }
@@ -50,7 +65,6 @@ export function applyIncidentCommandSideEffects(
       };
     }
     case 'UNLINK_ATTRACTION': {
-      const attractionId = command.attractionId;
       if (!attractionId) {
         return base;
       }
@@ -63,8 +77,8 @@ export function applyIncidentCommandSideEffects(
       return {
         ...base,
         guestAdvisoryPublished: true,
-        guestTitle: command.guestTitle?.trim() || incident.guestTitle,
-        guestMessage: command.guestMessage?.trim() || incident.guestMessage,
+        guestTitle: guestTitle?.trim() || incident.guestTitle,
+        guestMessage: guestMessage?.trim() || incident.guestMessage,
       };
     case 'WITHDRAW_GUEST_ADVISORY':
       return {

@@ -2,6 +2,7 @@ package com.deanwagman.lumenmarsh.venueops.maintenance;
 
 import com.deanwagman.lumenmarsh.venueops.maintenance.infrastructure.MaintenanceAssetSeedData;
 import com.deanwagman.lumenmarsh.venueops.security.TestAuth;
+import com.deanwagman.lumenmarsh.venueops.testsupport.CommandJson;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -237,9 +238,9 @@ class CypressCoilMaintenanceAcceptanceTest {
         mockMvc.perform(post("/api/v1/operator/attractions/cypress-coil/commands")
                         .with(TestAuth.operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {"type":"START_TESTING","expectedVersion":0}
-                                """))
+                                """)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("TESTING"));
 
@@ -260,17 +261,17 @@ class CypressCoilMaintenanceAcceptanceTest {
         mockMvc.perform(post("/api/v1/operator/attractions/cypress-coil/commands")
                         .with(TestAuth.operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {"type":"COMPLETE_TESTING","expectedVersion":1}
-                                """))
+                                """)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/operator/attractions/cypress-coil/commands")
                         .with(TestAuth.supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {"type":"APPROVE_RETURN_TO_SERVICE","expectedVersion":2}
-                                """))
+                                """)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("OPERATING"));
 
@@ -340,40 +341,40 @@ class CypressCoilMaintenanceAcceptanceTest {
         mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                         .with(TestAuth.operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {"type":"ACKNOWLEDGE","expectedVersion":2}
-                                """))
+                                """)))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                         .with(TestAuth.operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {"type":"START_MITIGATION","expectedVersion":3}
-                                """))
+                                """)))
                 .andExpect(status().isOk());
         mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                         .with(TestAuth.operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {
                                   "type": "RESOLVE",
                                   "reason": "Operational response complete",
                                   "expectedVersion": 4
                                 }
-                                """))
+                                """)))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("ACTIVE_WORK_ORDERS"));
         mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                         .with(TestAuth.operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {
                                   "type": "RESOLVE",
                                   "reason": "Operational response complete",
                                   "expectedVersion": 4,
                                   "confirmActiveWorkOrders": true
                                 }
-                                """))
+                                """)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("RESOLVED"));
     }

@@ -17,7 +17,7 @@ Outputs (non-secret):
 - `MONITOR_SECRET_ARN`
 - `FLOW_SECRET_ARN`
 
-OpenTofu creates the pool, groups, scopes, the public console client, and — when `enable_machine_client` is true — confidential client-credentials apps for Environmental Monitor, Park Flow Intelligence, and reliability ingest, each with a Secrets Manager secret. There is no reliability producer process in Compose; that client exists only for `POST /api/v1/integrations/reliability/recommendations`. OpenTofu does not create users or store human passwords.
+OpenTofu creates the pool, groups, scopes, the public console client, and — when `enable_machine_client` is true — confidential client-credentials apps for Environmental Monitor, Park Flow Intelligence, and Reliability Intelligence, each with a Secrets Manager secret. Local Compose runs Reliability Intelligence against that client. OpenTofu does not create users or store human passwords.
 
 Then create the operator (password stays in gitignored `.env.cognito.local`):
 

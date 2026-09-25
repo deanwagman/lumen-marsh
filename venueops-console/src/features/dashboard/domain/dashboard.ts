@@ -13,7 +13,9 @@ export const dashboardAttentionKinds = [
   'MAJOR_INCIDENT',
   'WEATHER_HAZARD',
   'WEATHER_HOLD',
+  'OPEN_P1_WORK_ORDER',
   'ABNORMAL_ATTRACTION',
+  'UNPUBLISHED_FLOW_RECOMMENDATION',
   'UNASSIGNED_INCIDENT',
   'UNACKNOWLEDGED_INCIDENT',
   'ORPHAN_ADVISORY',
@@ -33,6 +35,8 @@ export type DashboardSummary = {
   majorOrCriticalIncidents: number;
   pendingWeatherRecommendations: number;
   publishedGuestAdvisories: number;
+  openP1WorkOrders: number;
+  unpublishedFlowRecommendations: number;
 };
 
 export type DashboardAttentionItem = {
@@ -129,7 +133,9 @@ export const attentionKindLabels: Record<DashboardAttentionKind, string> = {
   MAJOR_INCIDENT: 'Major incident',
   WEATHER_HAZARD: 'Weather hazard',
   WEATHER_HOLD: 'Weather hold',
+  OPEN_P1_WORK_ORDER: 'P1 work order',
   ABNORMAL_ATTRACTION: 'Attraction condition',
+  UNPUBLISHED_FLOW_RECOMMENDATION: 'Unpublished flow',
   UNASSIGNED_INCIDENT: 'Unassigned incident',
   UNACKNOWLEDGED_INCIDENT: 'Unacknowledged incident',
   ORPHAN_ADVISORY: 'Advisory inconsistency',
@@ -197,6 +203,20 @@ export const dashboardMetrics: Array<{
     href: '/attractions#weather-recommendations-heading',
     accessibleName: (count) =>
       `${count} pending weather ${count === 1 ? 'recommendation' : 'recommendations'}`,
+  },
+  {
+    key: 'openP1WorkOrders',
+    label: 'P1 work orders',
+    href: '/maintenance',
+    accessibleName: (count) =>
+      `${count} open P1 ${count === 1 ? 'work order' : 'work orders'}`,
+  },
+  {
+    key: 'unpublishedFlowRecommendations',
+    label: 'Unpublished flow',
+    href: '/park-flow',
+    accessibleName: (count) =>
+      `${count} unpublished flow ${count === 1 ? 'recommendation' : 'recommendations'}`,
   },
   {
     key: 'publishedGuestAdvisories',

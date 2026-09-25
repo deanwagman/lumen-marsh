@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { setCommandReceipt } from '@/features/attractions/api/AttractionQueries';
@@ -11,15 +12,46 @@ import {
   incidentActivityQuery,
   IncidentQueries,
 } from '@/features/incidents/api/IncidentQueries';
+import { newCommandId } from '@/features/incidents/domain/commands';
+import { DuplicateCommandError, VersionConflictError } from '@/shared/api/errors';
 import { useApiClient } from '@/shared/api/useApiClient';
+
+function useReusableCommandId() {
+  const pending = useRef<{ key: string; commandId: string } | null>(null);
+
+  function identityFor(key: string): string {
+    if (pending.current?.key === key) {
+      return pending.current.commandId;
+    }
+    const commandId = newCommandId();
+    pending.current = { key, commandId };
+    return commandId;
+  }
+
+  function clear() {
+    pending.current = null;
+  }
+
+  function resetForNewIntent() {
+    pending.current = null;
+  }
+
+  return { identityFor, clear, resetForNewIntent };
+}
 
 export function useIncidentCommand() {
   const client = useApiClient();
   const queryClient = useQueryClient();
+  const identity = useReusableCommandId();
 
   return useMutation({
-    mutationFn: (input: IncidentCommandInput) => IncidentCommands.execute(client, input),
+    mutationFn: (input: Omit<IncidentCommandInput, 'commandId'> & { commandId?: string }) => {
+      const commandId =
+        input.commandId ?? identity.identityFor(`${input.incidentId}:${input.type}`);
+      return IncidentCommands.execute(client, { ...input, commandId });
+    },
     onSuccess: async (incident, variables) => {
+      identity.clear();
       applyOperatorIncident(queryClient, incident);
       let activityId: string | null = null;
       try {
@@ -40,6 +72,11 @@ export function useIncidentCommand() {
       await queryClient.invalidateQueries({
         queryKey: IncidentQueries.activity(incident.id),
       });
+    },
+    onError: (error) => {
+      if (error instanceof VersionConflictError || error instanceof DuplicateCommandError) {
+        identity.resetForNewIntent();
+      }
     },
   });
 }

@@ -16,6 +16,7 @@ Identity and access control for the Lumen Marsh control plane.
 | [acceptance-matrix.md](./acceptance-matrix.md) | Acceptance scenarios |
 | [../storm-lifecycle-demo.md](../storm-lifecycle-demo.md) | Integrated weather UI demo + failure checks |
 | [../maintenance-lifecycle-demo.md](../maintenance-lifecycle-demo.md) | Reliability ingest → inspect → testing HTTP proof |
+| [../flow-lifecycle-demo.md](../flow-lifecycle-demo.md) | Park Flow publish → guest Best Next + failure checks |
 | [public-deployment-gate.md](./public-deployment-gate.md) | Phase 10 public demo gate |
 
 See [rollout.md](./rollout.md) for the 12-phase Cognito plan. Snapshot:

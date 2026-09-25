@@ -1,6 +1,7 @@
 package com.deanwagman.lumenmarsh.venueops.attraction.infrastructure;
 
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionExperienceRepository;
+import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionProcessedCommandRepository;
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionRepository;
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionService;
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionUpdatePublisher;
@@ -28,10 +29,11 @@ public class AttractionConfiguration {
     @Bean
     AttractionService attractionService(
             AttractionRepository repository,
+            AttractionProcessedCommandRepository processedCommands,
             Clock clock,
             AttractionUpdatePublisher updatePublisher
     ) {
-        return new AttractionService(repository, clock, updatePublisher);
+        return new AttractionService(repository, processedCommands, clock, updatePublisher);
     }
 
     @Bean
