@@ -25,6 +25,8 @@ class ReliabilitySimulator:
         self.running = False
         self.cycle = 0
         self.last_observation_id: str | None = None
+        self._episode_observation_id: str | None = None
+        self._episode_emitted = False
 
     def start(self) -> None:
         self.running = True
@@ -33,6 +35,11 @@ class ReliabilitySimulator:
         self.running = False
 
     def apply_scenario(self, scenario: Scenario) -> None:
+        if scenario is not self.scenario:
+            if scenario is Scenario.CYPRESS_COIL_VIBRATION:
+                self._begin_episode()
+            else:
+                self._end_episode()
         self.scenario = scenario
 
     def next_cycle(self) -> ReliabilitySample | None:
@@ -40,9 +47,16 @@ class ReliabilitySimulator:
         if self.scenario != Scenario.CYPRESS_COIL_VIBRATION:
             self.last_observation_id = None
             return None
+        if self._episode_emitted:
+            return None
+        if self._episode_observation_id is None:
+            self._begin_episode()
+        observation_id = self._episode_observation_id
+        if observation_id is None:
+            return None
         observed_at = self.clock.now()
         sample = ReliabilitySample(
-            observation_id=observation_id_for("vibration-cc-train-01", observed_at, self.cycle),
+            observation_id=observation_id,
             observed_at=observed_at,
             asset_code=self.settings.asset_code,
             signal_type=SignalType(self.settings.signal_type),
@@ -54,7 +68,21 @@ class ReliabilitySimulator:
             simulated=True,
         )
         self.last_observation_id = sample.observation_id
+        self._episode_emitted = True
         return sample
+
+    def _begin_episode(self) -> None:
+        observed_at = self.clock.now()
+        self._episode_observation_id = observation_id_for(
+            "vibration-cc-train-01", observed_at, 0
+        )
+        self._episode_emitted = False
+        self.last_observation_id = None
+
+    def _end_episode(self) -> None:
+        self._episode_observation_id = None
+        self._episode_emitted = False
+        self.last_observation_id = None
 
     def snapshot(self) -> dict[str, object]:
         return {

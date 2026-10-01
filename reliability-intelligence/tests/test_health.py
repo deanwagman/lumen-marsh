@@ -28,6 +28,10 @@ async def test_simulation_controls_are_local_only(
     sample = client_sink.recommendations[0]
     assert sample.asset_code == "CC-TRAIN-01-WHEEL-A"
     assert sample.signal_type.value == "VIBRATION"
+    again = await client.post("/simulation/scenarios/cypress-coil-vibration")
+    assert again.status_code == 200
+    assert again.json()["submitted"] is False
+    assert len(client_sink.recommendations) == 1
     stopped = await client.post("/simulation/stop")
     assert stopped.status_code == 200
 

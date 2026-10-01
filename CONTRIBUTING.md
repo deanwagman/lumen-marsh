@@ -95,6 +95,8 @@ cd lumen-marsh-platform
 ./scripts/flow-lifecycle-acceptance.sh
 ```
 
+Pull-request CI does not start Compose. The manual/nightly `lifecycle-proofs` workflow runs `dev-up.sh` plus those three scripts.
+
 ## Pull requests
 
 Keep changes focused and explain the operator or guest behavior they affect. Include tests for state transitions, authorization boundaries, mappings, and failure responses. Update the walkthrough or screenshots when a visible demo flow changes.

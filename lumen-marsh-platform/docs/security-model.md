@@ -171,7 +171,7 @@ Work-order lifecycle via `POST /api/v1/operator/maintenance/work-orders/{id}/com
 | `CANCEL` (P1/P2) | Supervisor | `SUPERVISOR` + `venueops/maintenance.command` |
 | `APPROVE_INSPECTION`, `REJECT_INSPECTION`, `COMPLETE` | Supervisor | `SUPERVISOR` + `venueops/maintenance.inspect` |
 
-Ingest (`POST /api/v1/integrations/reliability/recommendations`) is Reliability Intelligence, audit SERVICE. A recommendation never becomes a work order until an operator accepts it. `ACCEPT` and `DISMISS` require `commandId` and `expectedVersion`. Work orders never reopen attractions.
+Ingest (`POST /api/v1/integrations/reliability/recommendations`) is Reliability Intelligence, audit SERVICE. Duplicate observation IDs and additional samples for the same pending asset and signal coalesce onto one inbox row. A recommendation never becomes a work order until an operator accepts it. `ACCEPT` and `DISMISS` require `commandId` and `expectedVersion`. Work orders never reopen attractions.
 
 ## Flow commands
 

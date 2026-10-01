@@ -1,6 +1,6 @@
 # Lumen Marsh Control
 
-Operator console for **Lumen Marsh**, a fictional eco-futurist wetlands destination. It is a separate Vite/React/TypeScript application alongside [VenueOps API](../venueops-api), [Park Flow Intelligence](../park-flow-intelligence), and the [guest companion](../lumen-marsh-app).
+Operator console for **Lumen Marsh**, a fictional eco-futurist wetlands destination. It is a separate Vite/React/TypeScript application alongside [VenueOps API](../venueops-api), [Park Flow Intelligence](../park-flow-intelligence), [Reliability Intelligence](../reliability-intelligence), and the [guest companion](../lumen-marsh-app).
 
 Control Tower covers attractions, incidents, weather inbox, maintenance, and park flow. The attraction command workspace (Mangrove Run is the usual demo) still owns current state, valid commands, wait-time updates, version conflicts, and the activity timeline. Live SSE updates write through the TanStack Query cache rather than a second operational store.
 

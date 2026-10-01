@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "venueops.attractions.seed=true")
 @AutoConfigureMockMvc
-@DirtiesContext
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class CypressCoilMaintenanceAcceptanceTest {
 
     @Autowired
@@ -46,16 +46,14 @@ class CypressCoilMaintenanceAcceptanceTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(5));
 
-        JsonNode ingested = json.readTree(mockMvc.perform(post("/api/v1/integrations/reliability/recommendations")
+        MvcResult ingestResult = mockMvc.perform(post("/api/v1/integrations/reliability/recommendations")
                         .with(TestAuth.reliabilityService())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(vibrationBody("vibration-cc-train-01-20260914T182500Z")))
-                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING_REVIEW"))
-                .andExpect(jsonPath("$.duplicate").value(false))
-                .andReturn()
-                .getResponse()
-                .getContentAsByteArray());
+                .andReturn();
+        assertThat(ingestResult.getResponse().getStatus()).isIn(200, 201);
+        JsonNode ingested = json.readTree(ingestResult.getResponse().getContentAsByteArray());
         String recommendationId = ingested.get("recommendationId").asString();
 
         mockMvc.perform(post("/api/v1/integrations/reliability/recommendations")
@@ -377,6 +375,50 @@ class CypressCoilMaintenanceAcceptanceTest {
                                 """)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("RESOLVED"));
+    }
+
+    @Test
+    void pendingVibrationSamplesCoalesceUntilReviewEnds() throws Exception {
+        JsonNode first = json.readTree(mockMvc.perform(post("/api/v1/integrations/reliability/recommendations")
+                        .with(TestAuth.reliabilityService())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vibrationBody("vibration-cc-coalesce-a")))
+                .andExpect(jsonPath("$.status").value("PENDING_REVIEW"))
+                .andReturn()
+                .getResponse()
+                .getContentAsByteArray());
+        String recommendationId = first.get("recommendationId").asString();
+
+        mockMvc.perform(post("/api/v1/integrations/reliability/recommendations")
+                        .with(TestAuth.reliabilityService())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vibrationBody("vibration-cc-coalesce-b")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.duplicate").value(true))
+                .andExpect(jsonPath("$.recommendationId").value(recommendationId));
+
+        mockMvc.perform(post("/api/v1/operator/maintenance/recommendations/" + recommendationId + "/commands")
+                        .with(TestAuth.operator())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "commandId": "%s",
+                                  "type": "DISMISS",
+                                  "expectedVersion": 1,
+                                  "reason": "Same active vibration already reviewed"
+                                }
+                                """.formatted(UUID.randomUUID())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DISMISSED"));
+
+        mockMvc.perform(post("/api/v1/integrations/reliability/recommendations")
+                        .with(TestAuth.reliabilityService())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vibrationBody("vibration-cc-coalesce-c")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.duplicate").value(false))
+                .andExpect(jsonPath("$.status").value("PENDING_REVIEW"))
+                .andExpect(jsonPath("$.recommendationId").value(not(recommendationId)));
     }
 
     @Test

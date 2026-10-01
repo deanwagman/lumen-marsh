@@ -34,7 +34,7 @@ public class ReliabilityRecommendationIntegrationController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('" + VenueOpsScopes.SCOPE_RELIABILITY_WRITE + "')")
-    @Operation(summary = "Ingest a reliability recommendation", description = "Creates a pending recommendation. Duplicate observation IDs are accepted without creating a work order.")
+    @Operation(summary = "Ingest a reliability recommendation", description = "Creates a pending recommendation. Duplicate observation IDs, and additional samples for the same pending asset and signal, are accepted without opening another inbox row or a work order.")
     public ResponseEntity<ReliabilityRecommendationIngestResponse> ingest(
             @Valid @RequestBody IngestReliabilityRecommendationRequest request
     ) {

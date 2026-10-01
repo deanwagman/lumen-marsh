@@ -198,6 +198,12 @@ class MaintenanceRecommendationEntity {
 interface MaintenanceRecommendationJpaRepository extends JpaRepository<MaintenanceRecommendationEntity, String> {
     Optional<MaintenanceRecommendationEntity> findByObservationId(String observationId);
 
+    Optional<MaintenanceRecommendationEntity> findFirstByAssetCodeAndSignalTypeAndStatusOrderByReceivedAtDesc(
+            String assetCode,
+            MaintenanceSignalType signalType,
+            MaintenanceRecommendationStatus status
+    );
+
     Optional<MaintenanceRecommendationEntity> findByCommandId(String commandId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -242,6 +248,20 @@ public class JpaMaintenanceRecommendationRepository implements MaintenanceRecomm
     @Transactional(readOnly = true)
     public Optional<MaintenanceRecommendation> findByObservationId(String observationId) {
         return recommendations.findByObservationId(observationId).map(JpaMaintenanceRecommendationRepository::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<MaintenanceRecommendation> findPendingByAssetAndSignal(
+            String assetCode,
+            MaintenanceSignalType signalType
+    ) {
+        return recommendations.findFirstByAssetCodeAndSignalTypeAndStatusOrderByReceivedAtDesc(
+                        assetCode,
+                        signalType,
+                        MaintenanceRecommendationStatus.PENDING_REVIEW
+                )
+                .map(JpaMaintenanceRecommendationRepository::toDomain);
     }
 
     @Override

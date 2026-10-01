@@ -16,7 +16,7 @@ VenueOps API (authoritative)
 Operator accept → work order
 ```
 
-Lumen Marsh is a fictional demonstration environment. Simulated data is marked in evidence copy. VenueOps ingest is idempotent on `observationId`.
+Lumen Marsh is a fictional demonstration environment. Simulated data is marked in evidence copy. VenueOps ingest is idempotent on `observationId`. While a Cypress Coil vibration recommendation is still pending review, additional samples for the same asset and signal coalesce onto that inbox row. Reliability Intelligence posts at most one sample per vibration episode so the operator inbox stays demo-readable.
 
 ## Requirements
 
@@ -61,7 +61,7 @@ curl -X POST http://localhost:8200/simulation/scenarios/clear
 curl -X POST http://localhost:8200/simulation/stop
 ```
 
-`cypress-coil-vibration` posts a WARNING-level recommendation for `CC-TRAIN-01-WHEEL-A`. Duplicate observation IDs are accepted by VenueOps without creating a second recommendation.
+`cypress-coil-vibration` posts a WARNING-level recommendation for `CC-TRAIN-01-WHEEL-A`. The simulator emits one sample for that episode. Re-posting the same scenario while it is active does not stack another inbox row. `clear` then `cypress-coil-vibration` starts a new episode. Duplicate observation IDs, and extra samples for the same pending asset and signal, are accepted by VenueOps without creating a second recommendation.
 
 ## Quality commands
 

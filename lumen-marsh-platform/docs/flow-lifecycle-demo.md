@@ -61,8 +61,8 @@ Work left-to-right: Park Flow simulation → Control Tower → Flutter.
 
 ### 5. Guest Best Next
 
-- [ ] Flutter **Today** shows **Best Next Experiences** with Cypress Coil / Stormglass Station and the published guest message.
-- [ ] Guest REST `GET /api/v1/flow/overview` and `GET /api/v1/flow/recommendations` contain only allowlisted fields.
+- [ ] Flutter **Today** shows **Best Next Experiences** with the published guest message. Mangrove Run is not ranked as a good next choice while that copy says it is unavailable.
+- [ ] Guest REST `GET /api/v1/flow/overview` includes `unavailableAttractionIds` for the disrupted attraction and only allowlisted fields.
 - [ ] Guest wait-forecast has no `queueLength`, `confidence`, `explanation`, `actor`, or `relatedIncidentId`.
 
 ## Failure checks (do not skip)

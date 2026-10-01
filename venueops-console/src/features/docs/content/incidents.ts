@@ -11,6 +11,7 @@ export const incidentsArticle: DocArticle = {
       title: 'Incident lifecycle',
       body: [
         'Typical flow: report → acknowledge → start mitigation → resolve. Available commands depend on status and your role.',
+        'Every incident command sends a client-generated command ID and the expected version. Retries of the same intent reuse the command ID.',
         'Acknowledge before mitigation can start. Resolve closes the incident and withdraws any published guest advisory.',
         'Assign, change severity, and link or unlink attractions as needed while the incident is open. Linking does not change attraction operational state by itself.',
       ],

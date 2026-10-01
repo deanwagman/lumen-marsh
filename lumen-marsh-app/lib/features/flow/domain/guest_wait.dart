@@ -152,6 +152,7 @@ class GuestGuidance extends Equatable {
     required this.guestMessage,
     required this.updatedAt,
     required this.simulated,
+    this.unavailableAttractionIds = const [],
   });
 
   factory GuestGuidance.fromJson(Map<String, dynamic> json) {
@@ -162,6 +163,11 @@ class GuestGuidance extends Equatable {
             in json['recommendedDestinationIds'] as List<dynamic>? ?? const [])
           id as String,
       ],
+      unavailableAttractionIds: [
+        for (final id
+            in json['unavailableAttractionIds'] as List<dynamic>? ?? const [])
+          id as String,
+      ],
       guestMessage: json['guestMessage'] as String?,
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       simulated: json['simulated'] as bool? ?? false,
@@ -170,6 +176,7 @@ class GuestGuidance extends Equatable {
 
   final String recommendationId;
   final List<String> recommendedDestinationIds;
+  final List<String> unavailableAttractionIds;
   final String? guestMessage;
   final DateTime updatedAt;
   final bool simulated;
@@ -177,10 +184,33 @@ class GuestGuidance extends Equatable {
   bool recommends(String attractionId) =>
       recommendedDestinationIds.contains(attractionId);
 
+  bool marksUnavailable({
+    required String attractionId,
+    required String displayName,
+  }) {
+    if (recommends(attractionId)) {
+      return false;
+    }
+    if (unavailableAttractionIds.contains(attractionId)) {
+      return true;
+    }
+    final message = guestMessage?.trim();
+    final name = displayName.trim();
+    if (message == null || message.isEmpty || name.isEmpty) {
+      return false;
+    }
+    final pattern = RegExp(
+      '${RegExp.escape(name)}.{0,48}\\b(unavailable|not available|closed)\\b',
+      caseSensitive: false,
+    );
+    return pattern.hasMatch(message);
+  }
+
   @override
   List<Object?> get props => [
     recommendationId,
     recommendedDestinationIds,
+    unavailableAttractionIds,
     guestMessage,
     updatedAt,
     simulated,

@@ -589,7 +589,7 @@ POST /api/v1/operator/maintenance/recommendations/{recommendationId}/commands
 POST /api/v1/integrations/reliability/recommendations
 ```
 
-Maintenance work orders never reopen an attraction. `COMPLETE` is blocked while the attraction is in `TECHNICAL_DELAY`, `TESTING`, or `RETURNING_TO_SERVICE`. `CLOSED`, `OPERATING`, and `WEATHER_HOLD` are allowed so overnight work can finish on a closed attraction and weather holds stay independent of maintenance completion. Reliability ingest creates a pending recommendation, not a work order. Machine tokens use `Authorization: Bearer local-reliability-token` in `LOCAL_JWT` mode.
+Maintenance work orders never reopen an attraction. `COMPLETE` is blocked while the attraction is in `TECHNICAL_DELAY`, `TESTING`, or `RETURNING_TO_SERVICE`. `CLOSED`, `OPERATING`, and `WEATHER_HOLD` are allowed so overnight work can finish on a closed attraction and weather holds stay independent of maintenance completion. Reliability ingest creates a pending recommendation, not a work order. Duplicate `observationId` values, and additional samples for the same pending asset and signal, coalesce onto one inbox row. Machine tokens use `Authorization: Bearer local-reliability-token` in `LOCAL_JWT` mode.
 
 Work-order commands: `OPEN`, `ASSIGN`, `START_WORK`, `REQUEST_INSPECTION`, `REJECT_INSPECTION`, `APPROVE_INSPECTION`, `COMPLETE`, `CANCEL`, `REASSIGN`, `SET_ESTIMATED_RESTORE`, `RECORD_CHECKLIST_RESULT`, `LINK_INCIDENT`, `ADD_NOTE`, `ADD_EVIDENCE`. Every command requires `commandId` and `expectedVersion`. Duplicate `commandId` values replay the original result. Reusing a `commandId` against a different work-order URL returns `409` with code `DUPLICATE_COMMAND`.
 

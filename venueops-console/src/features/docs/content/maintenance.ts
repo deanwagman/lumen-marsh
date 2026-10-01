@@ -27,7 +27,8 @@ export const maintenanceArticle: DocArticle = {
       id: 'reliability',
       title: 'Reliability recommendation review',
       body: [
-        'The reliability inbox lists pending telemetry recommendations such as an abnormal Cypress Coil vibration signal.',
+        'The reliability inbox lists pending telemetry recommendations such as an abnormal Cypress Coil vibration signal. The same active Cypress Coil vibration stays one inbox row: additional samples coalesce until an operator accepts or dismisses. A later reactivation can open a new recommendation.',
+        'Reliability Intelligence posts at most one sample per vibration episode. Re-applying cypress-coil-vibration while that episode is active does not stack another warning. Clear, then apply the scenario again, to start a new episode.',
         'Accepting a pending recommendation creates a corrective work order. Dismissing it requires a short reason so the trail explains why no work was opened.',
       ],
     },

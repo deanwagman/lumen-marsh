@@ -2,6 +2,7 @@ package com.deanwagman.lumenmarsh.venueops.maintenance.application;
 
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendation;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendationId;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceSignalType;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +13,11 @@ public interface MaintenanceRecommendationRepository {
     Optional<MaintenanceRecommendation> findById(MaintenanceRecommendationId id);
 
     Optional<MaintenanceRecommendation> findByObservationId(String observationId);
+
+    Optional<MaintenanceRecommendation> findPendingByAssetAndSignal(
+            String assetCode,
+            MaintenanceSignalType signalType
+    );
 
     Optional<MaintenanceRecommendation> findByCommandId(UUID commandId);
 

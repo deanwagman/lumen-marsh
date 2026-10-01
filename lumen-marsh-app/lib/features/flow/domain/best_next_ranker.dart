@@ -59,6 +59,15 @@ class BestNextRanker {
       if (!wait.availability.isOperating) {
         continue;
       }
+      final unavailable = publishedGuidance.any(
+        (guidance) => guidance.marksUnavailable(
+          attractionId: wait.attractionId,
+          displayName: wait.displayName,
+        ),
+      );
+      if (unavailable) {
+        continue;
+      }
       final walking = ParkZone.walkingMinutes(originZoneId, wait.originZoneId);
       final published = publishedIds.contains(wait.attractionId);
       scored.add(

@@ -20,6 +20,7 @@ export const attractionsArticle: DocArticle = {
       body: [
         'Commands offer only transitions valid for the current status and capacity mode. You never pick a destination status directly.',
         'Select a command, read the description, add a reason when required, then confirm. After success, check the activity timeline for the receipt.',
+        'Every attraction command sends a client-generated command ID and the expected version. Retries of the same intent reuse the command ID. A new intent gets a new identifier.',
         'Attraction state-change commands are supervisor-only in the UI. Operators can still open the workspace and update wait times when allowed.',
       ],
     },
