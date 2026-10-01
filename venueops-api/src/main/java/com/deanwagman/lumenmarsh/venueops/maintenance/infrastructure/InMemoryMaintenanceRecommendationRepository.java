@@ -99,7 +99,8 @@ public class InMemoryMaintenanceRecommendationRepository implements MaintenanceR
                 recommendation.receivedAt(),
                 recommendation.updatedAt(),
                 recommendation.version(),
-                recommendation.lastCommandId()
+                recommendation.lastCommandId(),
+                recommendation.reviewedBy()
         );
     }
 }

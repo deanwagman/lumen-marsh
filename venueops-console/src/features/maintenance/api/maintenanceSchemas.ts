@@ -359,3 +359,9 @@ export const reliabilityRecommendationSchema = z
   );
 
 export const reliabilityRecommendationListSchema = z.array(reliabilityRecommendationSchema);
+
+export const maintenanceRecommendationSseUpdateSchema = z.object({
+  eventId: z.string(),
+  occurredAt: z.string(),
+  recommendation: reliabilityRecommendationSchema,
+});

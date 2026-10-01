@@ -50,6 +50,7 @@ describe('Operations dashboard', () => {
       '/incidents/inc-critical-1',
       '/incidents/inc-lightning-1',
       '/attractions',
+      '/maintenance',
       '/attractions/cypress-coil',
       '/maintenance/work-orders/6dbb04f2-b20d-4b16-ae57-43072fc2e408',
       '/park-flow',

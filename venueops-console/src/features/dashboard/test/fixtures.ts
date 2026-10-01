@@ -72,6 +72,15 @@ export const stormDashboard: OperatorDashboard = {
       updatedAt: '2026-09-10T20:28:00Z',
     },
     {
+      kind: 'PENDING_RELIABILITY_RECOMMENDATION',
+      reason:
+        'Pending reliability recommendation: Inspect the wheel assembly and consider reduced-capacity operation.',
+      href: '/maintenance',
+      subjectId: 'b7e2c1a0-4c11-4c11-8c11-27679ca40303',
+      subjectLabel: 'Vibration',
+      updatedAt: '2026-09-10T20:28:40Z',
+    },
+    {
       kind: 'WEATHER_HOLD',
       reason: 'Cypress Coil is on weather hold.',
       href: '/attractions/cypress-coil',

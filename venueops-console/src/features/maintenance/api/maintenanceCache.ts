@@ -11,6 +11,16 @@ import { applyNewerWorkOrder } from '@/features/maintenance/domain/maintenance';
 
 import { MaintenanceQueries, patchWorkOrderInPages } from './MaintenanceQueries';
 
+export function replaceRecommendations(
+  queryClient: QueryClient,
+  recommendations: ReliabilityRecommendation[],
+): void {
+  queryClient.setQueryData(
+    MaintenanceQueries.recommendations(),
+    [...recommendations].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt)),
+  );
+}
+
 export function applyRecommendation(
   queryClient: QueryClient,
   recommendation: ReliabilityRecommendation,

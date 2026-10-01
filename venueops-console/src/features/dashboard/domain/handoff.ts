@@ -95,7 +95,13 @@ function attentionLines(dashboard: OperatorDashboard): string[] {
   }
 
   for (const item of dashboard.needsAttention) {
-    if (item.kind === 'STALE_DATA' || item.kind === 'ORPHAN_ADVISORY') {
+    if (
+      item.kind === 'STALE_DATA' ||
+      item.kind === 'ORPHAN_ADVISORY' ||
+      item.kind === 'OPEN_P1_WORK_ORDER' ||
+      item.kind === 'UNPUBLISHED_FLOW_RECOMMENDATION' ||
+      item.kind === 'PENDING_RELIABILITY_RECOMMENDATION'
+    ) {
       lines.push(`- ${attentionKindLabels[item.kind]}: ${item.reason}`);
     }
   }

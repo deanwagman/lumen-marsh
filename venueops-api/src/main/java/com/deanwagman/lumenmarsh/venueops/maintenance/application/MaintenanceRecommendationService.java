@@ -13,6 +13,7 @@ import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.Maintenan
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenancePriority;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenanceSourceType;
 import com.deanwagman.lumenmarsh.venueops.security.ActorIdentity;
+import com.deanwagman.lumenmarsh.venueops.support.AfterCommit;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -27,17 +28,20 @@ public class MaintenanceRecommendationService {
     private final MaintenanceRecommendationRepository recommendations;
     private final MaintenanceAssetRepository assets;
     private final MaintenanceWorkOrderCommandService workOrders;
+    private final MaintenanceUpdatePublisher publisher;
     private final Clock clock;
 
     public MaintenanceRecommendationService(
             MaintenanceRecommendationRepository recommendations,
             MaintenanceAssetRepository assets,
             MaintenanceWorkOrderCommandService workOrders,
+            MaintenanceUpdatePublisher publisher,
             Clock clock
     ) {
         this.recommendations = Objects.requireNonNull(recommendations);
         this.assets = Objects.requireNonNull(assets);
         this.workOrders = Objects.requireNonNull(workOrders);
+        this.publisher = Objects.requireNonNull(publisher);
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -103,6 +107,7 @@ public class MaintenanceRecommendationService {
             case DISMISS -> dismiss(recommendation, commandId, expectedVersion, actor);
             case ACCEPT -> accept(recommendation, commandId, expectedVersion, actor, correlationId);
         }
+        publish(recommendation);
         return recommendation;
     }
 
@@ -190,7 +195,12 @@ public class MaintenanceRecommendationService {
                 clock
         );
         recommendations.save(recommendation);
+        publish(recommendation);
         return new RecommendationIngestResult(recommendation, false);
+    }
+
+    private void publish(MaintenanceRecommendation recommendation) {
+        AfterCommit.run(() -> publisher.publish(MaintenanceRecommendationOperationalUpdate.from(recommendation)));
     }
 
     private static UUID workOrderCommandId(UUID recommendationCommandId) {
