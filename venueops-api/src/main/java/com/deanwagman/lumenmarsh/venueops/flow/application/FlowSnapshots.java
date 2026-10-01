@@ -11,6 +11,7 @@ import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationStatus;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationType;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -148,14 +149,24 @@ public final class FlowSnapshots {
     public record GuestGuidanceSnapshot(
             String recommendationId,
             List<String> recommendedDestinationIds,
+            List<String> unavailableAttractionIds,
             String guestMessage,
             Instant updatedAt,
             boolean simulated
     ) {
         public static GuestGuidanceSnapshot from(FlowRecommendation recommendation) {
+            List<String> destinations = recommendation.recommendedDestinationIds().stream()
+                    .map(id -> id.value())
+                    .toList();
+            List<String> unavailable = new ArrayList<>();
+            if (recommendation.sourceAttractionId() != null
+                    && !destinations.contains(recommendation.sourceAttractionId().value())) {
+                unavailable.add(recommendation.sourceAttractionId().value());
+            }
             return new GuestGuidanceSnapshot(
                     recommendation.id().value(),
-                    recommendation.recommendedDestinationIds().stream().map(id -> id.value()).toList(),
+                    destinations,
+                    List.copyOf(unavailable),
                     recommendation.guestMessage(),
                     recommendation.updatedAt(),
                     recommendation.simulated()

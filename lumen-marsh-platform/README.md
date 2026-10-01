@@ -6,7 +6,7 @@ Application source lives in sibling directories in the Lumen Marsh monorepo. Thi
 
 ## Architecture
 
-Seven pieces, one Compose graph, two databases:
+Six runtime pieces, one Compose graph, two databases. `lumen-marsh-platform` orchestrates them; it is not a seventh park application.
 
 ```text
 Guest browser                 Control Tower browser
@@ -207,7 +207,7 @@ Design notes: [docs/aws-demo.md](docs/aws-demo.md).
 
 ## CI
 
-The root `.github/workflows/ci.yml` validates every application plus Compose config, OpenTofu formatting/validation, shell syntax, and the repository security scan.
+The root `.github/workflows/ci.yml` validates every application plus Compose config, OpenTofu formatting/validation, shell syntax, and the repository security scan on every pull request. `.github/workflows/lifecycle-proofs.yml` starts Compose and runs the storm, maintenance, and flow lifecycle scripts on `workflow_dispatch` and a nightly schedule. It is not attached to pull requests.
 
 ## Portfolio demo (reviewer path)
 

@@ -1,6 +1,6 @@
 # Lumen Marsh
 
-Lumen Marsh is a fictional theme-park operations platform built as a portfolio demonstration. It connects a guest companion, an operator control tower, an operational API, an environmental monitor, park-flow intelligence, and reliability intelligence in one observable workflow.
+Lumen Marsh is a fictional theme-park operations platform built as a portfolio demonstration. Six runtime pieces share one Compose graph: a guest companion, an operator control tower, an operational API, an environmental monitor, park-flow intelligence, and reliability intelligence. Platform orchestration, scripts, and identity IaC live beside them.
 
 > Lumen Marsh is an independent fictional project. It is not affiliated with, endorsed by, or based on proprietary systems from Universal Destinations & Experiences or any other theme-park operator.
 
@@ -17,7 +17,7 @@ Lumen Marsh is a fictional theme-park operations platform built as a portfolio d
 
 ## Architecture
 
-Seven pieces, one Compose graph, two databases. Sensors and simulators recommend. Operators decide. Guests see a sanitized projection.
+Six runtime pieces, one Compose graph, two databases. Sensors and simulators recommend. Operators decide. Guests see a sanitized projection. `lumen-marsh-platform` orchestrates the graph; it is not a seventh park application.
 
 ```mermaid
 flowchart LR
@@ -82,7 +82,13 @@ cd lumen-marsh-platform
 ./scripts/flow-lifecycle-acceptance.sh
 ```
 
-The storm scenario follows weather observation → recommendation → operator review → incident → attraction hold → guest advisory → clearance → testing → return to service. The maintenance scenario follows reliability ingest → accept → inspect → operations testing. The flow scenario follows mangrove disruption → unpublished recommendation → supervisor publish → guest Best Next. All three assert guest leak, authorization, and stale-version failures. See the [storm UI walkthrough](./lumen-marsh-platform/docs/storm-lifecycle-demo.md), the [maintenance HTTP proof](./lumen-marsh-platform/docs/maintenance-lifecycle-demo.md), and the [flow UI walkthrough](./lumen-marsh-platform/docs/flow-lifecycle-demo.md).
+The storm scenario follows weather observation → recommendation → operator review → incident → attraction hold → guest advisory → clearance → testing → return to service. The maintenance scenario follows reliability ingest → accept → inspect → operations testing. The flow scenario follows mangrove disruption → unpublished recommendation → supervisor publish → guest Best Next, and Best Next will not rank an attraction as a good next choice when published copy says it is unavailable. All three assert guest leak, authorization, and stale-version failures. See the [storm UI walkthrough](./lumen-marsh-platform/docs/storm-lifecycle-demo.md), the [maintenance HTTP proof](./lumen-marsh-platform/docs/maintenance-lifecycle-demo.md), and the [flow UI walkthrough](./lumen-marsh-platform/docs/flow-lifecycle-demo.md).
+
+## Operators vs guests
+
+Control Tower is where humans review recommendations, issue versioned commands, and publish guest copy. The Flutter app is the guest companion: live attractions, advisories, rounded waits, and Best Next from **published** park-flow guidance. Guests never see `internalDescription`, actor names, work-order numbers, unpublished recommendations, or weather-inbox events.
+
+Operator product procedures live in the console **Docs** section (`/docs`), next to the workspaces they describe. Do not keep a second parallel manual.
 
 Stop the stack without deleting its databases:
 
@@ -104,7 +110,7 @@ This mode expects an explicitly provisioned development identity stack and local
 
 ## Quality checks
 
-Each application can be validated independently. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the commands. Root GitHub Actions run Java, Python, console, Flutter, platform, and security checks on every pull request.
+Each application can be validated independently. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the commands. Root GitHub Actions run Java, Python, console, Flutter, platform, and security checks on every pull request. Compose plus the storm, maintenance, and flow lifecycle scripts run on the manual/nightly `lifecycle-proofs` workflow, not on every PR.
 
 ## Security and limitations
 

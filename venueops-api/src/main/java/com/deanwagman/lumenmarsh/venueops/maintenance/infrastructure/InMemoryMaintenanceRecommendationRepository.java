@@ -4,6 +4,8 @@ import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceRec
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.StaleMaintenanceRecommendationVersionException;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendation;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendationId;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendationStatus;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceSignalType;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
@@ -30,6 +32,19 @@ public class InMemoryMaintenanceRecommendationRepository implements MaintenanceR
         return recommendations.values().stream()
                 .filter(recommendation -> recommendation.observationId().equals(observationId))
                 .findFirst()
+                .map(InMemoryMaintenanceRecommendationRepository::copyOf);
+    }
+
+    @Override
+    public Optional<MaintenanceRecommendation> findPendingByAssetAndSignal(
+            String assetCode,
+            MaintenanceSignalType signalType
+    ) {
+        return recommendations.values().stream()
+                .filter(recommendation -> recommendation.status() == MaintenanceRecommendationStatus.PENDING_REVIEW)
+                .filter(recommendation -> recommendation.assetCode().equals(assetCode))
+                .filter(recommendation -> recommendation.signalType() == signalType)
+                .max(Comparator.comparing(MaintenanceRecommendation::receivedAt))
                 .map(InMemoryMaintenanceRecommendationRepository::copyOf);
     }
 

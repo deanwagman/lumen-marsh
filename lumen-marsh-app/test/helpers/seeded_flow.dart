@@ -66,6 +66,7 @@ final closedMangroveWait = sampleGuestWait(
 final publishedGuidance = GuestGuidance(
   recommendationId: 'rec-1',
   recommendedDestinationIds: const ['cypress-coil', 'stormglass-station'],
+  unavailableAttractionIds: const ['mangrove-run'],
   guestMessage: 'Mangrove Run is temporarily unavailable. Lantern Ferry currently has a shorter wait.',
   updatedAt: DateTime.parse('2026-09-15T18:31:00Z'),
   simulated: true,
@@ -130,6 +131,7 @@ const guestGuidanceJson = '''
 {
   "recommendationId": "rec-1",
   "recommendedDestinationIds": ["cypress-coil", "stormglass-station"],
+  "unavailableAttractionIds": ["mangrove-run"],
   "guestMessage": "Mangrove Run is temporarily unavailable. Choose Cypress Coil for a shorter wait.",
   "updatedAt": "2026-09-15T18:31:00Z",
   "simulated": true

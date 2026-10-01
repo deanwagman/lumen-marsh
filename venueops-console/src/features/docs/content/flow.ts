@@ -36,6 +36,7 @@ export const parkFlowArticle: DocArticle = {
       body: [
         'Publishing or withdrawing guest guidance requires ROLE_SUPERVISOR and venueops/flow.publish.',
         'Guests only see published guidance. Operator identities, incidents, work orders, and unpublished recommendations stay inside Control Tower.',
+        'Best Next in the guest app must follow that published copy. If the message says an attraction is unavailable, it is not ranked as a good next choice even when posted wait still looks operating. Recommended destinations can still appear when they are operating.',
       ],
       roles: ['supervisor'],
     },
@@ -44,7 +45,7 @@ export const parkFlowArticle: DocArticle = {
       title: 'Mangrove disruption scenario',
       body: [
         'Start the stack, then POST /simulation/scenarios/mangrove-disruption on Park Flow Intelligence. Simulated boarding at Mangrove Run drops to zero and a share of expected arrivals moves to Cypress Coil and Stormglass Station.',
-        'Predicted waits rise before posted waits change. An operator reviews the recommendation; a supervisor publishes guest guidance. The Flutter app updates Best Next without exposing incidents, work orders, or operator identities.',
+        'Predicted waits rise before posted waits change. An operator reviews the recommendation; a supervisor publishes guest guidance. The Flutter app shows that guidance and does not rank Mangrove Run as a good next choice while the published copy says it is unavailable. Guests never see incidents, work orders, or operator identities.',
         'Park Flow Intelligence never changes attraction status or capacity. Repeat the HTTP story with ./scripts/flow-lifecycle-acceptance.sh after the stack is up (or POST /simulation/scenarios/mangrove-disruption on :8100), and reset with ./scripts/reset-demo.sh --confirm.',
       ],
     },

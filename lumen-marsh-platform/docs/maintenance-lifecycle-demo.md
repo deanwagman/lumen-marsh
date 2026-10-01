@@ -33,7 +33,7 @@ SUPERVISOR_TOKEN=... OPERATOR_LIMITED_TOKEN=... RELIABILITY_TOKEN=... \
 
 1. Unauthenticated operator maintenance is `401`. Reliability ingest without a machine token is `401`.
 2. The reliability token cannot call operator routes (`403`). An operator token cannot ingest (`403`).
-3. A unique Cypress Coil vibration observation creates a pending recommendation. A retried `observationId` is accepted as a duplicate and does not open a work order.
+3. A Cypress Coil vibration observation becomes a pending recommendation. Additional samples for the same pending asset and signal coalesce onto that inbox row. A retried `observationId` is also accepted as a duplicate and does not open a work order.
 4. Operator `ACCEPT` (with `commandId` + `expectedVersion`) creates a work order. The same `commandId` replays. A new `commandId` against the spent recommendation is `409`.
 5. `START_WORK` before `OPEN` is `409`. Stale `expectedVersion` is `409 STALE_VERSION`.
 6. Open → assign → start work → checklist → request inspection.

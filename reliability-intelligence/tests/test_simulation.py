@@ -27,3 +27,21 @@ def test_clear_and_normal_do_not_emit_samples() -> None:
     assert simulator.next_cycle() is None
     simulator.apply_scenario(Scenario.CLEAR)
     assert simulator.next_cycle() is None
+
+
+def test_vibration_episode_emits_once_until_reactivated() -> None:
+    simulator = ReliabilitySimulator(make_settings(), FrozenClock(NOW))
+    simulator.apply_scenario(Scenario.CYPRESS_COIL_VIBRATION)
+    first = simulator.next_cycle()
+    second = simulator.next_cycle()
+    assert first is not None
+    assert second is None
+
+    simulator.apply_scenario(Scenario.CYPRESS_COIL_VIBRATION)
+    assert simulator.next_cycle() is None
+
+    simulator.apply_scenario(Scenario.CLEAR)
+    simulator.apply_scenario(Scenario.CYPRESS_COIL_VIBRATION)
+    reopened = simulator.next_cycle()
+    assert reopened is not None
+    assert reopened.observation_id != first.observation_id

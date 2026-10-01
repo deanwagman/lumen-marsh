@@ -128,6 +128,13 @@ class _BestNextSectionState extends State<BestNextSection> {
                     originZoneId: state.originZoneId,
                     onAttractionPressed: widget.onAttractionPressed,
                   ),
+                ] else if (state.guidance.isNotEmpty) ...[
+                  const SizedBox(height: LumenSpacing.md),
+                  const LumenNoticeBanner(
+                    tone: LumenTone.informational,
+                    message:
+                        'No suggested experiences match published park guidance right now.',
+                  ),
                 ],
               ],
             ),

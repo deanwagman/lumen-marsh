@@ -46,6 +46,42 @@ void main() {
     expect(ranked.first.reason, publishedGuidance.guestMessage);
   });
 
+  test('does not rank an attraction published copy says is unavailable', () {
+    final ranked = ranker.rank(
+      waits: [mangroveWait, cypressWait, stormglassWait],
+      originZoneId: ParkZone.luminousWetlands.id,
+      publishedGuidance: [publishedGuidance],
+    );
+
+    expect(ranked.map((item) => item.attractionId), [
+      'cypress-coil',
+      'stormglass-station',
+    ]);
+    expect(
+      ranked.any((item) => item.reason.contains('good next choice')),
+      isFalse,
+    );
+  });
+
+  test('treats published copy as unavailable even without destination ids', () {
+    final copyOnly = GuestGuidance(
+      recommendationId: 'rec-copy',
+      recommendedDestinationIds: const [],
+      guestMessage:
+          'Mangrove Run is temporarily unavailable. Cypress Coil currently has a shorter wait.',
+      updatedAt: DateTime.parse('2026-09-15T18:31:00Z'),
+      simulated: true,
+    );
+
+    final ranked = ranker.rank(
+      waits: [mangroveWait, cypressWait],
+      originZoneId: ParkZone.luminousWetlands.id,
+      publishedGuidance: [copyOnly],
+    );
+
+    expect(ranked.map((item) => item.attractionId), ['cypress-coil']);
+  });
+
   test('freezes ranking order when telemetry becomes stale', () {
     final previous = ranker.rank(
       waits: [mangroveWait, cypressWait],

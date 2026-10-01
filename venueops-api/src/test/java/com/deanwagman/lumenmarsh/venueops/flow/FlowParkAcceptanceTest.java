@@ -149,6 +149,7 @@ class FlowParkAcceptanceTest {
         mockMvc.perform(get("/api/v1/flow/overview"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.publishedGuidance[0].guestMessage").value("Stormglass Station is a good next choice."))
+                .andExpect(jsonPath("$.publishedGuidance[0].unavailableAttractionIds[0]").value("stormglass-station"))
                 .andExpect(jsonPath("$.publishedGuidance[0].simulated").value(true))
                 .andExpect(jsonPath("$[*].explanation").doesNotExist())
                 .andExpect(jsonPath("$[*].confidence").doesNotExist())

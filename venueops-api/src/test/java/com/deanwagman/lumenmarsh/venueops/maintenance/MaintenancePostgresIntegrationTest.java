@@ -149,7 +149,9 @@ class MaintenancePostgresIntegrationTest {
                         .with(TestAuth.reliabilityService())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(ingestBody))
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.duplicate").value(true))
+                .andExpect(jsonPath("$.status").value("PENDING_REVIEW"))
                 .andReturn()
                 .getResponse()
                 .getContentAsByteArray()).get("recommendationId").asString();

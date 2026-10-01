@@ -233,10 +233,31 @@ INGEST="$(post_json "$VENUEOPS_URL/api/v1/integrations/reliability/recommendatio
   "${RELIABILITY_AUTH[@]}")"
 REC_ID="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["recommendationId"])' <<<"$INGEST")"
 INGEST_STATUS="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"$INGEST")"
-INGEST_DUP="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["duplicate"])' <<<"$INGEST")"
 check "recommendation is pending review" bash -c "[[ '$INGEST_STATUS' == 'PENDING_REVIEW' ]]"
-check "first ingest is not a duplicate" bash -c "[[ '$INGEST_DUP' == 'False' ]]"
 check "recommendation id present" bash -c "[[ -n '$REC_ID' ]]"
+
+OBS_ID_OTHER="vibration-cc-train-01-lifecycle-$(new_uuid)"
+OTHER_BODY="$(OBS_ID="$OBS_ID_OTHER" OBS_AT="$OBS_AT" INTERNAL_MARKER="$INTERNAL_MARKER" python3 - <<'PY'
+import json, os
+print(json.dumps({
+    "observationId": os.environ["OBS_ID"],
+    "observedAt": os.environ["OBS_AT"],
+    "assetCode": "CC-TRAIN-01-WHEEL-A",
+    "signalType": "VIBRATION",
+    "severity": "WARNING",
+    "value": 8.4,
+    "unit": "mm/s",
+    "evidence": os.environ["INTERNAL_MARKER"] + " Fictional simulated vibration exceeded the demonstration threshold.",
+    "recommendedAction": "Inspect the wheel assembly and consider reduced-capacity operation.",
+}))
+PY
+)"
+OTHER="$(post_json "$VENUEOPS_URL/api/v1/integrations/reliability/recommendations" \
+  "$OTHER_BODY" \
+  "${RELIABILITY_AUTH[@]}")"
+OTHER_DUP="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["duplicate"])' <<<"$OTHER")"
+OTHER_ID="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["recommendationId"])' <<<"$OTHER")"
+check "additional pending vibration coalesces" bash -c "[[ '$OTHER_DUP' == 'True' && '$OTHER_ID' == '$REC_ID' ]]"
 
 DUP="$(post_json "$VENUEOPS_URL/api/v1/integrations/reliability/recommendations" \
   "$INGEST_BODY" \

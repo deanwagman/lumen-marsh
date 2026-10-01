@@ -115,6 +115,77 @@ void main() {
     expect(find.text(publishedGuidance.guestMessage!), findsWidgets);
   });
 
+  testWidgets(
+    'does not rank an operating attraction that published copy says is unavailable',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      when(() => repository.overview()).thenAnswer(
+        (_) async => GuestFlowOverview(
+          attractions: [mangroveWait, cypressWait],
+          publishedGuidance: [publishedGuidance],
+          updatedAt: DateTime.parse('2026-09-15T18:31:00Z'),
+          simulated: true,
+        ),
+      );
+
+      await tester.pumpWidget(
+        wrap(
+          child: BestNextSection(
+            catalog: seededAttractions,
+            favoriteIds: const {},
+            onAttractionPressed: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('best-next-mangrove-run')), findsNothing);
+      expect(find.byKey(const Key('best-next-cypress-coil')), findsOneWidget);
+      expect(
+        find.textContaining('Mangrove Run is a good next choice'),
+        findsNothing,
+      );
+      expect(find.text(publishedGuidance.guestMessage!), findsWidgets);
+    },
+  );
+
+  testWidgets('keeps published guidance when no ranked next remains', (
+    tester,
+  ) async {
+    when(() => repository.overview()).thenAnswer(
+      (_) async => GuestFlowOverview(
+        attractions: [mangroveWait, closedMangroveWait],
+        publishedGuidance: [publishedGuidance],
+        updatedAt: DateTime.parse('2026-09-15T18:31:00Z'),
+        simulated: true,
+      ),
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        child: BestNextSection(
+          catalog: seededAttractions,
+          favoriteIds: const {},
+          onAttractionPressed: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Best Next Experiences'), findsOneWidget);
+    expect(find.byKey(const Key('best-next-mangrove-run')), findsNothing);
+    expect(
+      find.text(
+        'No suggested experiences match published park guidance right now.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('warns when wait data is stale', (tester) async {
     when(() => repository.overview()).thenAnswer(
       (_) async => GuestFlowOverview(

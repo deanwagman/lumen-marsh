@@ -14,7 +14,7 @@ VENUEOPS_URL="${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}"
 FLOW_URL="${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}"
 GUEST_URL="${GUEST_APP_ORIGIN:-http://localhost:3000}"
 INTERNAL_MARKER="INTERNAL ONLY — flow-lifecycle-acceptance"
-GUEST_MESSAGE="Cypress Coil and Stormglass Station currently have shorter waits."
+GUEST_MESSAGE="Mangrove Run is temporarily unavailable. Cypress Coil and Stormglass Station currently have shorter waits."
 FORBIDDEN_KEYS='explanation confidence actor queueLength relatedIncidentId'
 WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/lm-flow-lifecycle.XXXXXX")"
 trap 'rm -rf "$WORKDIR"' EXIT
@@ -278,6 +278,10 @@ guidance = overview.get('publishedGuidance') or []
 assert guidance, overview
 assert any(item.get('guestMessage') == message for item in guidance), guidance
 assert any(item.get('guestMessage') == message for item in recs), recs
+assert any(
+    'mangrove-run' in (item.get('unavailableAttractionIds') or [])
+    for item in guidance
+), guidance
 print('ok')
 PY
 "

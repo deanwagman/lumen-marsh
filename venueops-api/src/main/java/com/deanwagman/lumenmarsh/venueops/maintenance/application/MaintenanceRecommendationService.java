@@ -62,6 +62,7 @@ public class MaintenanceRecommendationService {
             String recommendedAction
     ) {
         return recommendations.findByObservationId(observationId)
+                .or(() -> recommendations.findPendingByAssetAndSignal(assetCode, signalType))
                 .map(existing -> new RecommendationIngestResult(existing, true))
                 .orElseGet(() -> create(
                         observationId,

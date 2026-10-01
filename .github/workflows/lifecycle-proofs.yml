@@ -1,0 +1,40 @@
+name: lifecycle-proofs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 7 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lifecycle-proofs
+  cancel-in-progress: true
+
+jobs:
+  compose-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: lumen-marsh-platform
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Compose environment
+        working-directory: ${{ github.workspace }}
+        run: cp lumen-marsh-platform/.env.example lumen-marsh-platform/.env
+      - name: Start Compose stack
+        run: ./scripts/dev-up.sh
+      - name: Storm lifecycle
+        run: ./scripts/storm-lifecycle-acceptance.sh
+      - name: Maintenance lifecycle
+        run: ./scripts/maintenance-lifecycle-acceptance.sh
+      - name: Flow lifecycle
+        run: ./scripts/flow-lifecycle-acceptance.sh
+      - name: Collect Compose logs
+        if: failure()
+        run: docker compose -p lumen-marsh logs --no-color --tail=200
+      - name: Stop stack
+        if: always()
+        run: ./scripts/dev-down.sh
