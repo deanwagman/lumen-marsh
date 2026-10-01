@@ -85,6 +85,9 @@ class MaintenanceRecommendationEntity {
     @Column(nullable = false)
     private long version;
 
+    @Column(name = "reviewed_by", length = 255)
+    private String reviewedBy;
+
     protected MaintenanceRecommendationEntity() {
     }
 
@@ -105,7 +108,8 @@ class MaintenanceRecommendationEntity {
             String commandId,
             Instant receivedAt,
             Instant updatedAt,
-            long version
+            long version,
+            String reviewedBy
     ) {
         this.id = id;
         this.observationId = observationId;
@@ -124,6 +128,7 @@ class MaintenanceRecommendationEntity {
         this.receivedAt = receivedAt;
         this.updatedAt = updatedAt;
         this.version = version;
+        this.reviewedBy = reviewedBy;
     }
 
     String getId() {
@@ -193,6 +198,10 @@ class MaintenanceRecommendationEntity {
     long getVersion() {
         return version;
     }
+
+    String getReviewedBy() {
+        return reviewedBy;
+    }
 }
 
 interface MaintenanceRecommendationJpaRepository extends JpaRepository<MaintenanceRecommendationEntity, String> {
@@ -213,7 +222,8 @@ interface MaintenanceRecommendationJpaRepository extends JpaRepository<Maintenan
                    r.workOrderId = :workOrderId,
                    r.commandId = :commandId,
                    r.updatedAt = :updatedAt,
-                   r.version = :newVersion
+                   r.version = :newVersion,
+                   r.reviewedBy = :reviewedBy
              where r.id = :id
                and r.version = :expectedVersion
             """)
@@ -224,6 +234,7 @@ interface MaintenanceRecommendationJpaRepository extends JpaRepository<Maintenan
             @Param("commandId") String commandId,
             @Param("updatedAt") Instant updatedAt,
             @Param("newVersion") long newVersion,
+            @Param("reviewedBy") String reviewedBy,
             @Param("expectedVersion") long expectedVersion
     );
 }
@@ -297,6 +308,7 @@ public class JpaMaintenanceRecommendationRepository implements MaintenanceRecomm
                 recommendation.lastCommandId() == null ? null : recommendation.lastCommandId().toString(),
                 recommendation.updatedAt(),
                 recommendation.version(),
+                recommendation.reviewedBy(),
                 expectedVersion
         );
         if (updated == 0) {
@@ -327,7 +339,8 @@ public class JpaMaintenanceRecommendationRepository implements MaintenanceRecomm
                 entity.getReceivedAt(),
                 entity.getUpdatedAt(),
                 entity.getVersion(),
-                entity.getCommandId() == null ? null : UUID.fromString(entity.getCommandId())
+                entity.getCommandId() == null ? null : UUID.fromString(entity.getCommandId()),
+                entity.getReviewedBy()
         );
     }
 
@@ -349,7 +362,8 @@ public class JpaMaintenanceRecommendationRepository implements MaintenanceRecomm
                 recommendation.lastCommandId() == null ? null : recommendation.lastCommandId().toString(),
                 recommendation.receivedAt(),
                 recommendation.updatedAt(),
-                recommendation.version()
+                recommendation.version(),
+                recommendation.reviewedBy()
         );
     }
 }

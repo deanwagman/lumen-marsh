@@ -9,6 +9,8 @@ import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentOperation
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentService;
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceOperationalUpdate;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceRecommendationOperationalUpdate;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceRecommendationService;
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceWorkOrderFilter;
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceWorkOrderQueryService;
 import com.deanwagman.lumenmarsh.venueops.security.VenueOpsScopes;
@@ -39,6 +41,7 @@ public class OperatorEventController {
     private final WeatherRecommendationService weatherRecommendationService;
     private final IncidentService incidentService;
     private final MaintenanceWorkOrderQueryService maintenanceWorkOrders;
+    private final MaintenanceRecommendationService maintenanceRecommendations;
     private final FlowQueryService flowQueries;
 
     public OperatorEventController(
@@ -47,6 +50,7 @@ public class OperatorEventController {
             WeatherRecommendationService weatherRecommendationService,
             IncidentService incidentService,
             MaintenanceWorkOrderQueryService maintenanceWorkOrders,
+            MaintenanceRecommendationService maintenanceRecommendations,
             FlowQueryService flowQueries
     ) {
         this.broadcaster = broadcaster;
@@ -54,6 +58,7 @@ public class OperatorEventController {
         this.weatherRecommendationService = weatherRecommendationService;
         this.incidentService = incidentService;
         this.maintenanceWorkOrders = maintenanceWorkOrders;
+        this.maintenanceRecommendations = maintenanceRecommendations;
         this.flowQueries = flowQueries;
     }
 
@@ -89,6 +94,15 @@ public class OperatorEventController {
                         .map(MaintenanceOperationalUpdate.MaintenanceWorkOrderSnapshot::from)
                         .toList();
                 broadcaster.sendNamed(emitter, MaintenanceOperationalUpdate.SNAPSHOT_EVENT, null, workOrders);
+                var reliability = maintenanceRecommendations.list().stream()
+                        .map(MaintenanceRecommendationOperationalUpdate.RecommendationSnapshot::from)
+                        .toList();
+                broadcaster.sendNamed(
+                        emitter,
+                        MaintenanceRecommendationOperationalUpdate.SNAPSHOT_EVENT,
+                        null,
+                        reliability
+                );
             }
             if (flowRead) {
                 broadcaster.sendNamed(emitter, FlowOperationalUpdate.SNAPSHOT_EVENT, null, flowQueries.overview());

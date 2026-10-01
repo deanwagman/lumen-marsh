@@ -16,6 +16,8 @@ export const dashboardStreamEvents = new Set([
   'incident.resolved',
   'maintenance.work-orders.snapshot',
   'maintenance.work-order.updated',
+  'maintenance.recommendations.snapshot',
+  'maintenance.recommendation.updated',
   'flow.snapshot',
   'flow.queue.updated',
   'flow.forecast.updated',

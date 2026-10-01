@@ -20,12 +20,16 @@ import {
 } from '@/features/weather/api/weatherRecommendationSchema';
 import { FlowQueries } from '@/features/flow/api/FlowQueries';
 import {
+  applyRecommendation,
   applyWorkOrderSummaryUpdate,
+  replaceRecommendations,
   replaceWorkOrderSummaries,
 } from '@/features/maintenance/api/maintenanceCache';
 import {
+  maintenanceRecommendationSseUpdateSchema,
   maintenanceSseUpdateSchema,
   maintenanceWorkOrderSnapshotListSchema,
+  reliabilityRecommendationListSchema,
 } from '@/features/maintenance/api/maintenanceSchemas';
 import { resolveApiUrl } from '@/shared/api/client';
 
@@ -52,7 +56,10 @@ export function handleAttractionStreamEvent(
   const flowRead = capabilities.flowRead !== false;
   if (
     !maintenanceRead &&
-    (eventName === 'maintenance.work-orders.snapshot' || eventName === 'maintenance.work-order.updated')
+    (eventName === 'maintenance.work-orders.snapshot' ||
+      eventName === 'maintenance.work-order.updated' ||
+      eventName === 'maintenance.recommendations.snapshot' ||
+      eventName === 'maintenance.recommendation.updated')
   ) {
     return;
   }
@@ -98,6 +105,12 @@ export function handleAttractionStreamEvent(
     applyWorkOrderSummaryUpdate(queryClient, update.workOrder, {
       incidentId: update.incidentId ?? null,
     });
+  } else if (eventName === 'maintenance.recommendations.snapshot') {
+    const recommendations = reliabilityRecommendationListSchema.parse(JSON.parse(data) as unknown);
+    replaceRecommendations(queryClient, recommendations);
+  } else if (eventName === 'maintenance.recommendation.updated') {
+    const update = maintenanceRecommendationSseUpdateSchema.parse(JSON.parse(data) as unknown);
+    applyRecommendation(queryClient, update.recommendation);
   } else if (eventName.startsWith('flow.')) {
     void queryClient.invalidateQueries({ queryKey: FlowQueries.all });
   }

@@ -20,10 +20,11 @@ export const dashboardAttentionKinds = [
   'UNACKNOWLEDGED_INCIDENT',
   'ORPHAN_ADVISORY',
   'STALE_DATA',
+  'PENDING_RELIABILITY_RECOMMENDATION',
 ] as const;
 export type DashboardAttentionKind = (typeof dashboardAttentionKinds)[number];
 
-export const dashboardActivityDomains = ['ATTRACTION', 'INCIDENT', 'WEATHER'] as const;
+export const dashboardActivityDomains = ['ATTRACTION', 'INCIDENT', 'WEATHER', 'MAINTENANCE', 'FLOW'] as const;
 export type DashboardActivityDomain = (typeof dashboardActivityDomains)[number];
 
 export type DashboardSummary = {
@@ -140,12 +141,15 @@ export const attentionKindLabels: Record<DashboardAttentionKind, string> = {
   UNACKNOWLEDGED_INCIDENT: 'Unacknowledged incident',
   ORPHAN_ADVISORY: 'Advisory inconsistency',
   STALE_DATA: 'Stale data',
+  PENDING_RELIABILITY_RECOMMENDATION: 'Pending reliability',
 };
 
 export const activityDomainLabels: Record<DashboardActivityDomain, string> = {
   ATTRACTION: 'Attraction',
   INCIDENT: 'Incident',
   WEATHER: 'Weather',
+  MAINTENANCE: 'Maintenance',
+  FLOW: 'Flow',
 };
 
 export type DashboardMetricKey = keyof DashboardSummary;

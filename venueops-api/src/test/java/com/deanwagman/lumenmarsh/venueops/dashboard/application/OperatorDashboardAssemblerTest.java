@@ -9,6 +9,7 @@ import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardRespons
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardAttentionKind;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardFreshnessStatus;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendation;
+import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationCommand;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationId;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationSeverity;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationType;
@@ -17,6 +18,10 @@ import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentId;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentType;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.asset.MaintenanceAssetId;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendation;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendationId;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendationSeverity;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceSignalType;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenanceClassification;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenancePriority;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenanceSourceType;
@@ -31,7 +36,9 @@ import com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendationSe
 import com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendationStatus;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -319,6 +326,295 @@ class OperatorDashboardAssemblerTest {
         assertThat(dashboard.needsAttention().getFirst().href())
                 .isEqualTo("/maintenance/work-orders/6dbb04f2-b20d-4b16-ae57-43072fc2e408");
         assertThat(dashboard.needsAttention().getLast().href()).isEqualTo("/park-flow");
+    }
+
+    @Test
+    void pendingReliabilityWarningIsInNeedsAttentionUntilDismissed() {
+        MaintenanceRecommendation pending = reliability(
+                "rec-vibration",
+                MaintenanceRecommendationSeverity.WARNING,
+                "Inspect the wheel assembly and consider reduced-capacity operation.",
+                "INTERNAL ONLY — wheel evidence"
+        );
+        MaintenanceRecommendation info = reliability(
+                "rec-info",
+                MaintenanceRecommendationSeverity.INFO,
+                "No action required.",
+                "info"
+        );
+
+        OperatorDashboardResponse before = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(pending, info)
+        );
+
+        assertThat(before.needsAttention()).hasSize(1);
+        OperatorDashboardResponse.DashboardAttentionItemResponse item = before.needsAttention().getFirst();
+        assertThat(item.kind()).isEqualTo(DashboardAttentionKind.PENDING_RELIABILITY_RECOMMENDATION);
+        assertThat(item.href()).isEqualTo("/maintenance");
+        assertThat(item.subjectId()).isEqualTo(pending.id().toString());
+        assertThat(item.subjectLabel()).isEqualTo("Vibration");
+        assertThat(item.reason()).contains("consider reduced-capacity operation");
+        assertThat(item.toString()).doesNotContain("CC-TRAIN-01-WHEEL-A");
+        assertThat(item.toString()).doesNotContain("INTERNAL ONLY");
+        assertThat(item.toString()).doesNotContain("workOrderNumber");
+
+        pending.dismiss(
+                new ActorIdentity("operator-sub-1", "Operator One", ActorType.HUMAN, "venueops"),
+                UUID.fromString("11111111-1111-4111-8111-111111111111"),
+                CLOCK
+        );
+        OperatorDashboardResponse afterDismiss = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(pending, info)
+        );
+        assertThat(afterDismiss.needsAttention()).isEmpty();
+        assertThat(afterDismiss.recentActivity())
+                .anySatisfy(event -> {
+                    assertThat(event.domain()).isEqualTo("MAINTENANCE");
+                    assertThat(event.action()).isEqualTo("MAINTENANCE_RECOMMENDATION_DISMISSED");
+                    assertThat(event.actor()).isEqualTo("Operator One");
+                    assertThat(event.subject()).isEqualTo("Vibration");
+                    assertThat(event.reason()).isNull();
+                });
+    }
+
+    @Test
+    void acceptedCriticalRecommendationLeavesAttentionForTheOpenP1() {
+        MaintenanceRecommendation pending = reliability(
+                "rec-critical",
+                MaintenanceRecommendationSeverity.CRITICAL,
+                "Inspect the wheel assembly and verify sensor calibration before return to service.",
+                "INTERNAL ONLY — critical evidence"
+        );
+        ActorIdentity operator = new ActorIdentity("operator-sub-1", "Operator One", ActorType.HUMAN, "venueops");
+        pending.claimAcceptance(operator, UUID.fromString("22222222-2222-4222-8222-222222222222"), CLOCK);
+        pending.attachWorkOrder(MaintenanceWorkOrderId.of("6dbb04f2-b20d-4b16-ae57-43072fc2e408"), CLOCK);
+        MaintenanceWorkOrder p1 = openP1();
+
+        OperatorDashboardResponse dashboard = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(p1),
+                List.of(),
+                List.of(pending)
+        );
+
+        assertThat(dashboard.needsAttention())
+                .extracting(OperatorDashboardResponse.DashboardAttentionItemResponse::kind)
+                .containsExactly(DashboardAttentionKind.OPEN_P1_WORK_ORDER);
+        assertThat(dashboard.needsAttention().getFirst().subjectId()).isNotEqualTo(pending.id().toString());
+        assertThat(dashboard.recentActivity())
+                .anySatisfy(event -> {
+                    assertThat(event.action()).isEqualTo("MAINTENANCE_RECOMMENDATION_ACCEPTED");
+                    assertThat(event.actor()).isEqualTo("Operator One");
+                });
+        assertThat(dashboard.recentActivity()).allSatisfy(event ->
+                assertThat(String.valueOf(event.subject()) + String.valueOf(event.reason()))
+                        .doesNotContain("INTERNAL ONLY")
+                        .doesNotContain("CC-TRAIN-01-WHEEL-A"));
+    }
+
+    @Test
+    void recentActivityNamesInspectionAndFlowPublish() {
+        MaintenanceWorkOrder workOrder = openP1();
+        ActorIdentity operator = new ActorIdentity("operator-sub-1", "Operator One", ActorType.HUMAN, "venueops");
+        workOrder.assign("ride-maintenance-alpha", null, operator, UUID.randomUUID(), "corr", null, CLOCK);
+        workOrder.startWork(operator, UUID.randomUUID(), "corr", null, CLOCK);
+        workOrder.requestInspection(operator, UUID.randomUUID(), "corr", "Ready for inspection.", CLOCK);
+        workOrder.approveInspection(
+                operator,
+                UUID.randomUUID(),
+                "corr",
+                "Required inspection steps passed.",
+                CLOCK,
+                true
+        );
+        FlowRecommendation flow = FlowRecommendation.create(
+                new FlowRecommendationId("eeeeeeee-4444-4444-8444-eeeeeeeeeeee"),
+                FlowRecommendationType.CONGESTION_EXPECTED,
+                FlowRecommendationSeverity.WARNING,
+                new AttractionId("mangrove-run"),
+                List.of(new AttractionId("mangrove-run")),
+                List.of(new AttractionId("cypress-coil")),
+                "Redistribute from Mangrove Run",
+                "Queue is building.",
+                "Try Cypress Coil next.",
+                NOW.plusSeconds(3600),
+                null,
+                null,
+                true,
+                new ActorIdentity("flow-service", "park-flow-intelligence", ActorType.SERVICE, "venueops"),
+                UUID.randomUUID(),
+                "corr-create",
+                CLOCK
+        );
+        flow.apply(FlowRecommendationCommand.APPROVE, operator, UUID.randomUUID(), "corr", null, null, CLOCK);
+        flow.apply(
+                FlowRecommendationCommand.PUBLISH,
+                operator,
+                UUID.randomUUID(),
+                "corr",
+                "Guest guidance is ready.",
+                "Head to Cypress Coil.",
+                CLOCK
+        );
+
+        OperatorDashboardResponse dashboard = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(workOrder),
+                List.of(flow),
+                List.of()
+        );
+
+        assertThat(dashboard.recentActivity())
+                .extracting(OperatorDashboardResponse.DashboardActivityResponse::action)
+                .contains("INSPECTION_APPROVED", "RECOMMENDATION_PUBLISHED");
+        assertThat(dashboard.recentActivity())
+                .filteredOn(event -> event.action().equals("RECOMMENDATION_PUBLISHED"))
+                .allSatisfy(event -> {
+                    assertThat(event.domain()).isEqualTo("FLOW");
+                    assertThat(event.actor()).isEqualTo("Operator One");
+                    assertThat(event.subject()).isEqualTo("Redistribute from Mangrove Run");
+                });
+    }
+
+    @Test
+    void venueOpsStaysLiveWhenOnlyMaintenanceOrFlowIsFresh() {
+        Attraction staleAttraction = Attraction.rehydrate(
+                new AttractionId("mangrove-run"),
+                "Mangrove Run",
+                "Western Basin",
+                AttractionType.BOAT_EXPEDITION,
+                AttractionStatus.OPERATING,
+                CapacityMode.NORMAL,
+                12,
+                NOW.minus(Duration.ofHours(1)),
+                1,
+                List.of()
+        );
+        OperatorDashboardResponse stale = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(staleAttraction),
+                List.of(),
+                List.of()
+        );
+        assertThat(stale.freshness().venueOps().status()).isEqualTo(DashboardFreshnessStatus.STALE);
+
+        MaintenanceRecommendation freshMaintenance = reliability(
+                "rec-fresh",
+                MaintenanceRecommendationSeverity.WARNING,
+                "Inspect the wheel assembly.",
+                "evidence"
+        );
+        OperatorDashboardResponse maintenanceLive = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(staleAttraction),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(freshMaintenance)
+        );
+        assertThat(maintenanceLive.freshness().venueOps().status()).isEqualTo(DashboardFreshnessStatus.LIVE);
+        assertThat(maintenanceLive.freshness().environmentalData().status())
+                .isEqualTo(DashboardFreshnessStatus.UNAVAILABLE);
+
+        FlowRecommendation freshFlow = FlowRecommendation.create(
+                new FlowRecommendationId("ffffffff-4444-4444-8444-ffffffffffff"),
+                FlowRecommendationType.CONGESTION_EXPECTED,
+                FlowRecommendationSeverity.INFO,
+                new AttractionId("mangrove-run"),
+                List.of(new AttractionId("mangrove-run")),
+                List.of(),
+                "Queue note",
+                "Posted wait is moving.",
+                null,
+                NOW.plusSeconds(3600),
+                null,
+                null,
+                true,
+                new ActorIdentity("flow-service", "park-flow-intelligence", ActorType.SERVICE, "venueops"),
+                UUID.randomUUID(),
+                "corr-flow",
+                CLOCK
+        );
+        OperatorDashboardResponse flowLive = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(staleAttraction),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(freshFlow),
+                List.of()
+        );
+        assertThat(flowLive.freshness().venueOps().status()).isEqualTo(DashboardFreshnessStatus.LIVE);
+    }
+
+    private static MaintenanceWorkOrder openP1() {
+        MaintenanceWorkOrder p1 = MaintenanceWorkOrder.draft(
+                MaintenanceWorkOrderId.of("6dbb04f2-b20d-4b16-ae57-43072fc2e408"),
+                "LM-2026-0042",
+                MaintenanceAssetId.of("0fd7c7ce-f7af-4b65-8789-27679ca40303"),
+                new AttractionId("cypress-coil"),
+                null,
+                MaintenanceSourceType.TELEMETRY,
+                "vibration-cc-train-01",
+                MaintenanceClassification.CORRECTIVE,
+                MaintenancePriority.P1,
+                "Investigate elevated wheel vibration",
+                "Simulated vibration exceeded the demonstration threshold.",
+                List.of(),
+                new ActorIdentity("operator-sub-1", "Operator One", ActorType.HUMAN, "venueops"),
+                UUID.fromString("aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"),
+                "corr",
+                CLOCK
+        );
+        p1.open(
+                new ActorIdentity("operator-sub-1", "Operator One", ActorType.HUMAN, "venueops"),
+                UUID.fromString("bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee"),
+                "corr",
+                null,
+                CLOCK
+        );
+        return p1;
+    }
+
+    private static MaintenanceRecommendation reliability(
+            String id,
+            MaintenanceRecommendationSeverity severity,
+            String recommendedAction,
+            String evidence
+    ) {
+        return MaintenanceRecommendation.receive(
+                MaintenanceRecommendationId.of(UUID.nameUUIDFromBytes(id.getBytes(StandardCharsets.UTF_8)).toString()),
+                id,
+                NOW,
+                "CC-TRAIN-01-WHEEL-A",
+                MaintenanceAssetId.of("0fd7c7ce-f7af-4b65-8789-27679ca40303"),
+                MaintenanceSignalType.VIBRATION,
+                severity,
+                8.4,
+                "mm/s",
+                evidence,
+                recommendedAction,
+                CLOCK
+        );
     }
 
     private static Attraction attraction(

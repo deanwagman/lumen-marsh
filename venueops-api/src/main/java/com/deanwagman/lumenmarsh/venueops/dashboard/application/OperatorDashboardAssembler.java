@@ -15,11 +15,17 @@ import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardRespons
 import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardResponse.DashboardWeatherResponse;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardAttentionKind;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardFreshnessStatus;
+import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowEventType;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendation;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationStatus;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.Incident;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatus;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.event.MaintenanceEventType;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendation;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendationSeverity;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendationStatus;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceSignalType;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenancePriority;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenanceWorkOrder;
 import com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendation;
@@ -35,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -52,7 +59,7 @@ public final class OperatorDashboardAssembler {
             List<Incident> incidents,
             List<WeatherRecommendation> recommendations
     ) {
-        return assemble(generatedAt, attractions, incidents, recommendations, List.of(), List.of());
+        return assemble(generatedAt, attractions, incidents, recommendations, List.of(), List.of(), List.of());
     }
 
     public static OperatorDashboardResponse assemble(
@@ -62,6 +69,26 @@ public final class OperatorDashboardAssembler {
             List<WeatherRecommendation> recommendations,
             List<MaintenanceWorkOrder> workOrders,
             List<FlowRecommendation> flowRecommendations
+    ) {
+        return assemble(
+                generatedAt,
+                attractions,
+                incidents,
+                recommendations,
+                workOrders,
+                flowRecommendations,
+                List.of()
+        );
+    }
+
+    public static OperatorDashboardResponse assemble(
+            Instant generatedAt,
+            List<Attraction> attractions,
+            List<Incident> incidents,
+            List<WeatherRecommendation> recommendations,
+            List<MaintenanceWorkOrder> workOrders,
+            List<FlowRecommendation> flowRecommendations,
+            List<MaintenanceRecommendation> maintenanceRecommendations
     ) {
         List<Incident> openIncidents = incidents.stream()
                 .filter(incident -> !incident.status().isResolved())
@@ -87,6 +114,10 @@ public final class OperatorDashboardAssembler {
                 .filter(OperatorDashboardAssembler::isUnpublished)
                 .sorted(flowOrder())
                 .toList();
+        List<MaintenanceRecommendation> pendingReliability = maintenanceRecommendations.stream()
+                .filter(OperatorDashboardAssembler::isPendingReliability)
+                .sorted(reliabilityOrder())
+                .toList();
         Map<String, Integer> relatedIncidents = relatedOpenIncidentCounts(openIncidents);
 
         DashboardSummaryResponse summary = new DashboardSummaryResponse(
@@ -102,7 +133,15 @@ public final class OperatorDashboardAssembler {
                 unpublishedFlow.size()
         );
 
-        DashboardFreshnessResponse freshness = freshness(generatedAt, attractions, incidents, recommendations);
+        DashboardFreshnessResponse freshness = freshness(
+                generatedAt,
+                attractions,
+                incidents,
+                recommendations,
+                workOrders,
+                flowRecommendations,
+                maintenanceRecommendations
+        );
 
         return new OperatorDashboardResponse(
                 generatedAt,
@@ -114,7 +153,8 @@ public final class OperatorDashboardAssembler {
                         incidents,
                         freshness,
                         openP1WorkOrders,
-                        unpublishedFlow
+                        unpublishedFlow,
+                        pendingReliability
                 ),
                 openIncidents.stream().map(OperatorDashboardAssembler::incidentItem).toList(),
                 attentionAttractions.stream()
@@ -122,7 +162,7 @@ public final class OperatorDashboardAssembler {
                         .toList(),
                 pendingWeather.stream().map(OperatorDashboardAssembler::weatherItem).toList(),
                 publishedAdvisories.stream().map(OperatorDashboardAssembler::advisoryItem).toList(),
-                recentActivity(attractions, incidents, recommendations),
+                recentActivity(attractions, incidents, recommendations, workOrders, flowRecommendations, maintenanceRecommendations),
                 freshness
         );
     }
@@ -154,6 +194,11 @@ public final class OperatorDashboardAssembler {
                 || recommendation.status() == FlowRecommendationStatus.APPROVED;
     }
 
+    private static boolean isPendingReliability(MaintenanceRecommendation recommendation) {
+        return recommendation.status() == MaintenanceRecommendationStatus.PENDING_REVIEW
+                && recommendation.severity() != MaintenanceRecommendationSeverity.INFO;
+    }
+
     private static boolean majorOrCritical(Incident incident) {
         return incident.severity() == IncidentSeverity.CRITICAL || incident.severity() == IncidentSeverity.MAJOR;
     }
@@ -165,7 +210,8 @@ public final class OperatorDashboardAssembler {
             List<Incident> allIncidents,
             DashboardFreshnessResponse freshness,
             List<MaintenanceWorkOrder> openP1WorkOrders,
-            List<FlowRecommendation> unpublishedFlow
+            List<FlowRecommendation> unpublishedFlow,
+            List<MaintenanceRecommendation> pendingReliability
     ) {
         List<DashboardAttentionItemResponse> items = new ArrayList<>();
         for (Incident incident : openIncidents) {
@@ -200,6 +246,16 @@ public final class OperatorDashboardAssembler {
                         recommendation.updatedAt()
                 ));
             }
+        }
+        for (MaintenanceRecommendation recommendation : pendingReliability) {
+            items.add(attention(
+                    DashboardAttentionKind.PENDING_RELIABILITY_RECOMMENDATION,
+                    "Pending reliability recommendation: " + recommendation.recommendedAction(),
+                    "/maintenance",
+                    recommendation.id().toString(),
+                    signalLabel(recommendation.signalType()),
+                    recommendation.updatedAt()
+            ));
         }
         for (MaintenanceWorkOrder workOrder : openP1WorkOrders) {
             items.add(attention(
@@ -372,7 +428,10 @@ public final class OperatorDashboardAssembler {
     private static List<DashboardActivityResponse> recentActivity(
             List<Attraction> attractions,
             List<Incident> incidents,
-            List<WeatherRecommendation> recommendations
+            List<WeatherRecommendation> recommendations,
+            List<MaintenanceWorkOrder> workOrders,
+            List<FlowRecommendation> flowRecommendations,
+            List<MaintenanceRecommendation> maintenanceRecommendations
     ) {
         Map<String, String> attractionNames = new HashMap<>();
         for (Attraction attraction : attractions) {
@@ -415,13 +474,81 @@ public final class OperatorDashboardAssembler {
                                 activity.resultingVersion(),
                                 "/attractions"
                         )));
-        return Stream.concat(attractionEvents, Stream.concat(incidentEvents, weatherEvents))
+        Stream<DashboardActivityResponse> maintenanceReview = maintenanceRecommendations.stream()
+                .filter(OperatorDashboardAssembler::isReviewedReliability)
+                .map(recommendation -> new DashboardActivityResponse(
+                        recommendation.updatedAt(),
+                        recommendation.reviewedBy(),
+                        "MAINTENANCE",
+                        recommendation.status() == MaintenanceRecommendationStatus.DISMISSED
+                                ? "MAINTENANCE_RECOMMENDATION_DISMISSED"
+                                : "MAINTENANCE_RECOMMENDATION_ACCEPTED",
+                        signalLabel(recommendation.signalType()),
+                        null,
+                        recommendation.version(),
+                        "/maintenance"
+                ));
+        Stream<DashboardActivityResponse> inspectionEvents = workOrders.stream()
+                .flatMap(workOrder -> workOrder.activity().stream()
+                        .filter(activity -> isInspectionAction(activity.eventType()))
+                        .map(activity -> new DashboardActivityResponse(
+                                activity.occurredAt(),
+                                activity.actorDisplayName(),
+                                "MAINTENANCE",
+                                activity.eventType().name(),
+                                workOrder.summary(),
+                                activity.reason(),
+                                activity.resultingVersion(),
+                                "/maintenance/work-orders/" + workOrder.id()
+                        )));
+        Stream<DashboardActivityResponse> flowEvents = flowRecommendations.stream()
+                .flatMap(recommendation -> recommendation.activity().stream()
+                        .filter(activity -> isFlowReviewAction(activity.eventType()))
+                        .map(activity -> new DashboardActivityResponse(
+                                activity.occurredAt(),
+                                activity.actorDisplayName(),
+                                "FLOW",
+                                activity.eventType().name(),
+                                recommendation.summary(),
+                                activity.reason(),
+                                activity.resultingVersion(),
+                                "/park-flow"
+                        )));
+        return Stream.of(attractionEvents, incidentEvents, weatherEvents, maintenanceReview, inspectionEvents, flowEvents)
+                .flatMap(stream -> stream)
                 .sorted(Comparator
                         .comparing(DashboardActivityResponse::occurredAt, Comparator.reverseOrder())
                         .thenComparing(DashboardActivityResponse::action)
                         .thenComparing(DashboardActivityResponse::subject))
                 .limit(RECENT_ACTIVITY_LIMIT)
                 .toList();
+    }
+
+    private static boolean isReviewedReliability(MaintenanceRecommendation recommendation) {
+        if (recommendation.reviewedBy() == null) {
+            return false;
+        }
+        return recommendation.status() == MaintenanceRecommendationStatus.DISMISSED
+                || recommendation.status() == MaintenanceRecommendationStatus.ACCEPTED
+                || recommendation.status() == MaintenanceRecommendationStatus.WORK_ORDER_CREATED;
+    }
+
+    private static boolean isInspectionAction(MaintenanceEventType eventType) {
+        return eventType == MaintenanceEventType.INSPECTION_REQUESTED
+                || eventType == MaintenanceEventType.INSPECTION_APPROVED
+                || eventType == MaintenanceEventType.INSPECTION_REJECTED;
+    }
+
+    private static boolean isFlowReviewAction(FlowEventType eventType) {
+        return eventType == FlowEventType.RECOMMENDATION_APPROVED
+                || eventType == FlowEventType.RECOMMENDATION_DISMISSED
+                || eventType == FlowEventType.RECOMMENDATION_PUBLISHED
+                || eventType == FlowEventType.RECOMMENDATION_WITHDRAWN;
+    }
+
+    private static String signalLabel(MaintenanceSignalType signalType) {
+        String name = signalType.name().toLowerCase(Locale.ROOT);
+        return Character.toUpperCase(name.charAt(0)) + name.substring(1);
     }
 
     private static boolean isWeatherReviewAction(WeatherRecommendationActivity activity) {
@@ -434,15 +561,20 @@ public final class OperatorDashboardAssembler {
             Instant generatedAt,
             List<Attraction> attractions,
             List<Incident> incidents,
-            List<WeatherRecommendation> recommendations
+            List<WeatherRecommendation> recommendations,
+            List<MaintenanceWorkOrder> workOrders,
+            List<FlowRecommendation> flowRecommendations,
+            List<MaintenanceRecommendation> maintenanceRecommendations
     ) {
-        Instant venueOpsUpdated = Stream.concat(
+        Instant venueOpsUpdated = Stream.of(
                         attractions.stream().map(Attraction::updatedAt),
-                        Stream.concat(
-                                incidents.stream().map(Incident::updatedAt),
-                                recommendations.stream().map(WeatherRecommendation::updatedAt)
-                        )
+                        incidents.stream().map(Incident::updatedAt),
+                        recommendations.stream().map(WeatherRecommendation::updatedAt),
+                        workOrders.stream().map(MaintenanceWorkOrder::updatedAt),
+                        flowRecommendations.stream().map(FlowRecommendation::updatedAt),
+                        maintenanceRecommendations.stream().map(MaintenanceRecommendation::updatedAt)
                 )
+                .flatMap(stream -> stream)
                 .max(Instant::compareTo)
                 .orElse(null);
         Instant environmentalUpdated = recommendations.stream()
@@ -522,6 +654,13 @@ public final class OperatorDashboardAssembler {
                 .thenComparing(recommendation -> recommendation.id().value());
     }
 
+    private static Comparator<MaintenanceRecommendation> reliabilityOrder() {
+        return Comparator
+                .comparingInt((MaintenanceRecommendation recommendation) -> reliabilityRank(recommendation.severity()))
+                .thenComparing(MaintenanceRecommendation::updatedAt, Comparator.reverseOrder())
+                .thenComparing(recommendation -> recommendation.id().toString());
+    }
+
     private static Comparator<DashboardAttentionItemResponse> attentionOrder() {
         return Comparator
                 .comparingInt((DashboardAttentionItemResponse item) -> attentionRank(item.kind()))
@@ -557,18 +696,27 @@ public final class OperatorDashboardAssembler {
         };
     }
 
+    private static int reliabilityRank(MaintenanceRecommendationSeverity severity) {
+        return switch (severity) {
+            case CRITICAL -> 0;
+            case WARNING -> 1;
+            case INFO -> 2;
+        };
+    }
+
     private static int attentionRank(DashboardAttentionKind kind) {
         return switch (kind) {
             case CRITICAL_INCIDENT -> 0;
             case MAJOR_INCIDENT -> 1;
             case WEATHER_HAZARD -> 2;
-            case WEATHER_HOLD -> 3;
-            case OPEN_P1_WORK_ORDER -> 4;
-            case ABNORMAL_ATTRACTION -> 5;
-            case UNPUBLISHED_FLOW_RECOMMENDATION -> 6;
-            case UNASSIGNED_INCIDENT, UNACKNOWLEDGED_INCIDENT -> 7;
-            case ORPHAN_ADVISORY -> 8;
-            case STALE_DATA -> 9;
+            case PENDING_RELIABILITY_RECOMMENDATION -> 3;
+            case WEATHER_HOLD -> 4;
+            case OPEN_P1_WORK_ORDER -> 5;
+            case ABNORMAL_ATTRACTION -> 6;
+            case UNPUBLISHED_FLOW_RECOMMENDATION -> 7;
+            case UNASSIGNED_INCIDENT, UNACKNOWLEDGED_INCIDENT -> 8;
+            case ORPHAN_ADVISORY -> 9;
+            case STALE_DATA -> 10;
         };
     }
 }

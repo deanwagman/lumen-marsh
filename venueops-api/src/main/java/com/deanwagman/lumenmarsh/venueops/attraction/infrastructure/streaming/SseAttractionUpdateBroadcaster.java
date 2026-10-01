@@ -10,6 +10,7 @@ import com.deanwagman.lumenmarsh.venueops.incident.application.GuestAdvisoryUpda
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentUpdatePublisher;
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceOperationalUpdate;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceRecommendationOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceUpdatePublisher;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationOperationalUpdate;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationUpdatePublisher;
@@ -166,6 +167,17 @@ public class SseAttractionUpdateBroadcaster
 
     @Override
     public void publish(MaintenanceOperationalUpdate update) {
+        broadcast(
+                operatorEmitters,
+                update.eventId(),
+                update.sseEventName(),
+                update,
+                id -> Boolean.TRUE.equals(operatorMaintenanceRead.get(id))
+        );
+    }
+
+    @Override
+    public void publish(MaintenanceRecommendationOperationalUpdate update) {
         broadcast(
                 operatorEmitters,
                 update.eventId(),

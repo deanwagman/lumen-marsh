@@ -29,6 +29,7 @@ public final class MaintenanceRecommendation {
     private Instant updatedAt;
     private long version;
     private UUID lastCommandId;
+    private String reviewedBy;
     private int uncommittedBumps;
 
     public MaintenanceRecommendation(
@@ -48,7 +49,8 @@ public final class MaintenanceRecommendation {
             Instant receivedAt,
             Instant updatedAt,
             long version,
-            UUID lastCommandId
+            UUID lastCommandId,
+            String reviewedBy
     ) {
         this.id = Objects.requireNonNull(id, "id is required");
         this.observationId = requireText(observationId, "observationId");
@@ -67,6 +69,7 @@ public final class MaintenanceRecommendation {
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt is required");
         this.version = version;
         this.lastCommandId = lastCommandId;
+        this.reviewedBy = normalizeOptional(reviewedBy);
         this.uncommittedBumps = 0;
         if (version < 1) {
             throw new IllegalStateException("Recommendations start at version 1");
@@ -105,6 +108,7 @@ public final class MaintenanceRecommendation {
                 now,
                 now,
                 1L,
+                null,
                 null
         );
     }
@@ -121,6 +125,7 @@ public final class MaintenanceRecommendation {
         }
         this.status = MaintenanceRecommendationStatus.ACCEPTED;
         this.lastCommandId = commandId;
+        this.reviewedBy = actor.displayName();
         bump(clock);
         return MaintenanceEventType.MAINTENANCE_RECOMMENDATION_ACCEPTED;
     }
@@ -151,6 +156,7 @@ public final class MaintenanceRecommendation {
         }
         this.status = MaintenanceRecommendationStatus.DISMISSED;
         this.lastCommandId = commandId;
+        this.reviewedBy = actor.displayName();
         bump(clock);
         return MaintenanceEventType.MAINTENANCE_RECOMMENDATION_DISMISSED;
     }
@@ -233,6 +239,10 @@ public final class MaintenanceRecommendation {
 
     public UUID lastCommandId() {
         return lastCommandId;
+    }
+
+    public String reviewedBy() {
+        return reviewedBy;
     }
 
     public int uncommittedBumps() {
