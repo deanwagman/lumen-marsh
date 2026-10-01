@@ -10,6 +10,9 @@ applications:
   parkFlowIntelligence:
     repository: park-flow-intelligence
     tag: local
+  reliabilityIntelligence:
+    repository: reliability-intelligence
+    tag: local
   operatorConsole:
     repository: venueops-console
     tag: local

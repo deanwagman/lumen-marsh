@@ -168,6 +168,37 @@ services:
       start_period: 40s
     restart: on-failure:5
 
+  reliability-intelligence:
+    build:
+      context: ../reliability-intelligence
+    image: ${RELIABILITY_INTELLIGENCE_IMAGE:-reliability-intelligence:local}
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SIMULATION_ENABLED: ${RELIABILITY_SIMULATION_ENABLED:-false}
+      VENUEOPS_BASE_URL: http://venueops-api:8080
+      OIDC_TOKEN_URL: ${RELIABILITY_OIDC_TOKEN_URL:-}
+      OIDC_CLIENT_ID: ${RELIABILITY_OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${RELIABILITY_OIDC_CLIENT_SECRET:-}
+      OIDC_SCOPE: ${RELIABILITY_OIDC_SCOPE:-venueops/reliability.write}
+      OIDC_DISABLED: ${RELIABILITY_OIDC_DISABLED:-true}
+      VENUEOPS_BEARER_TOKEN: ${RELIABILITY_VENUEOPS_BEARER_TOKEN:-}
+    ports:
+      - "${RELIABILITY_INTELLIGENCE_HOST_PORT:-8200}:8080"
+    networks:
+      - public
+      - services
+    depends_on:
+      venueops-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    restart: on-failure:5
+
   venueops-console:
     build:
       context: ../venueops-console

@@ -9,15 +9,19 @@ import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentCommand;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentId;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentType;
+import com.deanwagman.lumenmarsh.venueops.support.AfterCommit;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 public class IncidentService {
 
     private final IncidentRepository incidents;
     private final AttractionRepository attractions;
+    private final IncidentProcessedCommandRepository processedCommands;
     private final Clock clock;
     private final GuestAdvisoryUpdatePublisher guestAdvisoryPublisher;
     private final IncidentUpdatePublisher incidentPublisher;
@@ -26,6 +30,7 @@ public class IncidentService {
     public IncidentService(
             IncidentRepository incidents,
             AttractionRepository attractions,
+            IncidentProcessedCommandRepository processedCommands,
             Clock clock,
             GuestAdvisoryUpdatePublisher guestAdvisoryPublisher,
             IncidentUpdatePublisher incidentPublisher,
@@ -33,6 +38,7 @@ public class IncidentService {
     ) {
         this.incidents = Objects.requireNonNull(incidents);
         this.attractions = Objects.requireNonNull(attractions);
+        this.processedCommands = Objects.requireNonNull(processedCommands);
         this.clock = Objects.requireNonNull(clock);
         this.guestAdvisoryPublisher = Objects.requireNonNull(guestAdvisoryPublisher);
         this.incidentPublisher = Objects.requireNonNull(incidentPublisher);
@@ -77,8 +83,43 @@ public class IncidentService {
         return incident;
     }
 
+    @Transactional
     public Incident execute(
             IncidentId id,
+            UUID commandId,
+            IncidentCommand command,
+            String actor,
+            String reason,
+            long expectedVersion,
+            String assignee,
+            IncidentSeverity severity,
+            String attractionId,
+            String guestTitle,
+            String guestMessage,
+            boolean confirmActiveWorkOrders
+    ) {
+        Objects.requireNonNull(commandId, "commandId is required");
+        return processedCommands.findByCommandId(commandId)
+                .map(processed -> replay(processed, id))
+                .orElseGet(() -> executeNew(
+                        id,
+                        commandId,
+                        command,
+                        actor,
+                        reason,
+                        expectedVersion,
+                        assignee,
+                        severity,
+                        attractionId,
+                        guestTitle,
+                        guestMessage,
+                        confirmActiveWorkOrders
+                ));
+    }
+
+    private Incident executeNew(
+            IncidentId id,
+            UUID commandId,
             IncidentCommand command,
             String actor,
             String reason,
@@ -100,9 +141,33 @@ public class IncidentService {
         apply(incident, command, actor, reason, assignee, severity, attractionId, guestTitle, guestMessage);
         IncidentActivity activity = lastUncommitted(incident);
         incidents.save(incident);
-        publishIncident(activity, incident);
-        publishGuestAdvisoryIfNeeded(activity, incident);
+        processedCommands.save(new IncidentProcessedCommandRepository.ProcessedCommand(
+                commandId,
+                incident.id(),
+                activity.type(),
+                activity.resultingVersion(),
+                activity.occurredAt(),
+                IncidentCommandSnapshot.write(incident)
+        ));
+        AfterCommit.run(() -> {
+            publishIncident(activity, incident);
+            publishGuestAdvisoryIfNeeded(activity, incident);
+        });
         return incident;
+    }
+
+    private Incident replay(
+            IncidentProcessedCommandRepository.ProcessedCommand processed,
+            IncidentId requestedId
+    ) {
+        if (!processed.incidentId().value().equals(requestedId.value())) {
+            throw new ConflictingIncidentCommandException(
+                    processed.commandId(),
+                    processed.incidentId().value(),
+                    requestedId.value()
+            );
+        }
+        return IncidentCommandSnapshot.read(processed.resultJson());
     }
 
     public Incident recordLinkedWorkOrder(IncidentId id, String workOrderId, String workOrderNumber, String actor, String reason) {

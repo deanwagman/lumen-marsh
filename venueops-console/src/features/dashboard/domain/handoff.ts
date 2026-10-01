@@ -55,6 +55,8 @@ function parkStatusLines(dashboard: OperatorDashboard): string[] {
     `- ${summary.openIncidents} open ${plural(summary.openIncidents, 'incident')}`,
     `- ${summary.majorOrCriticalIncidents} major or critical ${plural(summary.majorOrCriticalIncidents, 'incident')}`,
     `- ${summary.pendingWeatherRecommendations} pending weather ${plural(summary.pendingWeatherRecommendations, 'recommendation')}`,
+    `- ${summary.openP1WorkOrders} open P1 ${plural(summary.openP1WorkOrders, 'work order')}`,
+    `- ${summary.unpublishedFlowRecommendations} unpublished flow ${plural(summary.unpublishedFlowRecommendations, 'recommendation')}`,
     `- ${summary.publishedGuestAdvisories} published guest ${plural(summary.publishedGuestAdvisories, 'advisory', 'advisories')}`,
   ];
 }

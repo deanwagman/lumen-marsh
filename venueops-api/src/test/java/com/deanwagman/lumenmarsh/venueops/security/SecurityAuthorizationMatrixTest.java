@@ -7,6 +7,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import com.deanwagman.lumenmarsh.venueops.testsupport.CommandJson;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.hamcrest.Matchers.containsString;
@@ -36,9 +37,9 @@ class SecurityAuthorizationMatrixTest {
     void guestCannotCallAttractionCommand() throws Exception {
         mockMvc.perform(post("/api/v1/operator/attractions/mangrove-run/commands")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {"type":"PLACE_WEATHER_HOLD","reason":"x","expectedVersion":0}
-                                """))
+                                """)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -48,9 +49,9 @@ class SecurityAuthorizationMatrixTest {
                         .with(TestAuth.operator())
                         .header("X-Actor", "spoofed-attacker")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {"type":"UPDATE_WAIT_TIME","waitMinutes":12,"expectedVersion":0}
-                                """))
+                                """)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.waitMinutes").value(12));
 
@@ -64,9 +65,9 @@ class SecurityAuthorizationMatrixTest {
         mockMvc.perform(post("/api/v1/operator/attractions/mangrove-run/commands")
                         .with(TestAuth.weatherService())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {"type":"PLACE_WEATHER_HOLD","reason":"x","expectedVersion":0}
-                                """))
+                                """)))
                 .andExpect(status().isForbidden());
     }
 
@@ -188,14 +189,14 @@ class SecurityAuthorizationMatrixTest {
         mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                         .with(TestAuth.operator())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {
                                   "type":"PUBLISH_GUEST_ADVISORY",
                                   "guestTitle":"Should not publish",
                                   "guestMessage":"Operators cannot publish guest advisories.",
                                   "expectedVersion":1
                                 }
-                                """))
+                                """)))
                 .andExpect(status().isForbidden());
     }
 
@@ -210,14 +211,14 @@ class SecurityAuthorizationMatrixTest {
                         .with(TestAuth.supervisor())
                         .header("X-Actor", "spoofed-supervisor")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {
                                   "type":"PUBLISH_GUEST_ADVISORY",
                                   "guestTitle":"Outdoor weather pause",
                                   "guestMessage":"Some outdoor attractions are temporarily paused.",
                                   "expectedVersion":1
                                 }
-                                """))
+                                """)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.guestAdvisoryPublished").value(true));
 
@@ -239,13 +240,13 @@ class SecurityAuthorizationMatrixTest {
         mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                         .with(TestAuth.supervisor())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {
                                   "type":"WITHDRAW_GUEST_ADVISORY",
                                   "reason":"Clear published advisory after leak check",
                                   "expectedVersion":2
                                 }
-                                """))
+                                """)))
                 .andExpect(status().isOk());
     }
 

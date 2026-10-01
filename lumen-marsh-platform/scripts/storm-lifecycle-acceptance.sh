@@ -99,7 +99,14 @@ incident_command() {
   local incident_id="$1"
   local body="$2"
   shift 2
-  post_json "$VENUEOPS_URL/api/v1/operator/incidents/$incident_id/commands" "$body" "$@"
+  post_json "$VENUEOPS_URL/api/v1/operator/incidents/$incident_id/commands" "$(envelope_command "$body")" "$@"
+}
+
+attraction_command() {
+  local attraction_id="$1"
+  local body="$2"
+  shift 2
+  post_json "$VENUEOPS_URL/api/v1/operator/attractions/$attraction_id/commands" "$(envelope_command "$body")" "$@"
 }
 
 incident_version() {
@@ -228,7 +235,7 @@ OP_PUB_CODE="$(http_code "$WORKDIR/op-pub.json" \
   -X POST "$VENUEOPS_URL/api/v1/operator/incidents/$INCIDENT_ID/commands" \
   -H 'Content-Type: application/json' \
   "${OPERATOR_AUTH[@]}" \
-  -d "{\"type\":\"PUBLISH_GUEST_ADVISORY\",\"guestTitle\":\"$GUEST_TITLE\",\"guestMessage\":\"Should be forbidden.\",\"expectedVersion\":$VER}")"
+  -d "$(envelope_command "{\"type\":\"PUBLISH_GUEST_ADVISORY\",\"guestTitle\":\"$GUEST_TITLE\",\"guestMessage\":\"Should be forbidden.\",\"expectedVersion\":$VER}")")"
 check "operator publish is 403" bash -c "[[ '$OP_PUB_CODE' == '403' ]]"
 
 echo "== 4. Place weather hold (including stale version) =="
@@ -241,38 +248,38 @@ ensure_operating() {
   case "$status" in
     OPERATING) return 0 ;;
     WEATHER_HOLD)
-      post_json "$VENUEOPS_URL/api/v1/operator/attractions/$id/commands" \
+      attraction_command "$id" \
         "{\"type\":\"CLEAR_WEATHER_HOLD\",\"reason\":\"Reset before lifecycle acceptance\",\"expectedVersion\":$version}" \
         "${SUPERVISOR_AUTH[@]}" >/dev/null
       version=$((version + 1))
-      post_json "$VENUEOPS_URL/api/v1/operator/attractions/$id/commands" \
+      attraction_command "$id" \
         "{\"type\":\"COMPLETE_TESTING\",\"expectedVersion\":$version}" "${SUPERVISOR_AUTH[@]}" >/dev/null
       version=$((version + 1))
-      post_json "$VENUEOPS_URL/api/v1/operator/attractions/$id/commands" \
+      attraction_command "$id" \
         "{\"type\":\"APPROVE_RETURN_TO_SERVICE\",\"reason\":\"Reset before lifecycle acceptance\",\"expectedVersion\":$version}" \
         "${SUPERVISOR_AUTH[@]}" >/dev/null
       ;;
     CLOSED)
-      post_json "$VENUEOPS_URL/api/v1/operator/attractions/$id/commands" \
+      attraction_command "$id" \
         "{\"type\":\"START_TESTING\",\"expectedVersion\":$version}" "${SUPERVISOR_AUTH[@]}" >/dev/null
       version=$((version + 1))
-      post_json "$VENUEOPS_URL/api/v1/operator/attractions/$id/commands" \
+      attraction_command "$id" \
         "{\"type\":\"COMPLETE_TESTING\",\"expectedVersion\":$version}" "${SUPERVISOR_AUTH[@]}" >/dev/null
       version=$((version + 1))
-      post_json "$VENUEOPS_URL/api/v1/operator/attractions/$id/commands" \
+      attraction_command "$id" \
         "{\"type\":\"APPROVE_RETURN_TO_SERVICE\",\"reason\":\"Opened for lifecycle acceptance\",\"expectedVersion\":$version}" \
         "${SUPERVISOR_AUTH[@]}" >/dev/null
       ;;
     TESTING)
-      post_json "$VENUEOPS_URL/api/v1/operator/attractions/$id/commands" \
+      attraction_command "$id" \
         "{\"type\":\"COMPLETE_TESTING\",\"expectedVersion\":$version}" "${SUPERVISOR_AUTH[@]}" >/dev/null
       version=$((version + 1))
-      post_json "$VENUEOPS_URL/api/v1/operator/attractions/$id/commands" \
+      attraction_command "$id" \
         "{\"type\":\"APPROVE_RETURN_TO_SERVICE\",\"reason\":\"Opened for lifecycle acceptance\",\"expectedVersion\":$version}" \
         "${SUPERVISOR_AUTH[@]}" >/dev/null
       ;;
     RETURNING_TO_SERVICE)
-      post_json "$VENUEOPS_URL/api/v1/operator/attractions/$id/commands" \
+      attraction_command "$id" \
         "{\"type\":\"APPROVE_RETURN_TO_SERVICE\",\"reason\":\"Opened for lifecycle acceptance\",\"expectedVersion\":$version}" \
         "${SUPERVISOR_AUTH[@]}" >/dev/null
       ;;
@@ -291,14 +298,14 @@ STALE_CODE="$(http_code "$WORKDIR/stale.json" \
   -X POST "$VENUEOPS_URL/api/v1/operator/attractions/mangrove-run/commands" \
   -H 'Content-Type: application/json' \
   "${SUPERVISOR_AUTH[@]}" \
-  -d "{\"type\":\"PLACE_WEATHER_HOLD\",\"reason\":\"stale\",\"expectedVersion\":$((M_VER + 99))}")"
+  -d "$(envelope_command "{\"type\":\"PLACE_WEATHER_HOLD\",\"reason\":\"stale\",\"expectedVersion\":$((M_VER + 99))}")")"
 check "stale weather hold is 409" bash -c "[[ '$STALE_CODE' == '409' ]]"
 
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/mangrove-run/commands" \
+attraction_command mangrove-run \
   "{\"type\":\"PLACE_WEATHER_HOLD\",\"reason\":\"Lightning detected within operating radius\",\"expectedVersion\":$M_VER}" \
   "${SUPERVISOR_AUTH[@]}" >/dev/null
 C_VER="$(attraction_json cypress-coil | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/cypress-coil/commands" \
+attraction_command cypress-coil \
   "{\"type\":\"PLACE_WEATHER_HOLD\",\"reason\":\"Lightning detected within operating radius\",\"expectedVersion\":$C_VER}" \
   "${SUPERVISOR_AUTH[@]}" >/dev/null
 M_STATUS="$(attraction_json mangrove-run | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
@@ -374,22 +381,22 @@ check "recommendation cleared" bash -c "[[ '$STATUS' == 'CLEARED' ]]"
 
 echo "== 8. Restore attractions and resolve incident =="
 M_VER="$(attraction_json mangrove-run | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/mangrove-run/commands" \
+attraction_command mangrove-run \
   "{\"type\":\"CLEAR_WEATHER_HOLD\",\"reason\":\"Storm cell moved out of radius\",\"expectedVersion\":$M_VER}" \
   "${SUPERVISOR_AUTH[@]}" >/dev/null
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/mangrove-run/commands" \
+attraction_command mangrove-run \
   "{\"type\":\"COMPLETE_TESTING\",\"expectedVersion\":$((M_VER + 1))}" "${SUPERVISOR_AUTH[@]}" >/dev/null
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/mangrove-run/commands" \
+attraction_command mangrove-run \
   "{\"type\":\"APPROVE_RETURN_TO_SERVICE\",\"reason\":\"Return to service approved\",\"expectedVersion\":$((M_VER + 2))}" \
   "${SUPERVISOR_AUTH[@]}" >/dev/null
 
 C_VER="$(attraction_json cypress-coil | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/cypress-coil/commands" \
+attraction_command cypress-coil \
   "{\"type\":\"CLEAR_WEATHER_HOLD\",\"reason\":\"Storm cell moved out of radius\",\"expectedVersion\":$C_VER}" \
   "${SUPERVISOR_AUTH[@]}" >/dev/null
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/cypress-coil/commands" \
+attraction_command cypress-coil \
   "{\"type\":\"COMPLETE_TESTING\",\"expectedVersion\":$((C_VER + 1))}" "${SUPERVISOR_AUTH[@]}" >/dev/null
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/cypress-coil/commands" \
+attraction_command cypress-coil \
   "{\"type\":\"APPROVE_RETURN_TO_SERVICE\",\"reason\":\"Return to service approved\",\"expectedVersion\":$((C_VER + 2))}" \
   "${SUPERVISOR_AUTH[@]}" >/dev/null
 

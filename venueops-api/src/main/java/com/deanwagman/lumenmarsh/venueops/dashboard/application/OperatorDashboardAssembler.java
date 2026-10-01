@@ -15,9 +15,13 @@ import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardRespons
 import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardResponse.DashboardWeatherResponse;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardAttentionKind;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardFreshnessStatus;
+import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendation;
+import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationStatus;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.Incident;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatus;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenancePriority;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.workorder.MaintenanceWorkOrder;
 import com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendation;
 import com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendationActivity;
 import com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendationEventType;
@@ -48,6 +52,17 @@ public final class OperatorDashboardAssembler {
             List<Incident> incidents,
             List<WeatherRecommendation> recommendations
     ) {
+        return assemble(generatedAt, attractions, incidents, recommendations, List.of(), List.of());
+    }
+
+    public static OperatorDashboardResponse assemble(
+            Instant generatedAt,
+            List<Attraction> attractions,
+            List<Incident> incidents,
+            List<WeatherRecommendation> recommendations,
+            List<MaintenanceWorkOrder> workOrders,
+            List<FlowRecommendation> flowRecommendations
+    ) {
         List<Incident> openIncidents = incidents.stream()
                 .filter(incident -> !incident.status().isResolved())
                 .sorted(incidentOrder())
@@ -64,6 +79,14 @@ public final class OperatorDashboardAssembler {
                 .filter(Incident::hasActiveGuestAdvisory)
                 .sorted(Comparator.comparing(Incident::updatedAt).reversed().thenComparing(incident -> incident.id().value()))
                 .toList();
+        List<MaintenanceWorkOrder> openP1WorkOrders = workOrders.stream()
+                .filter(OperatorDashboardAssembler::isOpenP1)
+                .sorted(workOrderOrder())
+                .toList();
+        List<FlowRecommendation> unpublishedFlow = flowRecommendations.stream()
+                .filter(OperatorDashboardAssembler::isUnpublished)
+                .sorted(flowOrder())
+                .toList();
         Map<String, Integer> relatedIncidents = relatedOpenIncidentCounts(openIncidents);
 
         DashboardSummaryResponse summary = new DashboardSummaryResponse(
@@ -74,7 +97,9 @@ public final class OperatorDashboardAssembler {
                 openIncidents.size(),
                 (int) openIncidents.stream().filter(OperatorDashboardAssembler::majorOrCritical).count(),
                 pendingWeather.size(),
-                publishedAdvisories.size()
+                publishedAdvisories.size(),
+                openP1WorkOrders.size(),
+                unpublishedFlow.size()
         );
 
         DashboardFreshnessResponse freshness = freshness(generatedAt, attractions, incidents, recommendations);
@@ -82,7 +107,15 @@ public final class OperatorDashboardAssembler {
         return new OperatorDashboardResponse(
                 generatedAt,
                 summary,
-                needsAttention(openIncidents, attentionAttractions, pendingWeather, incidents, freshness),
+                needsAttention(
+                        openIncidents,
+                        attentionAttractions,
+                        pendingWeather,
+                        incidents,
+                        freshness,
+                        openP1WorkOrders,
+                        unpublishedFlow
+                ),
                 openIncidents.stream().map(OperatorDashboardAssembler::incidentItem).toList(),
                 attentionAttractions.stream()
                         .map(attraction -> attractionItem(attraction, relatedIncidents.getOrDefault(attraction.id().value(), 0)))
@@ -112,6 +145,15 @@ public final class OperatorDashboardAssembler {
                 && recommendation.status() == WeatherRecommendationStatus.ACTIVE;
     }
 
+    private static boolean isOpenP1(MaintenanceWorkOrder workOrder) {
+        return workOrder.priority() == MaintenancePriority.P1 && workOrder.status().isActive();
+    }
+
+    private static boolean isUnpublished(FlowRecommendation recommendation) {
+        return recommendation.status().isPending()
+                || recommendation.status() == FlowRecommendationStatus.APPROVED;
+    }
+
     private static boolean majorOrCritical(Incident incident) {
         return incident.severity() == IncidentSeverity.CRITICAL || incident.severity() == IncidentSeverity.MAJOR;
     }
@@ -121,7 +163,9 @@ public final class OperatorDashboardAssembler {
             List<Attraction> attentionAttractions,
             List<WeatherRecommendation> pendingWeather,
             List<Incident> allIncidents,
-            DashboardFreshnessResponse freshness
+            DashboardFreshnessResponse freshness,
+            List<MaintenanceWorkOrder> openP1WorkOrders,
+            List<FlowRecommendation> unpublishedFlow
     ) {
         List<DashboardAttentionItemResponse> items = new ArrayList<>();
         for (Incident incident : openIncidents) {
@@ -157,6 +201,16 @@ public final class OperatorDashboardAssembler {
                 ));
             }
         }
+        for (MaintenanceWorkOrder workOrder : openP1WorkOrders) {
+            items.add(attention(
+                    DashboardAttentionKind.OPEN_P1_WORK_ORDER,
+                    "P1 work order " + workOrder.workOrderNumber() + " is open: " + workOrder.summary(),
+                    "/maintenance/work-orders/" + workOrder.id(),
+                    workOrder.id().toString(),
+                    workOrder.workOrderNumber(),
+                    workOrder.updatedAt()
+            ));
+        }
         for (Attraction attraction : attentionAttractions) {
             if (attraction.status() == AttractionStatus.WEATHER_HOLD) {
                 items.add(attention(
@@ -177,6 +231,16 @@ public final class OperatorDashboardAssembler {
                         attraction.updatedAt()
                 ));
             }
+        }
+        for (FlowRecommendation recommendation : unpublishedFlow) {
+            items.add(attention(
+                    DashboardAttentionKind.UNPUBLISHED_FLOW_RECOMMENDATION,
+                    "Unpublished flow recommendation: " + recommendation.summary(),
+                    "/park-flow",
+                    recommendation.id().value(),
+                    recommendation.summary(),
+                    recommendation.updatedAt()
+            ));
         }
         for (Incident incident : openIncidents) {
             if (!majorOrCritical(incident) && incident.assignedTo() == null) {
@@ -446,6 +510,18 @@ public final class OperatorDashboardAssembler {
                 .thenComparing(recommendation -> recommendation.id().value());
     }
 
+    private static Comparator<MaintenanceWorkOrder> workOrderOrder() {
+        return Comparator
+                .comparing(MaintenanceWorkOrder::updatedAt, Comparator.reverseOrder())
+                .thenComparing(workOrder -> workOrder.id().toString());
+    }
+
+    private static Comparator<FlowRecommendation> flowOrder() {
+        return Comparator
+                .comparing(FlowRecommendation::updatedAt, Comparator.reverseOrder())
+                .thenComparing(recommendation -> recommendation.id().value());
+    }
+
     private static Comparator<DashboardAttentionItemResponse> attentionOrder() {
         return Comparator
                 .comparingInt((DashboardAttentionItemResponse item) -> attentionRank(item.kind()))
@@ -487,10 +563,12 @@ public final class OperatorDashboardAssembler {
             case MAJOR_INCIDENT -> 1;
             case WEATHER_HAZARD -> 2;
             case WEATHER_HOLD -> 3;
-            case ABNORMAL_ATTRACTION -> 4;
-            case UNASSIGNED_INCIDENT, UNACKNOWLEDGED_INCIDENT -> 5;
-            case ORPHAN_ADVISORY -> 6;
-            case STALE_DATA -> 7;
+            case OPEN_P1_WORK_ORDER -> 4;
+            case ABNORMAL_ATTRACTION -> 5;
+            case UNPUBLISHED_FLOW_RECOMMENDATION -> 6;
+            case UNASSIGNED_INCIDENT, UNACKNOWLEDGED_INCIDENT -> 7;
+            case ORPHAN_ADVISORY -> 8;
+            case STALE_DATA -> 9;
         };
     }
 }

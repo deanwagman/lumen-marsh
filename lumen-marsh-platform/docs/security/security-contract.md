@@ -1,7 +1,7 @@
 # Lumen Marsh security contract
 
 **Status:** Implemented for the running stack (Phases 4–11 in application code)  
-**Owners:** VenueOps API, VenueOps Console, Environmental Monitor, Park Flow Intelligence, Platform  
+**Owners:** VenueOps API, VenueOps Console, Environmental Monitor, Park Flow Intelligence, Reliability Intelligence, Platform  
 **Related ADR:** [ADR 0001 — Cognito and JWT](./adr/0001-cognito-jwt.md)
 
 This document is the shared security boundary. The Java API and React console implement it independently. The API remains authoritative: hiding a console button is not authorization.
@@ -13,7 +13,7 @@ This document is the shared security boundary. The Java API and React console im
 - Supervisors receive elevated operational permissions.
 - Environmental Monitor authenticates as a service, not a human.
 - Park Flow Intelligence authenticates as a service, not a human.
-- Reliability ingest uses a machine token; there is no Compose reliability producer.
+- Reliability Intelligence authenticates as a service, not a human.
 - VenueOps derives audit identities from verified credentials — never from `X-Actor`.
 - REST commands and the operator event stream enforce the same rules.
 
@@ -31,7 +31,7 @@ Internal routes are unavailable outside trusted local/dev tooling and must be di
 | Operator | Cognito user access token (group `operators`) | Day-to-day Control Tower work |
 | Supervisor | Cognito user access token (group `supervisors`) | Guest-facing publish and high-impact resolution |
 | Weather service | Cognito client-credentials token | Submit weather recommendations only |
-| Reliability ingest | Cognito client-credentials token | Submit reliability recommendations only. Not a running Compose service. |
+| Reliability Intelligence | Cognito client-credentials token | Submit reliability recommendations only. Never creates a work order. |
 | Park Flow Intelligence | Cognito client-credentials token | Submit queue observations and forecasts only |
 | VenueOps system | Internal process identity | Automated system events (no external token) |
 
@@ -198,7 +198,7 @@ Requires scope `venueops/flow-ingest.write`:
 | Publish / withdraw guest flow guidance | | | ✓ | | | |
 | Write flow observations and forecasts | | | | | | ✓ |
 
-Park Flow Intelligence is a Compose producer and a machine client. It may call only the flow ingest routes and cannot use operator endpoints. Reliability ingest is the same kind of machine identity without a Compose process.
+Park Flow Intelligence is a Compose producer and a machine client. It may call only the flow ingest routes and cannot use operator endpoints. Reliability Intelligence is the same kind of Compose producer for reliability ingest; it never creates a work order.
 
 ## Client architecture
 
@@ -220,7 +220,7 @@ Park Flow Intelligence is a Compose producer and a machine client. It may call o
 - Client secret via local env / Secrets Manager / SSM — never Git or ordinary Compose files
 - Client Credentials
 - Scope: `venueops/reliability.write` only
-- Not a Compose service. Scripts and tests POST ingest with `local-reliability-token` in `LOCAL_JWT` mode.
+- Reliability Intelligence is the Compose producer. Scripts and tests may also POST ingest with `local-reliability-token` in `LOCAL_JWT` mode.
 
 ### `park-flow-intelligence` (confidential Cognito app client)
 
@@ -241,7 +241,7 @@ Park Flow Intelligence is a Compose producer and a machine client. It may call o
 - Guest Cognito login
 - Fine-grained per-attraction ACLs
 - Mutual TLS between services
-- A reliability producer process (ingest identity only)
+- AWS-hosted Reliability Intelligence (local Compose only for this milestone)
 
 ## Acceptance anchors
 

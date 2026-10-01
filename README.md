@@ -1,6 +1,6 @@
 # Lumen Marsh
 
-Lumen Marsh is a fictional theme-park operations platform built as a portfolio demonstration. It connects a guest companion, an operator control tower, an operational API, an environmental monitor, and park-flow intelligence in one observable workflow.
+Lumen Marsh is a fictional theme-park operations platform built as a portfolio demonstration. It connects a guest companion, an operator control tower, an operational API, an environmental monitor, park-flow intelligence, and reliability intelligence in one observable workflow.
 
 > Lumen Marsh is an independent fictional project. It is not affiliated with, endorsed by, or based on proprietary systems from Universal Destinations & Experiences or any other theme-park operator.
 
@@ -17,14 +17,16 @@ Lumen Marsh is a fictional theme-park operations platform built as a portfolio d
 
 ## Architecture
 
-Six pieces, one Compose graph, two databases. Sensors and simulators recommend. Operators decide. Guests see a sanitized projection.
+Seven pieces, one Compose graph, two databases. Sensors and simulators recommend. Operators decide. Guests see a sanitized projection.
 
 ```mermaid
 flowchart LR
     Weather[Public or simulated weather] --> Monitor[Environmental Monitor\nPython + FastAPI]
     Queues[Queue simulator] --> Flow[Park Flow Intelligence\nPython + FastAPI]
+    Vibration[Vibration simulator] --> Reliability[Reliability Intelligence\nPython + FastAPI]
     Monitor -->|weather recommendations| API[VenueOps API\nJava + Spring Boot]
     Flow -->|observations and forecasts| API
+    Reliability -->|reliability recommendations| API
     Console[Control Tower\nReact + Vite] <-->|commands and operator SSE| API
     Guest[Guest companion\nFlutter Web] <-->|guest-safe REST and SSE| API
     API --> VenueDB[(VenueOps PostgreSQL)]
@@ -32,15 +34,17 @@ flowchart LR
     Cognito[AWS Cognito] -->|OIDC + PKCE| Console
     Cognito -->|client credentials| Monitor
     Cognito -->|client credentials| Flow
+    Cognito -->|client credentials| Reliability
 ```
 
-Reliability ingest (`POST /api/v1/integrations/reliability/recommendations`) is a machine identity and API socket, not a sixth Compose producer. Cypress Coil vibration is posted by tests and scripts.
+Reliability Intelligence posts Cypress Coil vibration to `POST /api/v1/integrations/reliability/recommendations`. It never creates a work order. Maintenance proofs can still post ingest directly.
 
 | Directory | Responsibility |
 | --- | --- |
 | [`venueops-api`](./venueops-api) | System of record: attractions, incidents, advisories, weather inbox, maintenance, park flow, dashboard, SSE |
 | [`environmental-monitor`](./environmental-monitor) | Weather ingestion, fictional safety rules, and recommendations. Never commands a ride. |
 | [`park-flow-intelligence`](./park-flow-intelligence) | Simulated queues, deterministic 15/30/60-minute forecasts, flow proposals. No database of its own. |
+| [`reliability-intelligence`](./reliability-intelligence) | Simulated Cypress Coil vibration recommendations. Never creates a work order. |
 | [`venueops-console`](./venueops-console) | Authenticated operator and supervisor control tower |
 | [`lumen-marsh-app`](./lumen-marsh-app) | Guest catalog, advisories, Best Next Experience, field guide, and live park updates |
 | [`lumen-marsh-platform`](./lumen-marsh-platform) | Compose orchestration, demo automation, security docs, and infrastructure as code |
@@ -67,6 +71,7 @@ Typical endpoints:
 | VenueOps API | <http://localhost:8080> |
 | Environmental Monitor | <http://localhost:8000> |
 | Park Flow Intelligence | <http://localhost:8100> |
+| Reliability Intelligence | <http://localhost:8200> |
 
 Run the repeatable end-to-end proofs:
 
@@ -74,9 +79,10 @@ Run the repeatable end-to-end proofs:
 cd lumen-marsh-platform
 ./scripts/storm-lifecycle-acceptance.sh
 ./scripts/maintenance-lifecycle-acceptance.sh
+./scripts/flow-lifecycle-acceptance.sh
 ```
 
-The storm scenario follows weather observation → recommendation → operator review → incident → attraction hold → guest advisory → clearance → testing → return to service. The maintenance scenario follows reliability ingest → accept → inspect → operations testing. Both assert guest leak, authorization, and stale-version failures. See the [storm UI walkthrough](./lumen-marsh-platform/docs/storm-lifecycle-demo.md) and the [maintenance HTTP proof](./lumen-marsh-platform/docs/maintenance-lifecycle-demo.md).
+The storm scenario follows weather observation → recommendation → operator review → incident → attraction hold → guest advisory → clearance → testing → return to service. The maintenance scenario follows reliability ingest → accept → inspect → operations testing. The flow scenario follows mangrove disruption → unpublished recommendation → supervisor publish → guest Best Next. All three assert guest leak, authorization, and stale-version failures. See the [storm UI walkthrough](./lumen-marsh-platform/docs/storm-lifecycle-demo.md), the [maintenance HTTP proof](./lumen-marsh-platform/docs/maintenance-lifecycle-demo.md), and the [flow UI walkthrough](./lumen-marsh-platform/docs/flow-lifecycle-demo.md).
 
 Stop the stack without deleting its databases:
 
@@ -87,7 +93,7 @@ cd lumen-marsh-platform
 
 ## Cognito mode
 
-The optional Cognito-backed development mode uses Authorization Code + PKCE for the console and client credentials for Environmental Monitor and Park Flow Intelligence:
+The optional Cognito-backed development mode uses Authorization Code + PKCE for the console and client credentials for Environmental Monitor, Park Flow Intelligence, and Reliability Intelligence:
 
 ```bash
 cd lumen-marsh-platform

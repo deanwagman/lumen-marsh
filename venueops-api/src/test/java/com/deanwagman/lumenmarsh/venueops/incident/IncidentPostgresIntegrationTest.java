@@ -1,6 +1,7 @@
 package com.deanwagman.lumenmarsh.venueops.incident;
 
 import com.deanwagman.lumenmarsh.venueops.security.TestAuth;
+import com.deanwagman.lumenmarsh.venueops.testsupport.CommandJson;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -114,7 +115,7 @@ class IncidentPostgresIntegrationTest {
         return mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                 .with(auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(body));
+                .content(CommandJson.envelope(body)));
     }
 }
 

@@ -1,6 +1,7 @@
 package com.deanwagman.lumenmarsh.venueops.incident;
 
 import com.deanwagman.lumenmarsh.venueops.security.TestAuth;
+import com.deanwagman.lumenmarsh.venueops.testsupport.CommandJson;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -164,14 +165,14 @@ class IncidentDemoIntegrationTest {
         return mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                 .with(auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(body));
+                .content(CommandJson.envelope(body)));
     }
 
     private org.springframework.test.web.servlet.ResultActions attractionCommand(String attractionId, String body) throws Exception {
         return mockMvc.perform(post("/api/v1/operator/attractions/" + attractionId + "/commands")
                 .with(TestAuth.operator())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(body));
+                .content(CommandJson.envelope(body)));
     }
 
     private static org.springframework.test.web.servlet.ResultMatcher contentWithout(String leaked) {

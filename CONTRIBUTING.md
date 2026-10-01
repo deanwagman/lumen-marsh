@@ -43,6 +43,17 @@ uv run mypy src
 uv run pytest
 ```
 
+### Reliability Intelligence
+
+```bash
+cd reliability-intelligence
+uv sync --frozen
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run pytest
+```
+
 ### Operator console
 
 ```bash
@@ -81,6 +92,7 @@ For a full local integration check, start the stack and run:
 cd lumen-marsh-platform
 ./scripts/storm-lifecycle-acceptance.sh
 ./scripts/maintenance-lifecycle-acceptance.sh
+./scripts/flow-lifecycle-acceptance.sh
 ```
 
 ## Pull requests

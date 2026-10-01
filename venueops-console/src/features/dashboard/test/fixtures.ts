@@ -11,6 +11,8 @@ export const calmDashboard: OperatorDashboard = {
     majorOrCriticalIncidents: 0,
     pendingWeatherRecommendations: 0,
     publishedGuestAdvisories: 0,
+    openP1WorkOrders: 0,
+    unpublishedFlowRecommendations: 0,
   },
   needsAttention: [],
   openIncidents: [],
@@ -41,6 +43,8 @@ export const stormDashboard: OperatorDashboard = {
     majorOrCriticalIncidents: 2,
     pendingWeatherRecommendations: 1,
     publishedGuestAdvisories: 1,
+    openP1WorkOrders: 1,
+    unpublishedFlowRecommendations: 1,
   },
   needsAttention: [
     {
@@ -74,6 +78,22 @@ export const stormDashboard: OperatorDashboard = {
       subjectId: 'cypress-coil',
       subjectLabel: 'Cypress Coil',
       updatedAt: '2026-09-10T20:29:10Z',
+    },
+    {
+      kind: 'OPEN_P1_WORK_ORDER',
+      reason: 'P1 work order LM-2026-0042 is open: Investigate elevated wheel vibration',
+      href: '/maintenance/work-orders/6dbb04f2-b20d-4b16-ae57-43072fc2e408',
+      subjectId: '6dbb04f2-b20d-4b16-ae57-43072fc2e408',
+      subjectLabel: 'LM-2026-0042',
+      updatedAt: '2026-09-10T20:28:30Z',
+    },
+    {
+      kind: 'UNPUBLISHED_FLOW_RECOMMENDATION',
+      reason: 'Unpublished flow recommendation: Redistribute from Mangrove Run',
+      href: '/park-flow',
+      subjectId: 'flow-rec-1',
+      subjectLabel: 'Redistribute from Mangrove Run',
+      updatedAt: '2026-09-10T20:28:10Z',
     },
     {
       kind: 'UNASSIGNED_INCIDENT',

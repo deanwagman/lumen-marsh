@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -11,23 +12,56 @@ import {
   setCommandReceipt,
 } from '@/features/attractions/api/AttractionQueries';
 import { commandReceiptSummary } from '@/features/attractions/domain/receipt';
+import { newCommandId } from '@/features/attractions/domain/commands';
+import { DuplicateCommandError, VersionConflictError } from '@/shared/api/errors';
 import { useApiClient } from '@/shared/api/useApiClient';
+
+function useReusableCommandId() {
+  const pending = useRef<{ key: string; commandId: string } | null>(null);
+
+  function identityFor(key: string): string {
+    if (pending.current?.key === key) {
+      return pending.current.commandId;
+    }
+    const commandId = newCommandId();
+    pending.current = { key, commandId };
+    return commandId;
+  }
+
+  function clear() {
+    pending.current = null;
+  }
+
+  function resetForNewIntent() {
+    pending.current = null;
+  }
+
+  return { identityFor, clear, resetForNewIntent };
+}
 
 export function useAttractionCommand(attractionId: string) {
   const client = useApiClient();
   const queryClient = useQueryClient();
+  const identity = useReusableCommandId();
 
   return useMutation({
     mutationFn: (
-      input: Omit<AttractionCommandInput, 'attractionId'> & {
+      input: Omit<AttractionCommandInput, 'attractionId' | 'commandId'> & {
         attractionId?: string;
+        commandId?: string;
       },
-    ) =>
-      AttractionCommands.execute(client, {
+    ) => {
+      const resolvedAttractionId = input.attractionId ?? attractionId;
+      const commandId =
+        input.commandId ?? identity.identityFor(`${resolvedAttractionId}:${input.type}`);
+      return AttractionCommands.execute(client, {
         ...input,
-        attractionId: input.attractionId ?? attractionId,
-      }),
+        attractionId: resolvedAttractionId,
+        commandId,
+      });
+    },
     onSuccess: async (attraction, variables) => {
+      identity.clear();
       applyOperatorAttraction(queryClient, attraction);
 
       let activityId: string | null = null;
@@ -52,6 +86,11 @@ export function useAttractionCommand(attractionId: string) {
       await queryClient.invalidateQueries({
         queryKey: AttractionQueries.activity(attraction.id),
       });
+    },
+    onError: (error) => {
+      if (error instanceof VersionConflictError || error instanceof DuplicateCommandError) {
+        identity.resetForNewIntent();
+      }
     },
   });
 }

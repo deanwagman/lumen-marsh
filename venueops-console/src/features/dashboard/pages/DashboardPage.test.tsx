@@ -51,6 +51,8 @@ describe('Operations dashboard', () => {
       '/incidents/inc-lightning-1',
       '/attractions',
       '/attractions/cypress-coil',
+      '/maintenance/work-orders/6dbb04f2-b20d-4b16-ae57-43072fc2e408',
+      '/park-flow',
       '/incidents/inc-queue-1?assignment=unassigned',
     ]);
     expect(within(region).getByText(/critical incident is open/i)).toBeInTheDocument();

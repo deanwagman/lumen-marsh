@@ -8,6 +8,7 @@ import com.deanwagman.lumenmarsh.venueops.attraction.domain.AttractionStatus;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.AttractionType;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.CapacityMode;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.InvalidAttractionTransitionException;
+import com.deanwagman.lumenmarsh.venueops.attraction.infrastructure.InMemoryAttractionProcessedCommandRepository;
 import com.deanwagman.lumenmarsh.venueops.attraction.infrastructure.InMemoryAttractionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,14 +35,16 @@ class AttractionServiceTest {
     private static final AttractionId MANGROVE_RUN = new AttractionId("mangrove-run");
 
     private InMemoryAttractionRepository repository;
+    private InMemoryAttractionProcessedCommandRepository processedCommands;
     private RecordingPublisher publisher;
     private AttractionService service;
 
     @BeforeEach
     void setUp() {
         repository = new InMemoryAttractionRepository();
+        processedCommands = new InMemoryAttractionProcessedCommandRepository();
         publisher = new RecordingPublisher();
-        service = new AttractionService(repository, CLOCK, publisher);
+        service = new AttractionService(repository, processedCommands, CLOCK, publisher);
         repository.save(operatingMangroveRun());
     }
 
@@ -48,6 +52,7 @@ class AttractionServiceTest {
     void executeRecordsCommandAndIncrementsVersion() {
         Attraction updated = service.execute(
                 MANGROVE_RUN,
+                UUID.randomUUID(),
                 AttractionCommand.PLACE_WEATHER_HOLD,
                 "Operator One",
                 "Lightning detected within operating radius",
@@ -66,6 +71,7 @@ class AttractionServiceTest {
     void successfulCommandPublishesOneGuestSafeUpdate() {
         Attraction updated = service.execute(
                 MANGROVE_RUN,
+                UUID.randomUUID(),
                 AttractionCommand.UPDATE_WAIT_TIME,
                 "Operator One",
                 null,
@@ -90,6 +96,7 @@ class AttractionServiceTest {
     void staleExpectedVersionIsRejectedWithoutChangingState() {
         assertThatThrownBy(() -> service.execute(
                 MANGROVE_RUN,
+                UUID.randomUUID(),
                 AttractionCommand.PLACE_WEATHER_HOLD,
                 "Operator One",
                 "Lightning nearby",
@@ -114,6 +121,7 @@ class AttractionServiceTest {
     void invalidTransitionIsRejectedWithoutPublishing() {
         assertThatThrownBy(() -> service.execute(
                 MANGROVE_RUN,
+                UUID.randomUUID(),
                 AttractionCommand.START_TESTING,
                 "Operator One",
                 null,
@@ -130,10 +138,16 @@ class AttractionServiceTest {
         AttractionRepository failingRepository = mock(AttractionRepository.class);
         when(failingRepository.findById(MANGROVE_RUN)).thenReturn(Optional.of(operatingMangroveRun()));
         doThrow(new RuntimeException("write failed")).when(failingRepository).save(any());
-        AttractionService failingService = new AttractionService(failingRepository, CLOCK, publisher);
+        AttractionService failingService = new AttractionService(
+                failingRepository,
+                processedCommands,
+                CLOCK,
+                publisher
+        );
 
         assertThatThrownBy(() -> failingService.execute(
                 MANGROVE_RUN,
+                UUID.randomUUID(),
                 AttractionCommand.PLACE_WEATHER_HOLD,
                 "Operator One",
                 "Lightning nearby",
@@ -142,6 +156,34 @@ class AttractionServiceTest {
         )).hasMessage("write failed");
 
         assertThat(publisher.updates).isEmpty();
+    }
+
+    @Test
+    void duplicateCommandIdReplaysWithoutPublishingAgain() {
+        UUID commandId = UUID.fromString("11111111-1111-4111-8111-111111111111");
+        Attraction first = service.execute(
+                MANGROVE_RUN,
+                commandId,
+                AttractionCommand.PLACE_WEATHER_HOLD,
+                "Operator One",
+                "Lightning detected within operating radius",
+                null,
+                0L
+        );
+        Attraction replayed = service.execute(
+                MANGROVE_RUN,
+                commandId,
+                AttractionCommand.PLACE_WEATHER_HOLD,
+                "Operator One",
+                "Lightning detected within operating radius",
+                null,
+                0L
+        );
+
+        assertThat(replayed.status()).isEqualTo(first.status());
+        assertThat(replayed.version()).isEqualTo(first.version());
+        assertThat(publisher.updates).hasSize(1);
+        assertThat(service.get(MANGROVE_RUN).activity()).hasSize(1);
     }
 
     private static Attraction operatingMangroveRun() {

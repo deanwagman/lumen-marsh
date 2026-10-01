@@ -62,7 +62,8 @@ if [[ "$AUTH_MODE" == "oidc" ]]; then
 
   if ! tofu -chdir="$identity_dir" output -raw CONSOLE_CLIENT_ID >/dev/null 2>&1 || \
      ! tofu -chdir="$identity_dir" output -raw MONITOR_SECRET_ARN >/dev/null 2>&1 || \
-     ! tofu -chdir="$identity_dir" output -raw FLOW_SECRET_ARN >/dev/null 2>&1; then
+     ! tofu -chdir="$identity_dir" output -raw FLOW_SECRET_ARN >/dev/null 2>&1 || \
+     ! tofu -chdir="$identity_dir" output -raw RELIABILITY_SECRET_ARN >/dev/null 2>&1; then
     echo "error: apply the development Cognito console and machine-client environment first" >&2
     echo "hint: cd infrastructure/environments/dev-identity && AWS_PROFILE=lumen-marsh tofu apply" >&2
     exit 1
@@ -72,8 +73,9 @@ if [[ "$AUTH_MODE" == "oidc" ]]; then
   client="$(tofu -chdir="$identity_dir" output -raw CONSOLE_CLIENT_ID)"
   monitor_secret_arn="$(tofu -chdir="$identity_dir" output -raw MONITOR_SECRET_ARN)"
   flow_secret_arn="$(tofu -chdir="$identity_dir" output -raw FLOW_SECRET_ARN)"
+  reliability_secret_arn="$(tofu -chdir="$identity_dir" output -raw RELIABILITY_SECRET_ARN)"
   region="$(tofu -chdir="$identity_dir" output -raw aws_region)"
-  if [[ -z "$issuer" || "$issuer" == "null" || -z "$client" || "$client" == "null" || -z "$monitor_secret_arn" || "$monitor_secret_arn" == "null" || -z "$flow_secret_arn" || "$flow_secret_arn" == "null" ]]; then
+  if [[ -z "$issuer" || "$issuer" == "null" || -z "$client" || "$client" == "null" || -z "$monitor_secret_arn" || "$monitor_secret_arn" == "null" || -z "$flow_secret_arn" || "$flow_secret_arn" == "null" || -z "$reliability_secret_arn" || "$reliability_secret_arn" == "null" ]]; then
     echo "error: development Cognito outputs are incomplete" >&2
     exit 1
   fi
@@ -119,9 +121,29 @@ if [[ "$AUTH_MODE" == "oidc" ]]; then
     exit 1
   fi
 
+  if ! reliability_secret_json="$(aws secretsmanager get-secret-value \
+    --secret-id "$reliability_secret_arn" \
+    --region "$region" \
+    --profile "$aws_profile" \
+    --query SecretString \
+    --output text)"; then
+    echo "error: unable to read the Reliability Intelligence OIDC secret with AWS profile '$aws_profile'" >&2
+    exit 1
+  fi
+
+  reliability_client="$(printf '%s' "$reliability_secret_json" | json_field "['client_id']")"
+  reliability_client_secret="$(printf '%s' "$reliability_secret_json" | json_field "['client_secret']")"
+  reliability_token_url="$(printf '%s' "$reliability_secret_json" | json_field "['token_url']")"
+  reliability_scope="$(printf '%s' "$reliability_secret_json" | json_field "['scope']")"
+  unset reliability_secret_json
+  if [[ -z "$reliability_client" || -z "$reliability_client_secret" || -z "$reliability_token_url" || -z "$reliability_scope" ]]; then
+    echo "error: Reliability Intelligence OIDC secret is incomplete" >&2
+    exit 1
+  fi
+
   export VENUEOPS_SECURITY_MODE=OIDC
   export VENUEOPS_ISSUER_URI="$issuer"
-  export VENUEOPS_ALLOWED_CLIENT_IDS="$client,$monitor_client,$flow_client"
+  export VENUEOPS_ALLOWED_CLIENT_IDS="$client,$monitor_client,$flow_client,$reliability_client"
   export VITE_AUTH_MODE=oidc
   export VITE_OIDC_AUTHORITY="$issuer"
   export VITE_OIDC_CLIENT_ID="$client"
@@ -143,9 +165,15 @@ if [[ "$AUTH_MODE" == "oidc" ]]; then
   export FLOW_OIDC_CLIENT_SECRET="$flow_client_secret"
   export FLOW_OIDC_SCOPE="$flow_scope"
   export FLOW_VENUEOPS_BEARER_TOKEN=
+  export RELIABILITY_OIDC_DISABLED=false
+  export RELIABILITY_OIDC_TOKEN_URL="$reliability_token_url"
+  export RELIABILITY_OIDC_CLIENT_ID="$reliability_client"
+  export RELIABILITY_OIDC_CLIENT_SECRET="$reliability_client_secret"
+  export RELIABILITY_OIDC_SCOPE="$reliability_scope"
+  export RELIABILITY_VENUEOPS_BEARER_TOKEN=
 
   EXTRA_COMPOSE_FILES+=(compose.oidc.yaml)
-  SERVICES=(venueops-api environmental-monitor park-flow-intelligence venueops-console lumen-marsh-app)
+  SERVICES=(venueops-api environmental-monitor park-flow-intelligence reliability-intelligence venueops-console lumen-marsh-app)
 fi
 
 args=(up)

@@ -51,15 +51,15 @@ describe('Mangrove Run command workspace', () => {
         expect(request.headers.get('Authorization')).toBe('Bearer local-development-token');
         expect(request.headers.has('X-Actor')).toBe(false);
         const body = (await request.json()) as {
+          commandId: string;
           type: string;
           expectedVersion: number;
-          waitMinutes: number;
+          data?: { waitMinutes?: number };
         };
-        expect(body).toEqual({
-          type: 'UPDATE_WAIT_TIME',
-          expectedVersion: 0,
-          waitMinutes: 35,
-        });
+        expect(body.commandId).toEqual(expect.any(String));
+        expect(body.type).toBe('UPDATE_WAIT_TIME');
+        expect(body.expectedVersion).toBe(0);
+        expect(body.data).toEqual({ waitMinutes: 35 });
         posted = true;
         return HttpResponse.json(updated);
       }),

@@ -2,7 +2,8 @@
 set -euo pipefail
 # Repeatable maintenance lifecycle acceptance: reliability ingest → accept →
 # inspect → operations testing. Includes leak, stale-version, and unauthorized checks.
-# There is no reliability producer; this script posts ingest like the Java suite.
+# Reliability Intelligence can also post ingest locally; this script posts
+# the same payload the Java suite uses so the proof does not depend on the loop.
 # shellcheck source=./_lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_lib.sh"
 

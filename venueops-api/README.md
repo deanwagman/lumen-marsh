@@ -230,7 +230,7 @@ In another terminal, publish a wait-time change:
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"UPDATE_WAIT_TIME","waitMinutes":35,"expectedVersion":0}'
+  -d '{"commandId":"11111111-1111-4111-8111-111111111111","type":"UPDATE_WAIT_TIME","expectedVersion":0,"data":{"waitMinutes":35}}'
 ```
 
 If a client disconnects, it receives current state on reconnection rather than every event it missed. A durable outbox and replay mechanism can be added later.
@@ -244,13 +244,25 @@ GET  /api/v1/operator/attractions/{attractionId}/activity
 POST /api/v1/operator/attractions/{attractionId}/commands
 ```
 
-Operator commands require `Authorization: Bearer` (Cognito access token, or `local-development-token` in `LOCAL_JWT` mode). `local-operator-token` is an operator-only LOCAL_JWT token without `venueops/advisories.publish`. Example:
+Operator commands require `Authorization: Bearer` (Cognito access token, or `local-development-token` in `LOCAL_JWT` mode). `local-operator-token` is an operator-only LOCAL_JWT token without `venueops/advisories.publish`. Attraction and incident commands use the same envelope as maintenance and flow: `commandId`, `type`, `expectedVersion`, optional `reason`, optional `data`. Duplicate `commandId` values replay the original result. Example:
 
 ```json
 {
+  "commandId": "11111111-1111-4111-8111-111111111111",
   "type": "PLACE_WEATHER_HOLD",
   "reason": "Lightning detected within operating radius",
   "expectedVersion": 0
+}
+```
+
+Wait-time changes put extra fields in `data`:
+
+```json
+{
+  "commandId": "22222222-2222-4222-8222-222222222222",
+  "type": "UPDATE_WAIT_TIME",
+  "expectedVersion": 0,
+  "data": { "waitMinutes": 35 }
 }
 ```
 
@@ -389,7 +401,7 @@ curl -s http://localhost:8080/api/v1/attractions/mangrove-run
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"PLACE_WEATHER_HOLD","reason":"Lightning detected within operating radius","expectedVersion":0}'
+  -d '{"commandId":"d3f591f7-9206-4d2d-bb7c-1b40fe653e5a","type":"PLACE_WEATHER_HOLD","expectedVersion":0,"reason":"Lightning detected within operating radius"}'
 
 curl -s http://localhost:8080/api/v1/attractions/mangrove-run
 
@@ -397,23 +409,23 @@ curl -s http://localhost:8080/api/v1/attractions/mangrove-run
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"APPROVE_RETURN_TO_SERVICE","reason":"Skip testing","expectedVersion":1}'
+  -d '{"commandId":"e4932004-9261-4e7e-82df-5a695630b29b","type":"APPROVE_RETURN_TO_SERVICE","expectedVersion":1,"reason":"Skip testing"}'
 
 # 7-10. Clear hold, complete testing, approve return to service
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"CLEAR_WEATHER_HOLD","reason":"Storm cell moved out of radius","expectedVersion":1}'
+  -d '{"commandId":"efe2917f-97df-4770-97d8-74627702afa0","type":"CLEAR_WEATHER_HOLD","expectedVersion":1,"reason":"Storm cell moved out of radius"}'
 
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"COMPLETE_TESTING","expectedVersion":2}'
+  -d '{"commandId":"4e2272fe-38da-4d4a-82a6-524d2e847ce7","type":"COMPLETE_TESTING","expectedVersion":2}'
 
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"APPROVE_RETURN_TO_SERVICE","reason":"Return to service approved","expectedVersion":3}'
+  -d '{"commandId":"080dfc8a-65a8-40a1-8f2b-4943bb58f23c","type":"APPROVE_RETURN_TO_SERVICE","expectedVersion":3,"reason":"Return to service approved"}'
 
 # 11-12. Operating again; complete ordered history
 curl -s http://localhost:8080/api/v1/attractions/mangrove-run
@@ -426,7 +438,7 @@ Stale concurrent command example:
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"PLACE_WEATHER_HOLD","reason":"Lightning nearby","expectedVersion":0}'
+  -d '{"commandId":"6b1e87ff-9ba7-4352-ad64-d02968e57246","type":"PLACE_WEATHER_HOLD","expectedVersion":0,"reason":"Lightning nearby"}'
 ```
 
 If the attraction has already moved past version `0`, this returns `409` `STALE_VERSION`.
@@ -459,45 +471,45 @@ ID=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<<"$INCIDE
 # 2. Link Mangrove Run and Cypress Coil (does not change attraction status)
 curl -s -X POST http://localhost:8080/api/v1/operator/incidents/$ID/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"LINK_ATTRACTION","attractionId":"mangrove-run","expectedVersion":1}'
+  -d '{"commandId":"afffd305-dadc-468c-9b97-2c7f62b01cb0","type":"LINK_ATTRACTION","expectedVersion":1,"data":{"attractionId":"mangrove-run"}}'
 curl -s -X POST http://localhost:8080/api/v1/operator/incidents/$ID/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"LINK_ATTRACTION","attractionId":"cypress-coil","expectedVersion":2}'
+  -d '{"commandId":"9e9dada0-9482-4f98-8098-38fb8e1ec0af","type":"LINK_ATTRACTION","expectedVersion":2,"data":{"attractionId":"cypress-coil"}}'
 
 # 3-6. Acknowledge, assign Control Tower, publish a guest advisory, start mitigation
 curl -s -X POST http://localhost:8080/api/v1/operator/incidents/$ID/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"ACKNOWLEDGE","expectedVersion":3}'
+  -d '{"commandId":"111f85cf-7f3f-443d-8ee1-2825a160757e","type":"ACKNOWLEDGE","expectedVersion":3}'
 curl -s -X POST http://localhost:8080/api/v1/operator/incidents/$ID/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"ASSIGN","assignee":"Control Tower","expectedVersion":4}'
+  -d '{"commandId":"21909930-619d-4bf6-89e5-e2bebe14ba0f","type":"ASSIGN","expectedVersion":4,"data":{"assignee":"Control Tower"}}'
 curl -s -X POST http://localhost:8080/api/v1/operator/incidents/$ID/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"PUBLISH_GUEST_ADVISORY","guestTitle":"Weather advisory","guestMessage":"Some outdoor attractions are temporarily paused.","expectedVersion":5}'
+  -d '{"commandId":"228745b0-46c4-46cd-9a08-2530de44c9d5","type":"PUBLISH_GUEST_ADVISORY","expectedVersion":5,"data":{"guestTitle":"Weather advisory","guestMessage":"Some outdoor attractions are temporarily paused."}}'
 curl -s -X POST http://localhost:8080/api/v1/operator/incidents/$ID/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"START_MITIGATION","expectedVersion":6}'
+  -d '{"commandId":"703dc0d0-dc6d-46ba-ba53-790b1d38b3b2","type":"START_MITIGATION","expectedVersion":6}'
 
 curl -s http://localhost:8080/api/v1/advisories
 
 # 7. Explicitly place Mangrove Run on weather hold
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"PLACE_WEATHER_HOLD","reason":"Lightning detected within operating radius","expectedVersion":0}'
+  -d '{"commandId":"c1f44b62-0337-400c-b36d-6e978f843ff9","type":"PLACE_WEATHER_HOLD","expectedVersion":0,"reason":"Lightning detected within operating radius"}'
 
 # Cypress Coil starts CLOSED, so open it before a weather hold
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/cypress-coil/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"START_TESTING","expectedVersion":0}'
+  -d '{"commandId":"1e0861af-9ab9-4a59-8104-3c86efeb31ac","type":"START_TESTING","expectedVersion":0}'
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/cypress-coil/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"COMPLETE_TESTING","expectedVersion":1}'
+  -d '{"commandId":"f7353304-3e8d-4109-a42d-ea98ace00e11","type":"COMPLETE_TESTING","expectedVersion":1}'
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/cypress-coil/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"APPROVE_RETURN_TO_SERVICE","reason":"Opened to apply weather hold","expectedVersion":2}'
+  -d '{"commandId":"0975512b-b38d-4522-9896-a648ace710a8","type":"APPROVE_RETURN_TO_SERVICE","expectedVersion":2,"reason":"Opened to apply weather hold"}'
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/cypress-coil/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"PLACE_WEATHER_HOLD","reason":"Lightning detected within operating radius","expectedVersion":3}'
+  -d '{"commandId":"f5f94a6f-e73e-4915-be08-ba4e2dba4a6e","type":"PLACE_WEATHER_HOLD","expectedVersion":3,"reason":"Lightning detected within operating radius"}'
 
 # 8. Operator activity for both domains
 curl -s http://localhost:8080/api/v1/operator/incidents/$ID/activity
@@ -506,19 +518,19 @@ curl -s http://localhost:8080/api/v1/operator/attractions/mangrove-run/activity
 # 9-10. Resolve the incident; guest advisory disappears; attractions stay on hold
 curl -s -X POST http://localhost:8080/api/v1/operator/incidents/$ID/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"RESOLVE","reason":"Storm cell moved out of radius","expectedVersion":7}'
+  -d '{"commandId":"a3817ff6-c126-46fd-a596-b2cb656ed8eb","type":"RESOLVE","expectedVersion":7,"reason":"Storm cell moved out of radius"}'
 curl -s http://localhost:8080/api/v1/advisories
 
 # 11. Explicitly return attractions to service
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"CLEAR_WEATHER_HOLD","reason":"Storm cell moved out of radius","expectedVersion":1}'
+  -d '{"commandId":"6b37a3ba-6288-4b58-8f01-f586ddb9b848","type":"CLEAR_WEATHER_HOLD","expectedVersion":1,"reason":"Storm cell moved out of radius"}'
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"COMPLETE_TESTING","expectedVersion":2}'
+  -d '{"commandId":"07407caf-2736-415f-ac6a-bda1dcf8978c","type":"COMPLETE_TESTING","expectedVersion":2}'
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"APPROVE_RETURN_TO_SERVICE","reason":"Return to service approved","expectedVersion":3}'
+  -d '{"commandId":"97945a73-a9a6-4c44-850b-a2ff9b1846b8","type":"APPROVE_RETURN_TO_SERVICE","expectedVersion":3,"reason":"Return to service approved"}'
 ```
 
 ## Recommendation-to-operator handoff
@@ -551,7 +563,7 @@ curl -s -X POST http://localhost:8080/api/v1/operator/weather/recommendations/aa
 # 4. Operator explicitly holds Mangrove Run (Cypress Coil starts CLOSED)
 curl -s -X POST http://localhost:8080/api/v1/operator/attractions/mangrove-run/commands \
   -H 'Content-Type: application/json' -H 'Authorization: Bearer local-development-token' \
-  -d '{"type":"PLACE_WEATHER_HOLD","reason":"Lightning detected within operating radius","expectedVersion":0}'
+  -d '{"commandId":"a6952ad0-cecb-4238-b197-3af66f784f36","type":"PLACE_WEATHER_HOLD","expectedVersion":0,"reason":"Lightning detected within operating radius"}'
 
 # 5. Environmental Monitor later sends the cleared source version
 curl -s -X POST http://localhost:8080/api/v1/integrations/weather/recommendations \
@@ -644,4 +656,4 @@ Demo attractions are loaded only when `venueops.attractions.seed=true`. The in-m
 
 ## Deferred scope
 
-Maps, show schedules, notifications, Kafka/SQS, AI, multiple parks, food ordering, purchasing, technician workforce identity, and a reliability producer process. Posted waits and Park Flow's deterministic 15/30/60-minute forecasts are in scope; they are not a general wait-prediction product.
+Maps, show schedules, notifications, Kafka/SQS, AI, multiple parks, food ordering, purchasing, and technician workforce identity. Posted waits and Park Flow's deterministic 15/30/60-minute forecasts are in scope; they are not a general wait-prediction product. Local Reliability Intelligence posts ingest only; it never creates a work order.

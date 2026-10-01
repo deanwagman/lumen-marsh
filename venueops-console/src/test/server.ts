@@ -91,11 +91,13 @@ export const handlers = [
       );
     }
     const body = (await request.json()) as {
+      commandId?: string;
       type: string;
       expectedVersion: number;
+      reason?: string;
+      data?: Record<string, unknown>;
       guestTitle?: string;
       guestMessage?: string;
-      reason?: string;
       assignee?: string;
       severity?: Incident['severity'];
       attractionId?: string;

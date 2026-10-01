@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import com.deanwagman.lumenmarsh.venueops.testsupport.CommandJson;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.hamcrest.Matchers.containsString;
@@ -57,27 +58,27 @@ class LocalDevBearerAuthorizationTest {
         mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                         .header(HttpHeaders.AUTHORIZATION, bearer(LocalDevBearerAuthenticationFilter.OPERATOR_LIMITED_TOKEN))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {
                                   "type":"PUBLISH_GUEST_ADVISORY",
                                   "guestTitle":"Should not publish",
                                   "guestMessage":"Limited operators cannot publish.",
                                   "expectedVersion":1
                                 }
-                                """))
+                                """)))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/api/v1/operator/incidents/" + incidentId + "/commands")
                         .header(HttpHeaders.AUTHORIZATION, bearer(LocalDevBearerAuthenticationFilter.CONSOLE_TOKEN))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+                        .content(CommandJson.envelope("""
                                 {
                                   "type":"PUBLISH_GUEST_ADVISORY",
                                   "guestTitle":"Outdoor weather pause",
                                   "guestMessage":"Some outdoor attractions are temporarily paused.",
                                   "expectedVersion":1
                                 }
-                                """))
+                                """)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.guestAdvisoryPublished").value(true));
 

@@ -20,6 +20,9 @@ post_json() {
   local url="$1"
   local body="$2"
   shift 2
+  if [[ "$url" == *"/operator/attractions/"*"/commands" || "$url" == *"/operator/incidents/"*"/commands" ]]; then
+    body="$(envelope_command "$body")"
+  fi
   curl -fsS -X POST "$url" -H 'Content-Type: application/json' "$@" -d "$body"
 }
 

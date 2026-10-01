@@ -26,7 +26,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
@@ -95,6 +97,7 @@ class OperatorIncidentControllerTest {
         when(incidentService.get(INCIDENT_ID)).thenReturn(reported());
         when(incidentService.execute(
                 eq(INCIDENT_ID),
+                any(UUID.class),
                 eq(IncidentCommand.RESOLVE),
                 eq("Supervisor One"),
                 eq("Too soon"),
@@ -112,6 +115,7 @@ class OperatorIncidentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                  "commandId": "11111111-1111-4111-8111-111111111111",
                                   "type": "RESOLVE",
                                   "reason": "Too soon",
                                   "expectedVersion": 1
@@ -126,6 +130,7 @@ class OperatorIncidentControllerTest {
         when(incidentService.get(INCIDENT_ID)).thenReturn(reported());
         when(incidentService.execute(
                 eq(INCIDENT_ID),
+                any(UUID.class),
                 eq(IncidentCommand.ACKNOWLEDGE),
                 eq("Operator One"),
                 isNull(),
@@ -143,6 +148,7 @@ class OperatorIncidentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                  "commandId": "22222222-2222-4222-8222-222222222222",
                                   "type": "ACKNOWLEDGE",
                                   "expectedVersion": 9
                                 }

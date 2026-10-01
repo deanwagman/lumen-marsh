@@ -16,7 +16,7 @@ Public HTTPS → reverse proxy on EC2
     └── environmental_monitor
 ```
 
-Reliability ingest uses a machine client against VenueOps. Do not add a reliability producer to this sketch.
+Local Compose includes Reliability Intelligence. This AWS sketch still uses the machine ingest client only; do not add a reliability producer here.
 
 ## Security posture
 

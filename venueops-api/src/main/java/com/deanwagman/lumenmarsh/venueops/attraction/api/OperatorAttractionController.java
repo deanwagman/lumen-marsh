@@ -62,6 +62,7 @@ public class OperatorAttractionController {
         ActorIdentity actor = actorResolver.requireActor();
         return ActorAuditContext.call(actor, () -> OperatorAttractionResponse.from(attractionService.execute(
                 new AttractionId(attractionId),
+                request.commandId(),
                 request.type(),
                 actor.auditLabel(),
                 request.reason(),

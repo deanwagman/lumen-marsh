@@ -1,10 +1,10 @@
 # VenueOps security contract
 
-**Status:** Implemented for the running six-piece stack (API, monitor, park-flow, console, guest, platform). Cognito is not required to accept this document.
+**Status:** Implemented for the running stack (API, monitor, park-flow, reliability, console, guest, platform). Cognito is not required to accept this document.
 **Source:** every `@RestController` in `venueops-api` plus static `/media/**` and Actuator.
 **Shipped checkpoint:** guest read of Mangrove Run; operator sign-in; operator attraction command; anonymous command rejected; activity history records the authenticated operator. Operator SSE, weather ingest, maintenance, and park-flow ingest are in the same model.
 
-Flutter, Environmental Monitor, Park Flow Intelligence, and the operator event stream are in scope of the running stack.
+Flutter, Environmental Monitor, Park Flow Intelligence, Reliability Intelligence, and the operator event stream are in scope of the running stack.
 
 ## Policy
 
@@ -19,7 +19,7 @@ Flutter, Environmental Monitor, Park Flow Intelligence, and the operator event s
 | Recommendation review | Operator |
 | Advisory publishing | Supervisor |
 | Weather recommendation ingestion | Weather service |
-| Reliability recommendation ingestion | Reliability ingest identity (no Compose producer) |
+| Reliability recommendation ingestion | Reliability Intelligence |
 | Flow observation and forecast ingestion | Park Flow Intelligence |
 | Flow recommendation review | Operator |
 | Flow guest publication | Supervisor |
@@ -171,7 +171,7 @@ Work-order lifecycle via `POST /api/v1/operator/maintenance/work-orders/{id}/com
 | `CANCEL` (P1/P2) | Supervisor | `SUPERVISOR` + `venueops/maintenance.command` |
 | `APPROVE_INSPECTION`, `REJECT_INSPECTION`, `COMPLETE` | Supervisor | `SUPERVISOR` + `venueops/maintenance.inspect` |
 
-Ingest (`POST /api/v1/integrations/reliability/recommendations`) is Reliability ingest, audit SERVICE. There is no Compose reliability producer. A recommendation never becomes a work order until an operator accepts it. `ACCEPT` and `DISMISS` require `commandId` and `expectedVersion`. Work orders never reopen attractions.
+Ingest (`POST /api/v1/integrations/reliability/recommendations`) is Reliability Intelligence, audit SERVICE. A recommendation never becomes a work order until an operator accepts it. `ACCEPT` and `DISMISS` require `commandId` and `expectedVersion`. Work orders never reopen attractions.
 
 ## Flow commands
 

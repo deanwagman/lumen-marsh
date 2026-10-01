@@ -97,3 +97,7 @@ export function nextSeverityOptions(current: IncidentSeverity): IncidentSeverity
     (severity) => severity !== current,
   );
 }
+
+export function newCommandId(): string {
+  return crypto.randomUUID();
+}
