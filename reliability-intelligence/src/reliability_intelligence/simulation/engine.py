@@ -73,9 +73,7 @@ class ReliabilitySimulator:
 
     def _begin_episode(self) -> None:
         observed_at = self.clock.now()
-        self._episode_observation_id = observation_id_for(
-            "vibration-cc-train-01", observed_at, 0
-        )
+        self._episode_observation_id = observation_id_for("vibration-cc-train-01", observed_at, 0)
         self._episode_emitted = False
         self.last_observation_id = None
 
