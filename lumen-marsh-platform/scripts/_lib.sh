@@ -130,6 +130,100 @@ print(json.dumps(body))
 ' "$1"
 }
 
+# Write the opening guest SSE burst to a file.
+# HTTPResponse.read(N) blocks until N bytes arrive or the peer closes. The park
+# stream stays open after attractions.snapshot, advisories.snapshot, and
+# guest.flow.updated, and that burst is smaller than 8192 bytes, so a fixed
+# large read times out before sanitization checks run. read1 stops once those
+# opening events have arrived.
+read_sse_burst() {
+  local url="$1"
+  local outfile="$2"
+  shift 2
+  python3 - "$url" "$outfile" "$@" <<'PY'
+import socket
+import sys
+import time
+import urllib.request
+from http.client import IncompleteRead
+
+url, outfile = sys.argv[1], sys.argv[2]
+headers = {"Accept": "text/event-stream"}
+args = sys.argv[3:]
+index = 0
+while index < len(args):
+    if args[index] == "--header":
+        name, value = args[index + 1].split(":", 1)
+        headers[name.strip()] = value.strip()
+        index += 2
+        continue
+    raise SystemExit(f"unknown argument: {args[index]}")
+
+OPENING = (
+    b"attractions.snapshot",
+    b"advisories.snapshot",
+    b"guest.flow.updated",
+)
+
+
+def response_socket(resp):
+    raw = getattr(resp.fp, "raw", None)
+    sock = getattr(raw, "_sock", None) if raw is not None else None
+    if sock is None:
+        sock = getattr(resp.fp, "_sock", None)
+    if sock is None:
+        raise RuntimeError("SSE response has no socket")
+    return sock
+
+
+def opening_complete(buf: bytes) -> bool:
+    if any(name not in buf for name in OPENING):
+        return False
+    last = max(buf.rfind(name) for name in OPENING)
+    return b"\n\n" in buf[last:]
+
+
+def read_burst(resp, overall_s=8.0, max_bytes=262144) -> bytes:
+    # read1 returns whatever the current chunk already has. Stop once the
+    # opening events are complete so an open stream cannot stall the read.
+    # A timeout leaves chunked framing mid-header, so do not retry after one.
+    sock = response_socket(resp)
+    parts = []
+    size = 0
+    deadline = time.monotonic() + overall_s
+    while size < max_bytes and time.monotonic() < deadline:
+        remaining = deadline - time.monotonic()
+        sock.settimeout(max(remaining, 0.1))
+        try:
+            piece = resp.read1(4096)
+        except IncompleteRead:
+            break
+        except (TimeoutError, socket.timeout):
+            break
+        except OSError as exc:
+            if "timed out" not in str(exc):
+                raise
+            break
+        if not piece:
+            break
+        parts.append(piece)
+        size += len(piece)
+        if opening_complete(b"".join(parts)):
+            break
+    return b"".join(parts)
+
+
+req = urllib.request.Request(url, headers=headers)
+with urllib.request.urlopen(req, timeout=8) as resp:
+    payload = read_burst(resp)
+open(outfile, "w", encoding="utf-8").write(payload.decode("utf-8", errors="replace"))
+missing = [name.decode() for name in OPENING if name not in payload]
+if missing:
+    raise SystemExit("guest SSE burst missing opening events: " + ", ".join(missing))
+PY
+}
+export -f read_sse_burst
+
 print_urls() {
   local auth_mode="${1:-local}"
   if [[ "$auth_mode" == "oidc" ]]; then

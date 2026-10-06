@@ -323,13 +323,12 @@ check "guest REST omits internal marker" bash -c "! grep -q 'INTERNAL ONLY' '$WO
 
 echo "== 6. Guest SSE receives advisory without operator fields =="
 check "guest SSE snapshot is sanitized" bash -c "
-  python3 - '$VENUEOPS_URL/api/v1/events' '$WORKDIR/guest-sse.txt' '$FORBIDDEN_KEYS' '$INTERNAL_MARKER' <<'PY'
-import json, os, sys, urllib.request
-url, out, forbidden, marker = sys.argv[1], sys.argv[2], sys.argv[3].split(), sys.argv[4]
-req = urllib.request.Request(url, headers={'Accept': 'text/event-stream'})
-with urllib.request.urlopen(req, timeout=8) as resp:
-    chunk = resp.read(8192).decode('utf-8', errors='replace')
-open(out, 'w').write(chunk)
+  read_sse_burst '$VENUEOPS_URL/api/v1/events' '$WORKDIR/guest-sse.txt'
+  python3 - '$WORKDIR/guest-sse.txt' '$FORBIDDEN_KEYS' '$INTERNAL_MARKER' <<'PY'
+import sys
+chunk = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+forbidden = sys.argv[2].split()
+marker = sys.argv[3]
 assert 'advisories.snapshot' in chunk or 'advisory.published' in chunk, chunk[:300]
 assert marker not in chunk, 'internal marker leaked on guest SSE'
 for key in forbidden:

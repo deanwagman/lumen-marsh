@@ -104,6 +104,13 @@ post_json() {
   curl -fsS -X POST "$url" -H 'Content-Type: application/json' "$@" -d "$body"
 }
 
+attraction_command() {
+  local attraction_id="$1"
+  local body="$2"
+  shift 2
+  post_json "$VENUEOPS_URL/api/v1/operator/attractions/$attraction_id/commands" "$(envelope_command "$body")" "$@"
+}
+
 wo_version_from_cmd() {
   python3 -c 'import json,sys; print(json.load(sys.stdin)["workOrder"]["version"])'
 }
@@ -179,7 +186,7 @@ ensure_closed() {
   if [[ "$status" == "CLOSED" ]]; then
     return 0
   fi
-  post_json "$VENUEOPS_URL/api/v1/operator/attractions/$id/commands" \
+  attraction_command "$id" \
     "{\"type\":\"CLOSE_FOR_DAY\",\"reason\":\"Reset before maintenance lifecycle acceptance\",\"expectedVersion\":$version}" \
     "${SUPERVISOR_AUTH[@]}" >/dev/null
 }
@@ -470,13 +477,11 @@ check "guest advisories omit maintenance internals" assert_no_leak "$WORKDIR/adv
 check "guest REST omits internal marker" bash -c "! grep -q 'INTERNAL ONLY' '$WORKDIR/guest-attraction.json' '$WORKDIR/advisories.json'"
 
 check "guest SSE omits maintenance internals" bash -c "
-  python3 - '$VENUEOPS_URL/api/v1/events' '$WORKDIR/guest-sse.txt' '$INTERNAL_MARKER' <<'PY'
-import sys, urllib.request
-url, out, marker = sys.argv[1], sys.argv[2], sys.argv[3]
-req = urllib.request.Request(url, headers={'Accept': 'text/event-stream'})
-with urllib.request.urlopen(req, timeout=8) as resp:
-    chunk = resp.read(8192).decode('utf-8', errors='replace')
-open(out, 'w').write(chunk)
+  read_sse_burst '$VENUEOPS_URL/api/v1/events' '$WORKDIR/guest-sse.txt'
+  python3 - '$WORKDIR/guest-sse.txt' '$INTERNAL_MARKER' <<'PY'
+import sys
+chunk = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+marker = sys.argv[2]
 assert 'maintenance.work-order' not in chunk, chunk[:400]
 assert 'maintenance.recommendation' not in chunk, chunk[:400]
 assert marker not in chunk, 'internal marker leaked on guest SSE'
@@ -503,7 +508,7 @@ PY
 echo "== 6. Operations testing; complete is blocked while testing =="
 ensure_closed cypress-coil
 C_VER="$(attraction_json cypress-coil | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/cypress-coil/commands" \
+attraction_command cypress-coil \
   "{\"type\":\"START_TESTING\",\"expectedVersion\":$C_VER}" \
   "${SUPERVISOR_AUTH[@]}" >/dev/null
 C_STATUS="$(attraction_json cypress-coil | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
@@ -518,11 +523,11 @@ COMPLETE_CODE="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("co
 check "complete during testing is 422 MAINTENANCE_PREREQUISITE" bash -c "[[ '$COMPLETE_WHILE_TESTING' == '422' && '$COMPLETE_CODE' == 'MAINTENANCE_PREREQUISITE' ]]"
 
 C_VER="$(attraction_json cypress-coil | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/cypress-coil/commands" \
+attraction_command cypress-coil \
   "{\"type\":\"COMPLETE_TESTING\",\"expectedVersion\":$C_VER}" \
   "${SUPERVISOR_AUTH[@]}" >/dev/null
 C_VER="$(attraction_json cypress-coil | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
-post_json "$VENUEOPS_URL/api/v1/operator/attractions/cypress-coil/commands" \
+attraction_command cypress-coil \
   "{\"type\":\"APPROVE_RETURN_TO_SERVICE\",\"reason\":\"Return to service after maintenance testing\",\"expectedVersion\":$C_VER}" \
   "${SUPERVISOR_AUTH[@]}" >/dev/null
 C_STATUS="$(attraction_json cypress-coil | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
