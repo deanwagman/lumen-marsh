@@ -64,7 +64,9 @@ class MaintenanceSseAuthorizationTest {
             take(readerMessages, "attractions.snapshot");
             take(maintainerMessages, "attractions.snapshot");
             take(maintainerMessages, "maintenance.work-orders.snapshot");
+            take(maintainerMessages, "maintenance.recommendations.snapshot");
             assertThat(pollNamed(readerMessages, "maintenance.work-orders.snapshot")).isNull();
+            assertThat(pollNamed(readerMessages, "maintenance.recommendations.snapshot")).isNull();
 
             mockMvc.perform(post("/api/v1/operator/maintenance/work-orders")
                             .with(TestAuth.operator())

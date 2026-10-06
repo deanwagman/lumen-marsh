@@ -45,6 +45,7 @@ const attentionTone: Record<DashboardAttentionKind, 'hold' | 'warning' | 'operat
   UNACKNOWLEDGED_INCIDENT: 'warning',
   ORPHAN_ADVISORY: 'warning',
   STALE_DATA: 'closed',
+  PENDING_RELIABILITY_RECOMMENDATION: 'warning',
 };
 
 export default function DashboardPage() {

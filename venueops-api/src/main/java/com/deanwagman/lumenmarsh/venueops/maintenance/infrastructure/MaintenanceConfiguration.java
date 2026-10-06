@@ -79,9 +79,10 @@ public class MaintenanceConfiguration {
             MaintenanceRecommendationRepository recommendations,
             MaintenanceAssetRepository assets,
             MaintenanceWorkOrderCommandService workOrders,
+            MaintenanceUpdatePublisher publisher,
             Clock clock
     ) {
-        return new MaintenanceRecommendationService(recommendations, assets, workOrders, clock);
+        return new MaintenanceRecommendationService(recommendations, assets, workOrders, publisher, clock);
     }
 
     @Bean

@@ -267,6 +267,60 @@ DUP_ID="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["recommendatio
 check "retried observationId is duplicate" bash -c "[[ '$DUP_FLAG' == 'True' ]]"
 check "duplicate keeps the same recommendation" bash -c "[[ '$DUP_ID' == '$REC_ID' ]]"
 
+dashboard_json() {
+  curl -fsS "$VENUEOPS_URL/api/v1/operator/dashboard" "${SUPERVISOR_AUTH[@]}"
+}
+
+assert_pending_attention() {
+  local rec_id="$1"
+  local expect="$2"
+  local payload
+  payload="$(dashboard_json)"
+  PAYLOAD="$payload" python3 - "$rec_id" "$expect" <<'PY'
+import json, os, sys
+rec_id, expect = sys.argv[1], sys.argv[2]
+dash = json.loads(os.environ["PAYLOAD"])
+items = [
+    item for item in dash.get("needsAttention", [])
+    if item.get("subjectId") == rec_id and item.get("kind") == "PENDING_RELIABILITY_RECOMMENDATION"
+]
+if expect == "present":
+    assert items, f"pending reliability row missing for {rec_id}"
+    item = items[0]
+    assert item.get("href") == "/maintenance", item
+    blob = json.dumps(item)
+    assert "CC-TRAIN-01-WHEEL-A" not in blob, blob
+    assert "workOrderNumber" not in blob, blob
+    assert "assetCode" not in blob, blob
+    assert "INTERNAL ONLY" not in blob, blob
+    assert dash["freshness"]["venueOps"]["status"] == "LIVE", dash["freshness"]
+else:
+    assert not items, f"pending reliability row still present for {rec_id}"
+print("ok")
+PY
+}
+
+assert_activity() {
+  local action="$1"
+  local payload
+  payload="$(dashboard_json)"
+  PAYLOAD="$payload" ACTION="$action" python3 - <<'PY'
+import json, os
+dash = json.loads(os.environ["PAYLOAD"])
+actions = [event.get("action") for event in dash.get("recentActivity", [])]
+assert os.environ["ACTION"] in actions, actions
+print("ok")
+PY
+}
+
+echo "== Dashboard shows the pending recommendation before accept =="
+check "pending vibration is in needs attention" assert_pending_attention "$REC_ID" present
+
+curl -fsS "$VENUEOPS_URL/api/v1/attractions/cypress-coil" -o "$WORKDIR/guest-pending-attraction.json"
+curl -fsS "$VENUEOPS_URL/api/v1/advisories" -o "$WORKDIR/guest-pending-advisories.json"
+check "guest attraction omits pending maintenance internals" assert_no_leak "$WORKDIR/guest-pending-attraction.json"
+check "guest advisories omit pending maintenance internals" assert_no_leak "$WORKDIR/guest-pending-advisories.json"
+
 REC="$(curl -fsS "$VENUEOPS_URL/api/v1/operator/maintenance/recommendations/$REC_ID" "${SUPERVISOR_AUTH[@]}")"
 REC_VERSION="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])' <<<"$REC")"
 REC_WO="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("workOrderId") or "")' <<<"$REC")"
@@ -284,6 +338,39 @@ ACCEPT_STATUS="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status
 WORK_ORDER_ID="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["workOrderId"])' <<<"$ACCEPTED")"
 ACCEPT_VERSION="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])' <<<"$ACCEPTED")"
 check "accept created a work order" bash -c "[[ '$ACCEPT_STATUS' == 'WORK_ORDER_CREATED' && -n '$WORK_ORDER_ID' ]]"
+check "accepted vibration leaves needs attention" assert_pending_attention "$REC_ID" absent
+check "recent activity names the accept" assert_activity MAINTENANCE_RECOMMENDATION_ACCEPTED
+
+echo "== Dismiss the next vibration; it leaves needs attention =="
+DISMISS_OBS="vibration-cc-train-01-dismiss-$(new_uuid)"
+DISMISS_BODY="$(OBS_ID="$DISMISS_OBS" OBS_AT="$OBS_AT" INTERNAL_MARKER="$INTERNAL_MARKER" python3 - <<'PY'
+import json, os
+print(json.dumps({
+    "observationId": os.environ["OBS_ID"],
+    "observedAt": os.environ["OBS_AT"],
+    "assetCode": "CC-TRAIN-01-WHEEL-A",
+    "signalType": "VIBRATION",
+    "severity": "WARNING",
+    "value": 8.6,
+    "unit": "mm/s",
+    "evidence": os.environ["INTERNAL_MARKER"] + " Second fictional vibration for dismiss.",
+    "recommendedAction": "Dismiss path: inspect the wheel assembly and consider reduced-capacity operation.",
+}))
+PY
+)"
+DISMISS_INGEST="$(post_json "$VENUEOPS_URL/api/v1/integrations/reliability/recommendations" \
+  "$DISMISS_BODY" \
+  "${RELIABILITY_AUTH[@]}")"
+DISMISS_REC_ID="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["recommendationId"])' <<<"$DISMISS_INGEST")"
+DISMISS_DUP="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["duplicate"])' <<<"$DISMISS_INGEST")"
+check "dismiss candidate is a new recommendation" bash -c "[[ '$DISMISS_DUP' == 'False' && '$DISMISS_REC_ID' != '$REC_ID' ]]"
+check "dismiss candidate is on the dashboard" assert_pending_attention "$DISMISS_REC_ID" present
+DISMISS_VERSION="$(curl -fsS "$VENUEOPS_URL/api/v1/operator/maintenance/recommendations/$DISMISS_REC_ID" "${SUPERVISOR_AUTH[@]}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
+post_json "$VENUEOPS_URL/api/v1/operator/maintenance/recommendations/$DISMISS_REC_ID/commands" \
+  "$(wo_body DISMISS "$DISMISS_VERSION")" \
+  "${SUPERVISOR_AUTH[@]}" >/dev/null
+check "dismissed vibration leaves needs attention" assert_pending_attention "$DISMISS_REC_ID" absent
+check "recent activity names the dismiss" assert_activity MAINTENANCE_RECOMMENDATION_DISMISSED
 
 REPLAY="$(post_json "$VENUEOPS_URL/api/v1/operator/maintenance/recommendations/$REC_ID/commands" \
   "$(wo_body ACCEPT 1 --command-id "$ACCEPT_ID")" \
@@ -391,6 +478,7 @@ with urllib.request.urlopen(req, timeout=8) as resp:
     chunk = resp.read(8192).decode('utf-8', errors='replace')
 open(out, 'w').write(chunk)
 assert 'maintenance.work-order' not in chunk, chunk[:400]
+assert 'maintenance.recommendation' not in chunk, chunk[:400]
 assert marker not in chunk, 'internal marker leaked on guest SSE'
 assert 'CC-TRAIN-01-WHEEL-A' not in chunk, 'asset code leaked on guest SSE'
 assert '\"internalDescription\"' not in chunk, 'internalDescription leaked on guest SSE'

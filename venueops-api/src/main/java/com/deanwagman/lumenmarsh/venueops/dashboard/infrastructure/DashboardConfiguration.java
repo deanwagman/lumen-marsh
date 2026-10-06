@@ -4,6 +4,7 @@ import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionServi
 import com.deanwagman.lumenmarsh.venueops.dashboard.application.OperatorDashboardService;
 import com.deanwagman.lumenmarsh.venueops.flow.application.FlowRecommendationService;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentService;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceRecommendationRepository;
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceWorkOrderRepository;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationService;
 import org.springframework.context.annotation.Bean;
@@ -20,6 +21,7 @@ public class DashboardConfiguration {
             IncidentService incidents,
             WeatherRecommendationService weatherRecommendations,
             MaintenanceWorkOrderRepository workOrders,
+            MaintenanceRecommendationRepository maintenanceRecommendations,
             FlowRecommendationService flowRecommendations,
             Clock clock
     ) {
@@ -28,6 +30,7 @@ public class DashboardConfiguration {
                 incidents,
                 weatherRecommendations,
                 workOrders,
+                maintenanceRecommendations,
                 flowRecommendations,
                 clock
         );

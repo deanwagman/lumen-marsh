@@ -11,6 +11,7 @@ import { IncidentQueries } from '@/features/incidents/api/IncidentQueries';
 import { WeatherRecommendationQueries } from '@/features/weather/api/WeatherRecommendationQueries';
 import { DashboardQueries } from '@/features/dashboard/api/DashboardQueries';
 import { MaintenanceQueries } from '@/features/maintenance/api/MaintenanceQueries';
+import { vibrationRecommendation } from '@/features/maintenance/test/fixtures';
 import {
   DASHBOARD_INVALIDATE_DEBOUNCE_MS,
   resetDashboardInvalidation,
@@ -250,6 +251,30 @@ describe('handleAttractionStreamEvent', () => {
     expect(invalidate).not.toHaveBeenCalled();
   });
 
+  it('writes a pending reliability recommendation into the inbox and refreshes the dashboard', () => {
+    vi.useFakeTimers();
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+
+    handleAttractionStreamEvent(
+      queryClient,
+      'maintenance.recommendation.updated',
+      JSON.stringify({
+        eventId: `${vibrationRecommendation.recommendationId}:1`,
+        occurredAt: vibrationRecommendation.updatedAt,
+        recommendation: vibrationRecommendation,
+      }),
+    );
+
+    expect(queryClient.getQueryData(MaintenanceQueries.recommendations())).toEqual([
+      vibrationRecommendation,
+    ]);
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: DashboardQueries.snapshot() });
+    vi.advanceTimersByTime(DASHBOARD_INVALIDATE_DEBOUNCE_MS);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: DashboardQueries.snapshot() });
+    vi.useRealTimers();
+  });
+
   it('ignores maintenance events when the subscriber cannot read maintenance', () => {
     const queryClient = new QueryClient();
     handleAttractionStreamEvent(
@@ -268,6 +293,18 @@ describe('handleAttractionStreamEvent', () => {
       { maintenanceRead: false },
     );
     expect(queryClient.getQueryData(MaintenanceQueries.summaries())).toBeUndefined();
+
+    handleAttractionStreamEvent(
+      queryClient,
+      'maintenance.recommendation.updated',
+      JSON.stringify({
+        eventId: `${vibrationRecommendation.recommendationId}:1`,
+        occurredAt: vibrationRecommendation.updatedAt,
+        recommendation: vibrationRecommendation,
+      }),
+      { maintenanceRead: false },
+    );
+    expect(queryClient.getQueryData(MaintenanceQueries.recommendations())).toBeUndefined();
   });
 });
 

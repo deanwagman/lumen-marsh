@@ -4,6 +4,7 @@ import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionServi
 import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardResponse;
 import com.deanwagman.lumenmarsh.venueops.flow.application.FlowRecommendationService;
 import com.deanwagman.lumenmarsh.venueops.incident.application.IncidentService;
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceRecommendationRepository;
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceWorkOrderRepository;
 import com.deanwagman.lumenmarsh.venueops.weather.application.WeatherRecommendationService;
 
@@ -16,6 +17,7 @@ public class OperatorDashboardService {
     private final IncidentService incidents;
     private final WeatherRecommendationService weatherRecommendations;
     private final MaintenanceWorkOrderRepository workOrders;
+    private final MaintenanceRecommendationRepository maintenanceRecommendations;
     private final FlowRecommendationService flowRecommendations;
     private final Clock clock;
 
@@ -24,6 +26,7 @@ public class OperatorDashboardService {
             IncidentService incidents,
             WeatherRecommendationService weatherRecommendations,
             MaintenanceWorkOrderRepository workOrders,
+            MaintenanceRecommendationRepository maintenanceRecommendations,
             FlowRecommendationService flowRecommendations,
             Clock clock
     ) {
@@ -31,6 +34,7 @@ public class OperatorDashboardService {
         this.incidents = Objects.requireNonNull(incidents);
         this.weatherRecommendations = Objects.requireNonNull(weatherRecommendations);
         this.workOrders = Objects.requireNonNull(workOrders);
+        this.maintenanceRecommendations = Objects.requireNonNull(maintenanceRecommendations);
         this.flowRecommendations = Objects.requireNonNull(flowRecommendations);
         this.clock = Objects.requireNonNull(clock);
     }
@@ -42,7 +46,8 @@ public class OperatorDashboardService {
                 incidents.list(),
                 weatherRecommendations.list(),
                 workOrders.findAll(),
-                flowRecommendations.list()
+                flowRecommendations.list(),
+                maintenanceRecommendations.findAll()
         );
     }
 }

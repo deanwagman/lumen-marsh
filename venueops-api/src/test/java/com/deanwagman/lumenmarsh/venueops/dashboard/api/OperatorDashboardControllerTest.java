@@ -68,6 +68,37 @@ class OperatorDashboardControllerTest {
     }
 
     @Test
+    void seededPendingReliabilityRecommendationIsVisibleAndGuestJsonStaysClean() throws Exception {
+        MvcResult dashboard = mockMvc.perform(get("/api/v1/operator/dashboard").with(TestAuth.operator()))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode body = jsonMapper.readTree(dashboard.getResponse().getContentAsByteArray());
+        boolean found = false;
+        for (JsonNode item : body.get("needsAttention")) {
+            if ("PENDING_RELIABILITY_RECOMMENDATION".equals(item.path("kind").asText())
+                    && "b7e2c1a0-4c11-4c11-8c11-27679ca40303".equals(item.path("subjectId").asText())) {
+                found = true;
+                assertThat(item.path("href").asText()).isEqualTo("/maintenance");
+                assertThat(item.path("subjectLabel").asText()).isEqualTo("Vibration");
+                assertThat(item.toString()).doesNotContain("CC-TRAIN-01-WHEEL-A");
+                assertThat(item.toString()).doesNotContain("workOrderNumber");
+            }
+        }
+        assertThat(found).isTrue();
+
+        String guest = mockMvc.perform(get("/api/v1/attractions/cypress-coil"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(guest).doesNotContain("CC-TRAIN-01-WHEEL-A");
+        assertThat(guest).doesNotContain("workOrderNumber");
+        assertThat(guest).doesNotContain("assetCode");
+        assertThat(guest).doesNotContain("internalDescription");
+        assertThat(guest).doesNotContain("INTERNAL ONLY");
+    }
+
+    @Test
     void dashboardReflectsReportedIncidentAndDoesNotLeakInternalDescriptionOnAdvisories() throws Exception {
         mockMvc.perform(post("/api/v1/operator/incidents")
                         .with(TestAuth.operator())

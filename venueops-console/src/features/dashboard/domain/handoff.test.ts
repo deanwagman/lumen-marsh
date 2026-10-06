@@ -21,7 +21,17 @@ describe('formatShiftHandoff', () => {
     expect(summary).toContain('Major incident: Lightning near western basin');
     expect(summary).toContain('Assigned to: Control Tower');
     expect(summary).toContain('Weather conditions affecting outdoor attractions');
+    expect(summary).toContain(
+      'Pending reliability: Pending reliability recommendation: Inspect the wheel assembly and consider reduced-capacity operation.',
+    );
+    expect(summary).toContain(
+      'P1 work order: P1 work order LM-2026-0042 is open: Investigate elevated wheel vibration',
+    );
+    expect(summary).toContain(
+      'Unpublished flow: Unpublished flow recommendation: Redistribute from Mangrove Run',
+    );
     expect(summary).not.toContain('INTERNAL ONLY');
+    expect(summary).not.toContain('CC-TRAIN-01-WHEEL-A');
     expect(summary).toContain('VenueOps live connection healthy');
   });
 });
