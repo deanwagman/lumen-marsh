@@ -27,9 +27,9 @@ export const gettingStartedArticle: DocArticle = {
       id: 'roles',
       title: 'Operator vs supervisor',
       body: [
-        'Operators can view attractions, update wait times when an attraction is operating, report and work most incidents, review weather and park-flow items when scoped, and work maintenance except inspection approval.',
-        'Supervisors inherit that work, plus Control Tower shows attraction state-change commands, MAJOR/CRITICAL resolve, guest advisory publish/withdraw, maintenance inspection, and guest flow publish. The API still authorizes attraction commands with venueops/attractions.command for any operator token that has that scope — no attraction command is supervisor-only.',
-        'If a control is missing or disabled, the UI may be hiding it. The API is the final authority.',
+        'Operators can view attractions, update wait times when an attraction is operating, report and work most incidents, review park-flow items when they have flow.command, and work maintenance except inspection approval. The weather inbox on Attractions loads with venueops/weather-recommendations.review. Pending weather cards on the dashboard still appear with venueops/operator.read.',
+        'Supervisors inherit that work. Control Tower also shows them the attraction command panel: Start testing, Place weather hold, Clear weather hold, Report technical fault, Complete repair, Complete testing, Approve return to service, Close for day, Reduce capacity, and Restore capacity. Start attraction testing and Report technical fault on a work-order handoff are shown to any session with venueops/attractions.command when that command is valid, including an operator. MAJOR and CRITICAL resolve, guest advisory publish and withdraw, maintenance inspection, and guest flow publish stay with the supervisor on screen. Complete testing and Approve return to service stay on the attraction workspace.',
+        'The API still authorizes every attraction command with venueops/attractions.command for any operator token that has that scope. No attraction command is supervisor-only. If a control is missing or disabled, the screen may be hiding a command the API still accepts.',
       ],
     },
     {
@@ -48,7 +48,7 @@ export const gettingStartedArticle: DocArticle = {
         'Use Dashboard for park-wide conditions after sign-in.',
         'Use Attractions for the shift overview and per-attraction command workspace.',
         'Use Incidents for the incident center and detail commands.',
-        'Use Maintenance for reliability recommendations, work orders, checklists, and inspection handoff to Operations.',
+        'Use Maintenance for the reliability inbox and work-order list. Commands run on /maintenance/work-orders/:workOrderId. The asset code on a work order opens /maintenance/assets/:assetId for asset code, service status, and that asset’s work orders.',
         'Use Park Flow for queue forecasts and operator-reviewed guest guidance. Publishing guest guidance is supervisor-only.',
         'Weather recommendations appear on the Attractions overview. Docs (this section) holds procedures and deep links from help controls next to key panels.',
       ],

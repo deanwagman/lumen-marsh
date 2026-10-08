@@ -48,7 +48,7 @@ Work left-to-right: Park Flow simulation → Control Tower → Flutter.
 
 - [ ] Open the recommendation. Explanation, confidence, and related operations stay on the operator card.
 - [ ] Attraction status and capacity are unchanged.
-- [ ] **Approve** → **Confirm command**. Status is **Approved**. Guest Best Next is still empty.
+- [ ] **Approve**. The dialog submits **Approve**. Status is **Approved**. Guest Best Next is still empty.
 
 ### 3. Operator cannot publish
 
@@ -56,7 +56,7 @@ Work left-to-right: Park Flow simulation → Control Tower → Flutter.
 
 ### 4. Supervisor publishes guest guidance
 
-- [ ] Supervisor **Publish** with a guest message (default copy is fine).
+- [ ] Supervisor **Publish** with a guest message (default copy is fine). The dialog submits **Publish**. **Dismiss** and **Withdraw** submit under those same labels and require a reason.
 - [ ] Status is **Published**. Dashboard unpublished-flow attention for this item is gone.
 
 ### 5. Guest Best Next
@@ -69,7 +69,7 @@ Work left-to-right: Park Flow simulation → Control Tower → Flutter.
 
 | Check | How | Expected |
 | --- | --- | --- |
-| Stale version | Confirm dismiss/approve with `expectedVersion` 99 | `409` / `STALE_VERSION` |
+| Stale version | Submit **Dismiss** or **Approve** with `expectedVersion` 99 | `409` / `STALE_VERSION` |
 | Unauthorized publish | Operator session or `OPERATOR_LIMITED_TOKEN` | Button hidden or `403` |
 | Unauthenticated command | Sign out, or omit `Authorization` | Login wall / `401` |
 | commandId replay | Repeat approve with the same `commandId` | Same `APPROVED` snapshot; no second activity |

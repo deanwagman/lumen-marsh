@@ -20,8 +20,8 @@ This is the portfolio demo. Do not start the [AWS public deployment gate](./secu
 2. Stack healthy: `./scripts/wait-for-ready.sh` (add `--oidc` for Cognito).
 3. Control Tower signed in:
    - After authentication, the landing page is **Dashboard** (`/dashboard`).
-   - OIDC: a **supervisor** (`./scripts/create-dev-supervisor.sh`) for publish/resolve of MAJOR incidents. An **operator** (`./scripts/create-dev-operator.sh`) is enough for acknowledge / assign / hold, but **Publish guest advisory** stays hidden.
-   - LOCAL_JWT: the console uses `local-development-token` (supervisor-equivalent).
+   - OIDC: a **supervisor** (`./scripts/create-dev-supervisor.sh`) for the ride commands, **Publish guest advisory**, and MAJOR resolve. An **operator** (`./scripts/create-dev-operator.sh`) can acknowledge, assign, and start mitigation, and can open the weather inbox when the token includes `venueops/weather-recommendations.review`. The attraction workspace shows **Place weather hold**, **Clear weather hold**, **Complete testing**, and **Approve return to service** when the signed-in role is supervisor. An operator token with `venueops/attractions.command` can still send those commands to the API. **Publish guest advisory** stays on the supervisor screen and needs `venueops/advisories.publish`.
+   - LOCAL_JWT: the console uses `local-development-token` (supervisor-equivalent), so the attraction command panel is on screen.
 4. Guest app open on **Today**.
 5. Optional HTTP companion (does not replace the UI path):
 
@@ -66,9 +66,11 @@ The dashboard is the operator landing page. Confirm metrics and Needs attention 
 - [ ] Control Tower **Dashboard** pending-weather and Needs attention update without a manual refresh (second console tab optional).
 - [ ] Control Tower **Attractions** shows **Weather recommendations** with an ACTIVE hold card (lightning / outdoor attractions).
 
-### 2. Operator reviews the weather recommendation
+### 2. Review the weather recommendation
 
-- [ ] Open the recommendation. Evidence and recommended action are visible.
+The Attractions inbox is `GET /api/v1/operator/weather/recommendations` and requires `venueops/weather-recommendations.review`. Pending weather cards on the dashboard still appear with `venueops/operator.read`.
+
+- [ ] Open the recommendation on Attractions. Evidence and recommended action are visible.
 - [ ] Affected attractions include Mangrove Run and Cypress Coil (or the seeded outdoor set).
 
 ### 3. Operator creates, acknowledges, assigns, and mitigates an incident
@@ -79,8 +81,11 @@ The dashboard is the operator landing page. Confirm metrics and Needs attention 
 - [ ] **Start mitigation** → **Confirm command**.
 - [ ] Status is **Mitigating**. Attraction operational state is still unchanged.
 
-### 4. Operator places affected attractions on weather hold
+### 4. Supervisor places affected attractions on weather hold
 
+The attraction workspace shows **Place weather hold** when the signed-in role is supervisor. Confirm with **Confirm command**. An operator token with `venueops/attractions.command` can still send the command to the API.
+
+- [ ] Sign in as supervisor when the current session is operator-only.
 - [ ] Open Mangrove Run. **Place weather hold** → reason `Lightning detected within operating radius` → **Confirm command**.
 - [ ] Repeat for Cypress Coil.
 - [ ] Shift overview / attraction rows show weather hold. Flutter catalog status updates live.
@@ -103,7 +108,9 @@ The dashboard is the operator landing page. Confirm metrics and Needs attention 
 - [ ] `POST http://localhost:8000/api/v1/simulation/scenarios/clearance-period`
 - [ ] Control Tower recommendation moves to **CLEARED**.
 
-### 8. Operator restores attractions and resolves the incident
+### 8. Supervisor restores attractions and resolves the incident
+
+**Clear weather hold** returns the ride to testing. Return to service is **Complete testing**, then **Approve return to service**. Those buttons are on the attraction workspace for a supervisor, and each one confirms with **Confirm command**. An operator token with `venueops/attractions.command` can still send them to the API.
 
 - [ ] Per held attraction: **Clear weather hold** → **Complete testing** → **Approve return to service**.
 - [ ] Supervisor **Resolve** with reason `Storm cell moved out of radius` → **Confirm command**.
