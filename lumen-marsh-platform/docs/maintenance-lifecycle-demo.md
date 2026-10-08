@@ -51,7 +51,7 @@ After the script, or instead of it for a narrated pass:
 
 1. Open **Maintenance** (`/maintenance`). Accept a pending Cypress Coil vibration recommendation (or use the HTTP ingest). Commands continue on `/maintenance/work-orders/:workOrderId`. The asset code on that page opens `/maintenance/assets/:assetId` (asset code, service status, and that asset’s work orders).
 2. Work the order through inspection. Confirm **Ready for testing** recommends Start testing and does not change attraction status.
-3. A supervisor with `venueops/attractions.command` uses **Start attraction testing** on the work-order handoff (the dialog submits **Start testing**) or **Start testing** on the attraction workspace. **Complete testing** and **Approve return to service** are on the attraction workspace for a supervisor. An operator token with `venueops/attractions.command` can still send those commands to the API. The handoff and the workspace reserve the buttons for a supervisor.
+3. A session with `venueops/attractions.command` uses **Start attraction testing** on the work-order handoff when the ride can start testing (the dialog submits **Start testing**). That handoff does not require a supervisor role. **Start testing** on the attraction workspace, **Complete testing**, and **Approve return to service** are on the attraction workspace command panel, which is shown when the signed-in role is supervisor. An operator token with `venueops/attractions.command` can still send those commands to the API. No attraction command is supervisor-only.
 4. Complete the work order. Confirm the guest app still has no work-order numbers, asset codes, or internal notes.
 
 ## Pass criteria

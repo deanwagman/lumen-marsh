@@ -62,9 +62,8 @@ export const maintenanceArticle: DocArticle = {
       title: 'Attraction testing handoff',
       body: [
         'A work order can recommend an attraction action without performing it. Ready for testing recommends Start testing. Active P1 corrective work can recommend Report technical fault. The recommendation does not change attraction status.',
-        'On the work order, a supervisor with venueops/attractions.command sees Start attraction testing when the ride can start testing. The dialog submits Start testing. The same supervisor sees Report technical fault when that is the recommendation and the ride can take it. The dialog submits Report fault.',
-        'Operators, including a token that already has venueops/attractions.command, do not get those handoff buttons. The card still names the recommended command and links to the attraction workspace.',
-        'The attraction workspace shows Start testing, Report technical fault, Complete testing, and Approve return to service when the signed-in role is supervisor. Complete testing and Approve return to service are only on that workspace, so a handoff start still finishes there.',
+        'On the work order, Start attraction testing is shown to any session with venueops/attractions.command when the ride can start testing. The dialog submits Start testing. Report technical fault is shown to that same session when that is the recommendation and the ride can take it. The dialog submits Report fault. Those checks do not require a supervisor role.',
+        'The card still names the recommended command and links to the attraction workspace. The attraction workspace command panel is shown when the signed-in role is supervisor. Complete testing and Approve return to service stay on that panel, so a handoff start still finishes there.',
         'The API still accepts those attraction commands from any token with venueops/attractions.command. No attraction command is supervisor-only. Return-to-service approval stays on the attraction workflow so testing is not skipped.',
         'Scripted HTTP proof: from lumen-marsh-platform, ./scripts/maintenance-lifecycle-acceptance.sh after the stack is up.',
       ],

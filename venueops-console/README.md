@@ -2,7 +2,7 @@
 
 Operator console for **Lumen Marsh**, a fictional eco-futurist wetlands destination. It is a separate Vite/React/TypeScript application alongside [VenueOps API](../venueops-api), [Park Flow Intelligence](../park-flow-intelligence), [Reliability Intelligence](../reliability-intelligence), and the [guest companion](../lumen-marsh-app).
 
-Control Tower covers attractions, incidents, weather inbox, maintenance, and park flow. The attraction command workspace (Mangrove Run is the usual demo) shows current state, the supervisor command panel, wait-time updates, version conflicts, and the activity timeline. A supervisor with `venueops/attractions.command` can also start testing or report a technical fault from a work-order handoff. Live SSE updates write through the TanStack Query cache rather than a second operational store.
+Control Tower covers attractions, incidents, weather inbox, maintenance, and park flow. The attraction command workspace (Mangrove Run is the usual demo) shows current state, the supervisor command panel, wait-time updates, version conflicts, and the activity timeline. A session with `venueops/attractions.command` can also start testing or report a technical fault from a work-order handoff when that command is valid. Live SSE updates write through the TanStack Query cache rather than a second operational store.
 
 ## Requirements
 
@@ -68,7 +68,7 @@ All `import.meta.env` access is centralized in `src/config/environment.ts`. Inva
 
 Configure Cognito with an app client that has no secret, enables authorization code grant, and allows the callback/logout URLs above. Tokens are held in memory; only short-lived OAuth transaction state (including the PKCE verifier) uses `sessionStorage`. API and SSE requests send the access token as `Authorization: Bearer …`; tokens are never put in URLs.
 
-Roles are read from `cognito:groups`, `custom:role`, or `role`. The attraction workspace shows its command panel when the signed-in role is `supervisor`. Operators can still update wait times. On a work order, **Start attraction testing** and **Report technical fault** are shown to a supervisor who has `venueops/attractions.command` when that command is valid for the ride. The API is the authorization boundary: `CommandAuthorization.requireAttractionCommand()` only requires `venueops/attractions.command`. No attraction command is supervisor-only, so an operator token with that scope can still call the commands the screens reserve for a supervisor.
+Roles are read from `cognito:groups`, `custom:role`, or `role`. The attraction workspace shows its command panel when the signed-in role is `supervisor`. Operators can still update wait times. On a work order, **Start attraction testing** and **Report technical fault** are shown to any session with `venueops/attractions.command` when that command is valid. Those handoff checks do not require a supervisor role. **Complete testing** and **Approve return to service** stay on the attraction workspace. The API is the authorization boundary: `CommandAuthorization.requireAttractionCommand()` only requires `venueops/attractions.command`. No attraction command is supervisor-only.
 
 `VITE_AUTH_MODE=local` enables an explicit development-only session with a mock token. Do not use it in deployed builds. Automated tests inject authenticated or unauthenticated sessions directly.
 

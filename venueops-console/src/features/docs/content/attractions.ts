@@ -39,8 +39,8 @@ export const attractionsArticle: DocArticle = {
       title: 'When a supervisor is required',
       body: [
         'Supervisors see the command panel: Start testing, Place weather hold, Clear weather hold, Report technical fault, Complete repair, Complete testing, Approve return to service, Close for day, Reduce capacity, and Restore capacity, limited to the transitions valid right now.',
-        'A supervisor who also has venueops/attractions.command sees Start attraction testing or Report technical fault on a work-order handoff when that command is valid for the ride. The dialog submits Start testing or Report fault. Complete testing and Approve return to service stay on this workspace.',
-        'Operators keep the workspace and wait-time updates. The API still accepts every attraction command, including the ones this screen reserves for supervisors, from a token with venueops/attractions.command. No attraction command is supervisor-only on the API. Ask a supervisor to use the screen when the panel or handoff button is hidden.',
+        'Start attraction testing and Report technical fault on a work-order handoff are shown to any session with venueops/attractions.command when that command is valid for the ride. That handoff does not require a supervisor role. The dialog submits Start testing or Report fault. Complete testing and Approve return to service stay on this workspace, and this command panel is shown when the signed-in role is supervisor.',
+        'Operators keep this workspace and wait-time updates. The API still accepts every attraction command, including the ones this panel reserves for supervisors, from a token with venueops/attractions.command. No attraction command is supervisor-only on the API.',
       ],
       roles: ['operator', 'supervisor'],
     },
