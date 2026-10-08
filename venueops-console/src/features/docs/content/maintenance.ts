@@ -12,6 +12,8 @@ export const maintenanceArticle: DocArticle = {
       title: 'Work-order lifecycle',
       body: [
         'Work orders move Draft → Open → Assigned → In progress → Awaiting inspection → Ready for testing → Completed. Cancel is available on non-terminal states. A note can still be added after completion or cancellation.',
+        '/maintenance lists reliability recommendations and work orders. Commands, checklists, inspection, and the attraction handoff run on /maintenance/work-orders/:workOrderId.',
+        'The asset code on the work order opens /maintenance/assets/:assetId. That page shows the asset code, service status, and that asset’s work orders. It does not issue commands.',
         'The console only offers commands that are valid for the current status, role, and scopes. The API remains the authority if two operators act at once.',
       ],
     },
@@ -59,9 +61,11 @@ export const maintenanceArticle: DocArticle = {
       id: 'handoff',
       title: 'Attraction testing handoff',
       body: [
-        'A work order can recommend an attraction action without performing it. Ready for testing recommends Start testing. Active P1 corrective work can recommend Report technical fault.',
-        'Start testing from the handoff card or the attraction workspace. Complete testing and approve return to service remain Operations and supervisor attraction commands.',
-        'Maintenance cannot reopen an attraction. Return-to-service approval belongs to the attraction workflow so Control Tower does not skip testing.',
+        'A work order can recommend an attraction action without performing it. Ready for testing recommends Start testing. Active P1 corrective work can recommend Report technical fault. The recommendation does not change attraction status.',
+        'On the work order, a supervisor with venueops/attractions.command sees Start attraction testing when the ride can start testing. The dialog submits Start testing. The same supervisor sees Report technical fault when that is the recommendation and the ride can take it. The dialog submits Report fault.',
+        'Operators, including a token that already has venueops/attractions.command, do not get those handoff buttons. The card still names the recommended command and links to the attraction workspace.',
+        'The attraction workspace shows Start testing, Report technical fault, Complete testing, and Approve return to service when the signed-in role is supervisor. Complete testing and Approve return to service are only on that workspace, so a handoff start still finishes there.',
+        'The API still accepts those attraction commands from any token with venueops/attractions.command. No attraction command is supervisor-only. Return-to-service approval stays on the attraction workflow so testing is not skipped.',
         'Scripted HTTP proof: from lumen-marsh-platform, ./scripts/maintenance-lifecycle-acceptance.sh after the stack is up.',
       ],
     },
