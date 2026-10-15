@@ -11,7 +11,7 @@
 - [x] Structured `venueops.security` logs for 401 / 403 / 429 (exception class only; no token or header values)
 - [x] Logback converters scrub Bearer tokens, client secrets, and compact JWTs from messages and stack traces
 - [x] Weather ingest rate-limited in VenueOps (`VENUEOPS_WEATHER_INGEST_RATE_LIMIT_PER_MINUTE`, default 120)
-- [x] Console nginx sets CSP, `frame-ancestors 'none'`, `X-Frame-Options: DENY`
+- [x] Console nginx sets CSP, `frame-ancestors 'none'`, `X-Frame-Options: DENY`. `compose.yaml` builds that file unchanged. The local override passes `CONSOLE_FRAME_ANCESTORS` so the local image can be framed only by the Cutaway origin.
 - [x] Secret rotation documented in [secret-rotation.md](./secret-rotation.md)
 - [x] Filesystem/secret scan in platform CI; local image scan via `./scripts/security-scan.sh`
 - [ ] Rate-limit the Cognito token endpoint at the edge (WAF / AWS managed rules) before public demo

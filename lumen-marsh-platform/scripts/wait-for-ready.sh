@@ -30,5 +30,8 @@ wait_http "${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}/health
 wait_http "${RELIABILITY_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8200}/health/ready" "reliability-intelligence"
 wait_http "$CONSOLE_URL/health" "venueops-console"
 wait_http "$GUEST_URL/health" "lumen-marsh-app"
+if [[ "$AUTH_MODE" != "oidc" ]]; then
+  wait_http "${CUTAWAY_ORIGIN:-http://localhost:3090}/health" "cutaway"
+fi
 
 echo "all services ready"

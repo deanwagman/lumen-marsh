@@ -13,6 +13,8 @@ Compose (`compose.yaml`) runs six application images, two PostgreSQL instances, 
 
 Compose also starts `venueops-db` and `environmental-db` on private data networks (not published in `compose.yaml`) and `environmental-migrate` (Alembic, `restart: "no"`).
 
+`compose.override.yaml` adds `cutaway:local` on host port `3090` (container `8080`, nginx uid 101, `GET /health` → `ok`). It is a static booth page and is not part of `compose.yaml`. The same override rebuilds the local console image with `CONSOLE_FRAME_ANCESTORS` so Control Tower can be framed by that origin. The production console config in `venueops-console/docker/nginx.conf` is unchanged.
+
 ## Verification performed
 
 - Each application image builds from its sibling directory (see `compose.yaml` `build.context`).

@@ -68,6 +68,7 @@ Typical endpoints:
 | --- | --- |
 | Guest app | <http://localhost:3000> |
 | Operator console | <http://localhost:3001> |
+| Cutaway (local booth) | <http://localhost:3090> |
 | VenueOps API | <http://localhost:8080> |
 | Environmental Monitor | <http://localhost:8000> |
 | Park Flow Intelligence | <http://localhost:8100> |
@@ -82,7 +83,7 @@ cd lumen-marsh-platform
 ./scripts/flow-lifecycle-acceptance.sh
 ```
 
-The storm scenario follows weather observation → recommendation → operator review → incident → attraction hold → guest advisory → clearance → testing → return to service. The maintenance scenario follows reliability ingest → accept → inspect → operations testing. The flow scenario follows mangrove disruption → unpublished recommendation → supervisor publish → guest Best Next, and Best Next will not rank an attraction as a good next choice when published copy says it is unavailable. All three assert guest leak, authorization, and stale-version failures. See the [storm UI walkthrough](./lumen-marsh-platform/docs/storm-lifecycle-demo.md), the [maintenance HTTP proof](./lumen-marsh-platform/docs/maintenance-lifecycle-demo.md), and the [flow UI walkthrough](./lumen-marsh-platform/docs/flow-lifecycle-demo.md).
+The storm scenario follows weather observation → recommendation → operator review → incident → attraction hold → guest advisory → clearance → testing → return to service. The maintenance scenario follows reliability ingest → accept → inspect → operations testing. The flow scenario follows mangrove disruption → unpublished recommendation → supervisor publish → guest Best Next, and Best Next will not rank an attraction as a good next choice when published copy says it is unavailable. All three assert guest leak, authorization, and stale-version failures. See the [storm UI walkthrough](./lumen-marsh-platform/docs/storm-lifecycle-demo.md), the [maintenance HTTP proof](./lumen-marsh-platform/docs/maintenance-lifecycle-demo.md), the [flow UI walkthrough](./lumen-marsh-platform/docs/flow-lifecycle-demo.md), and [Cutaway](./lumen-marsh-platform/docs/cutaway-demo.md) for the local booth that opens the guest room and Control Tower together.
 
 ## Operators vs guests
 
