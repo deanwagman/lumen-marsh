@@ -22,7 +22,7 @@
       <p class="guide-kicker">Documentation</p>
       <h1>Using Cutaway</h1>
       <p class="guide-summary">
-        How to open the local booth, what the rail starts, and what still has to be clicked in Control Tower before a guest sees it.
+        What you are looking at, what the rail starts, and what you still click in Control Tower before a guest sees it.
       </p>
       <div class="guide-layout">
         <nav class="toc" aria-label="On this page">
@@ -38,141 +38,77 @@
         <article class="guide-article">
           <section id="what-cutaway-is">
             <h2>What Cutaway is</h2>
-            <p>
-              Cutaway is the local booth for Lumen Marsh. The guest room and Control Tower are open at the same time, and the producer cues sit outside both rooms. It is not a park domain, not a seventh application, and not a public host.
-            </p>
-            <p>One static page in the local Compose env. <code>compose.yaml</code> does not start it.</p>
+            <p>Cutaway opens two rooms at the same time.</p>
             <ul>
-              <li>Left: the guest app, Today. Best Next lives there.</li>
-              <li>Right: Control Tower, the existing local supervisor session.</li>
-              <li>Rail, outside both frames: four producer triggers.</li>
-              <li>Strip under the frames: the last VenueOps recommendation, and whether the guest projection changed.</li>
+              <li>Left: the guest, on Today. Best Next lives there.</li>
+              <li>Right: Control Tower, where the operator works.</li>
+              <li>The rail, outside both rooms: four cues.</li>
+              <li>The strip underneath: the latest recommendation, and whether the guest’s view has changed.</li>
             </ul>
             <p>
-              The rail fires producers only. Place hold, accept, dismiss, and publish stay inside Control Tower. The strip reads VenueOps, not the producer logs: pending weather, pending reliability, and unpublished flow on the operator side; guest advisory and Best Next on the guest side.
+              The rail only starts a situation. Holding a ride, accepting a recommendation, dismissing one, and publishing what guests read all stay in Control Tower.
             </p>
             <p>
-              Lightning, vibration, and mangrove disruption keep the guest frame on Today and bring the matching Control Tower card into view. Clear the storm leaves both frames where they are. The tower column is wide enough for the workstation layout, so the attention queue stays on screen.
+              Lightning hold, Cypress Coil vibration, and Mangrove disruption leave the guest on Today and bring the matching card into view in Control Tower. Clear the storm leaves both rooms where they are.
             </p>
-            <p>
-              If VenueOps cannot be read, Cutaway covers both rooms with one offline state and disables the rail until the stack is healthy. The guest app and Control Tower do not each show their own error.
-            </p>
+            <p>If the booth cannot reach the park, both rooms are covered and the rail stays off until it can.</p>
           </section>
           <section id="how-to-open">
             <h2>How to open it</h2>
-            <ol>
-              <li>From <code>lumen-marsh-platform</code>, copy <code>.env.example</code> to <code>.env</code> and set <code>NWS_USER_AGENT</code>.</li>
-              <li>Run <code>./scripts/dev-up.sh</code> for the local supervisor session. <code>./scripts/dev-up.sh --oidc</code> does not start Cutaway.</li>
-              <li>Open <a href="http://localhost:3090/">http://localhost:3090</a>. This page is Docs.</li>
-            </ol>
+            <p>You are in Cutaway. Choose Cutaway in the header to see both rooms. Choose Docs to come back to this page.</p>
             <p>
-              There is no Cognito step on this page. The console frame is the local supervisor session. If you open <code>http://127.0.0.1:3090</code> instead, the local console image must have been built with that origin allowed. The production console image does not allow framing. <code>docker compose -f compose.yaml</code> does not pass that exception.
+              The guest room opens on Today. Control Tower opens ready for the operator. Use a rail button to start a cue, then do the operator’s clicks inside Control Tower.
             </p>
-            <table>
-              <caption>Surfaces on a local stack</caption>
-              <thead>
-                <tr>
-                  <th>Surface</th>
-                  <th>URL</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Cutaway</td>
-                  <td>http://localhost:3090</td>
-                </tr>
-                <tr>
-                  <td>This guide</td>
-                  <td>http://localhost:3090/docs.html</td>
-                </tr>
-                <tr>
-                  <td>Guest Today</td>
-                  <td>http://localhost:3000/today</td>
-                </tr>
-                <tr>
-                  <td>Control Tower dashboard</td>
-                  <td>http://localhost:3001/dashboard</td>
-                </tr>
-                <tr>
-                  <td>VenueOps API</td>
-                  <td>http://localhost:8080</td>
-                </tr>
-                <tr>
-                  <td>Environmental Monitor</td>
-                  <td>http://localhost:8000</td>
-                </tr>
-                <tr>
-                  <td>Park Flow Intelligence</td>
-                  <td>http://localhost:8100</td>
-                </tr>
-                <tr>
-                  <td>Reliability Intelligence</td>
-                  <td>http://localhost:8200</td>
-                </tr>
-              </tbody>
-            </table>
           </section>
           <section id="rail-buttons">
             <h2>What each rail button does</h2>
+            <p>Each button shows Fired when the cue starts, or Failed when it does not.</p>
+            <ul>
+              <li>
+                <strong>Lightning hold.</strong> Starts the lightning situation. The strip shows pending weather, and Control Tower brings that weather card into view. The guest stays on Today, with no advisory yet.
+              </li>
+              <li>
+                <strong>Clear the storm.</strong> Moves the weather into the period after the hold. Both rooms stay where they are. Sending rides back into service still happens in Control Tower.
+              </li>
+              <li>
+                <strong>Cypress Coil vibration.</strong> Starts a vibration cue for Cypress Coil. The strip shows pending reliability, and Control Tower brings that card into view. The guest stays on Today and does not hear about the work.
+              </li>
+              <li>
+                <strong>Mangrove disruption.</strong> Starts a queue cue for Mangrove Run. The strip shows flow that has not been published, and Control Tower brings that card into view. The guest stays on Today. Best Next does not treat Mangrove Run as down.
+              </li>
+            </ul>
             <p>
-              Simulation has to be on. The local Compose override already enables it. Each button posts an empty JSON body, the same call the lifecycle scripts use, and shows Fired or Failed.
-            </p>
-            <table>
-              <caption>Rail buttons and the producer call each one makes</caption>
-              <thead>
-                <tr>
-                  <th>Rail button</th>
-                  <th>Call</th>
-                  <th>Before anyone clicks in the tower</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Lightning hold</td>
-                  <td><code>POST http://localhost:8000/api/v1/simulation/scenarios/hold-conditions</code></td>
-                  <td>Pending weather on the strip. Control Tower scrolls that weather card into view. The guest frame stays on Today, and the advisory stays quiet.</td>
-                </tr>
-                <tr>
-                  <td>Clear the storm</td>
-                  <td><code>POST http://localhost:8000/api/v1/simulation/scenarios/clearance-period</code></td>
-                  <td>The monitor moves to the clearance scenario. The frames stay where they are. Recovery commands still happen in Control Tower.</td>
-                </tr>
-                <tr>
-                  <td>Cypress Coil vibration</td>
-                  <td><code>POST http://localhost:8200/simulation/scenarios/cypress-coil-vibration</code></td>
-                  <td>Pending reliability on the strip. Control Tower scrolls that attention card into view. The guest frame stays on Today and stays quiet.</td>
-                </tr>
-                <tr>
-                  <td>Mangrove disruption</td>
-                  <td><code>POST http://localhost:8100/simulation/scenarios/mangrove-disruption</code></td>
-                  <td>Unpublished flow on the strip. Control Tower scrolls that attention card into view. The guest frame stays on Today. Best Next does not treat Mangrove as down.</td>
-                </tr>
-              </tbody>
-            </table>
-            <p>
-              Mangrove disruption reuses one recommendation id. After that id is dismissed, published, or otherwise no longer a new pending review, another click will not open a new unpublished card. The strip then shows a reset note. It is not a button. From <code>lumen-marsh-platform</code>, run <code>./scripts/reset-demo.sh --confirm</code> and start the stack again.
+              If Mangrove disruption has already been used, the strip shows a note instead of a new card. That note is not a button.
             </p>
           </section>
           <section id="operator-clicks">
             <h2>What the operator still clicks</h2>
-            <p>Cutaway does not hold a ride, accept a recommendation, dismiss one, or publish guest copy. Those clicks stay in Control Tower.</p>
+            <p>
+              The rail never holds a ride, accepts a recommendation, dismisses one, or publishes what guests read. Those clicks are in Control Tower.
+            </p>
             <ul>
-              <li>Lightning. Review the weather recommendation, open the incident, and place the hold. Publish guest advisory is the click that lets Today show it. Until that publish, the strip’s guest advisory stays Quiet and the projection stays Unchanged.</li>
-              <li>Vibration. Accept the reliability recommendation and work the order through inspection and testing. Reliability Intelligence never creates the work order. Guests still must not see work-order numbers, asset codes, or internal notes.</li>
-              <li>Mangrove. Approve if you want, then publish as a supervisor. Best Next stays empty until that publish.</li>
-              <li>Clear the storm. Clearance is a producer scenario. Return to service is still an operator command in the tower.</li>
+              <li>
+                After lightning, review the weather card, open the incident, and place the hold. Publish the guest advisory when Today should show it. Until then, the strip keeps the guest advisory Quiet and the projection Unchanged.
+              </li>
+              <li>
+                After vibration, accept the reliability recommendation and carry the work through inspection and testing. The cue does not open that work by itself. Guests do not see work-order numbers, asset codes, or internal notes.
+              </li>
+              <li>
+                After Mangrove disruption, approve the recommendation if you want to use it, then publish it as a supervisor. Best Next stays empty until that publish.
+              </li>
+              <li>After clearing the storm, return to service is still a click in Control Tower.</li>
             </ul>
           </section>
           <section id="guest-must-not-see">
             <h2>What the guest must not see until publish</h2>
-            <p>Until a supervisor publishes:</p>
+            <p>Nothing on the guest side changes until a supervisor publishes it.</p>
             <ul>
-              <li>No park advisory on Today after lightning. Pending weather is an operator card.</li>
-              <li>No reliability internals after vibration. The guest projection stays unchanged.</li>
-              <li>Best Next does not rank Mangrove Run down, and does not show the unpublished guest message, after mangrove disruption.</li>
+              <li>Today does not gain a park advisory from lightning. The pending weather card is for the operator.</li>
+              <li>Vibration does not show reliability notes to the guest. The guest projection stays unchanged.</li>
+              <li>Best Next does not mark Mangrove Run down, and does not show the unpublished message.</li>
             </ul>
             <p>
-              The strip is that split. Operator rows come from the operator dashboard. Guest rows come from guest advisories and published flow recommendations. A pending card with a quiet guest row means the publish has not happened.
+              The strip is how you see that split. The operator side can show a pending card while the guest side stays quiet. Quiet means it has not been published.
             </p>
           </section>
         </article>

@@ -169,12 +169,28 @@ test("docs view covers how to use the booth", async ({ page }) => {
     await expect(guide.getByRole("heading", { level: 2, name })).toBeVisible();
   }
 
-  await expect(page.locator("#rail-buttons")).toContainText("hold-conditions");
-  await expect(page.locator("#rail-buttons")).toContainText("clearance-period");
-  await expect(page.locator("#rail-buttons")).toContainText("cypress-coil-vibration");
-  await expect(page.locator("#rail-buttons")).toContainText("mangrove-disruption");
-  await expect(page.locator("#guest-must-not-see")).toContainText("Until a supervisor publishes");
+  const guideText = await page.locator(".guide").innerText();
+  await expect(page.locator("#rail-buttons")).toContainText("Lightning hold");
+  await expect(page.locator("#rail-buttons")).toContainText("Clear the storm");
+  await expect(page.locator("#rail-buttons")).toContainText("Cypress Coil vibration");
+  await expect(page.locator("#rail-buttons")).toContainText("Mangrove disruption");
+  await expect(page.locator("#rail-buttons")).toContainText("pending weather");
+  await expect(page.locator("#how-to-open")).toContainText("Choose Cutaway in the header");
+  await expect(page.locator("#guest-must-not-see")).toContainText("until a supervisor publishes");
   await expect(page.locator("#operator-clicks")).toContainText("Control Tower");
+  for (const leaked of [
+    ".env",
+    "NWS_USER_AGENT",
+    "POST http",
+    "compose.yaml",
+    "dart-define",
+    "hold-conditions",
+    "frame-ancestors",
+    "dev-up.sh",
+    "localhost:8080",
+  ]) {
+    expect(guideText).not.toContain(leaked);
+  }
   for (const name of ["Place weather hold", "Accept", "Dismiss", "Publish", "Confirm command"]) {
     await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
   }
