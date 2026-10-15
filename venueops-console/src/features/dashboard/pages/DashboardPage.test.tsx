@@ -41,6 +41,24 @@ describe('Operations dashboard', () => {
     );
   });
 
+  it('scrolls the hashed card into view once the snapshot is ready', async () => {
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    server.use(http.get('/api/v1/operator/dashboard', () => HttpResponse.json(stormDashboard)));
+
+    renderApp({ initialEntries: ['/dashboard#weather-card-rec-lightning-1'] });
+
+    expect(await screen.findByRole('heading', { name: 'Weather recommendations' })).toBeInTheDocument();
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(document.getElementById('weather-card-rec-lightning-1')).not.toBeNull();
+    expect(
+      document.getElementById(
+        'attention-card-PENDING_RELIABILITY_RECOMMENDATION-b7e2c1a0-4c11-4c11-8c11-27679ca40303',
+      ),
+    ).not.toBeNull();
+    expect(document.getElementById('attention-card-UNPUBLISHED_FLOW_RECOMMENDATION-flow-rec-1')).not.toBeNull();
+  });
+
   it('orders needs-attention items and links each to a workspace', async () => {
     renderDashboard();
 

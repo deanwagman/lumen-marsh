@@ -40,6 +40,8 @@ OpenTofu does not create users or store passwords. `create-dev-operator.sh` and 
 | Environmental Monitor | `OIDC_DISABLED=true` + `VENUEOPS_BEARER_TOKEN=local-weather-token` |
 | Park Flow Intelligence | `OIDC_DISABLED=true` + `VENUEOPS_BEARER_TOKEN=local-flow-token` |
 | Reliability Intelligence | `OIDC_DISABLED=true` + `VENUEOPS_BEARER_TOKEN=local-reliability-token` |
+| Console frame headers | `CONSOLE_FRAME_ANCESTORS` allows only the Cutaway origin. `compose.yaml` leaves this unset. |
+| Cutaway | http://localhost:3090, local booth only. Not started by `--oidc`. |
 
 These opaque tokens are accepted **only** when the API runs in `LOCAL_JWT` mode. They are not Cognito tokens and must never be used with `OIDC` mode. Reliability Intelligence and the maintenance scripts use `local-reliability-token` for ingest.
 

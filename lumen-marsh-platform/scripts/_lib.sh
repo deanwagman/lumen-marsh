@@ -255,6 +255,7 @@ Lumen Marsh is up:
 
   Guest app               ${GUEST_APP_ORIGIN:-http://localhost:3000}
   Operator console        ${OPERATOR_CONSOLE_ORIGIN:-http://localhost:3001}
+  Cutaway                 ${CUTAWAY_ORIGIN:-http://localhost:3090}
   VenueOps API            ${VENUEOPS_PUBLIC_ORIGIN:-http://localhost:8080}
   Environmental Monitor   ${ENVIRONMENTAL_MONITOR_PUBLIC_ORIGIN:-http://localhost:8000}
   Park Flow Intelligence  ${PARK_FLOW_INTELLIGENCE_PUBLIC_ORIGIN:-http://localhost:8100}

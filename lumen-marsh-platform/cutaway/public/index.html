@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cutaway</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' http://localhost:8080 http://127.0.0.1:8080 http://localhost:8000 http://127.0.0.1:8000 http://localhost:8100 http://127.0.0.1:8100 http://localhost:8200 http://127.0.0.1:8200; frame-src http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001"
+    />
+    <link rel="stylesheet" href="cutaway.css" />
+  </head>
+  <body>
+    <header class="mast">
+      <p class="kicker">Lumen Marsh</p>
+      <h1>Cutaway</h1>
+      <p class="lede">The guest room and the operator room, open at the same time.</p>
+    </header>
+    <div class="stage">
+      <aside class="rail" aria-label="Producer triggers">
+        <h2>Rail</h2>
+        <p class="rail-note">
+          These start a producer. Place hold, accept, dismiss, and publish stay in Control Tower.
+        </p>
+        <div class="trigger">
+          <button
+            type="button"
+            id="lightning-hold"
+            data-url="http://localhost:8000/api/v1/simulation/scenarios/hold-conditions"
+            disabled
+          >
+            Lightning hold
+          </button>
+          <p class="trigger-result" data-result="lightning-hold" aria-live="polite">Ready</p>
+        </div>
+        <div class="trigger">
+          <button
+            type="button"
+            id="clear-storm"
+            data-url="http://localhost:8000/api/v1/simulation/scenarios/clearance-period"
+            disabled
+          >
+            Clear the storm
+          </button>
+          <p class="trigger-result" data-result="clear-storm" aria-live="polite">Ready</p>
+        </div>
+        <div class="trigger">
+          <button
+            type="button"
+            id="cypress-vibration"
+            data-url="http://localhost:8200/simulation/scenarios/cypress-coil-vibration"
+            disabled
+          >
+            Cypress Coil vibration
+          </button>
+          <p class="trigger-result" data-result="cypress-vibration" aria-live="polite">Ready</p>
+        </div>
+        <div class="trigger">
+          <button
+            type="button"
+            id="mangrove-disruption"
+            data-url="http://localhost:8100/simulation/scenarios/mangrove-disruption"
+            data-watch="mangrove"
+            disabled
+          >
+            Mangrove disruption
+          </button>
+          <p class="trigger-result" data-result="mangrove-disruption" aria-live="polite">Ready</p>
+        </div>
+      </aside>
+      <div class="rooms">
+        <div id="booth-offline" class="booth-offline" hidden role="status">
+          <div>
+            <h2>Cutaway is offline</h2>
+            <p>
+              VenueOps is not reachable, so both rooms stay covered. The rail stays off until the stack is
+              healthy.
+            </p>
+          </div>
+        </div>
+        <figure class="room">
+          <figcaption>Guest</figcaption>
+          <iframe id="guest-frame" title="Guest app, Today" src="http://localhost:3000/today"></iframe>
+        </figure>
+        <figure class="room">
+          <figcaption>Control Tower</figcaption>
+          <iframe id="console-frame" title="Control Tower" src="http://localhost:3001/dashboard"></iframe>
+        </figure>
+      </div>
+    </div>
+    <section class="strip" id="strip" aria-live="polite" aria-label="VenueOps projection">
+      <div class="strip-title">
+        <h2>Strip</h2>
+        <p id="last-recommendation">Reading VenueOps.</p>
+      </div>
+      <div>
+        <h3>Operator</h3>
+        <dl>
+          <div>
+            <dt>Pending weather</dt>
+            <dd id="pending-weather">Reading VenueOps.</dd>
+          </div>
+          <div>
+            <dt>Pending reliability</dt>
+            <dd id="pending-reliability">Reading VenueOps.</dd>
+          </div>
+          <div>
+            <dt>Unpublished flow</dt>
+            <dd id="unpublished-flow">Reading VenueOps.</dd>
+          </div>
+        </dl>
+      </div>
+      <div>
+        <h3>Guest</h3>
+        <dl>
+          <div>
+            <dt>Advisory</dt>
+            <dd id="guest-advisory">Reading VenueOps.</dd>
+          </div>
+          <div>
+            <dt>Best Next</dt>
+            <dd id="guest-best-next">Reading VenueOps.</dd>
+          </div>
+          <div>
+            <dt>Projection</dt>
+            <dd id="guest-projection">Reading VenueOps.</dd>
+          </div>
+        </dl>
+      </div>
+      <p id="reset-note" hidden></p>
+    </section>
+    <script src="cutaway.js"></script>
+  </body>
+</html>

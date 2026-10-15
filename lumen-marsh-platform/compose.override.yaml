@@ -44,4 +44,28 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
         VITE_AUTH_MODE: local
+        # Dev-only. Unset in compose.yaml, so that image keeps X-Frame-Options DENY.
+        CONSOLE_FRAME_ANCESTORS: "${CONSOLE_FRAME_ANCESTORS:-http://localhost:3090 http://127.0.0.1:3090}"
+
+  # Local booth. Not a park service and not part of compose.yaml.
+  cutaway:
+    build:
+      context: ./cutaway
+    image: ${CUTAWAY_IMAGE:-cutaway:local}
+    ports:
+      - "${CUTAWAY_HOST_PORT:-3090}:8080"
+    networks:
+      - public
+    depends_on:
+      venueops-console:
+        condition: service_healthy
+      lumen-marsh-app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+    restart: on-failure:5
 

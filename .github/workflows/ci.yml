@@ -184,6 +184,22 @@ jobs:
       - name: Validate version manifest
         run: test -f versions.yaml
 
+  cutaway:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lumen-marsh-platform/cutaway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: venueops-console/.nvmrc
+          cache: npm
+          cache-dependency-path: lumen-marsh-platform/cutaway/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+
   security:
     runs-on: ubuntu-latest
     steps:

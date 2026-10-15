@@ -20,8 +20,11 @@ Usage: ./scripts/dev-up.sh [--oidc] [--debug] [--foreground] [--no-build]
 Starts the integrated Lumen Marsh stack with Docker Compose.
 
   --oidc       Use the applied development Cognito user pool. Starts VenueOps,
-               Environmental Monitor, Park Flow Intelligence, the operator console, and guest app.
-               Reads the monitor client secret from AWS Secrets Manager.
+               Environmental Monitor, Park Flow Intelligence, Reliability Intelligence,
+               the operator console, and guest app. Does not start Cutaway.
+               Reads machine client secrets from AWS Secrets Manager.
+
+The default local stack also serves Cutaway at http://localhost:3090.
 EOF
 }
 

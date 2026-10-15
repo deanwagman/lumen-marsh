@@ -25,10 +25,18 @@ ENV VITE_OIDC_SCOPES=$VITE_OIDC_SCOPES
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+# Empty unless the local Compose override passes the Cutaway origin.
+# Production compose.yaml leaves this unset, so the DENY headers stay in place.
+ARG CONSOLE_FRAME_ANCESTORS=
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx.framed.conf /tmp/nginx.framed.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 USER root
-RUN printf 'ok\n' > /usr/share/nginx/html/health \
+RUN if [ -n "$CONSOLE_FRAME_ANCESTORS" ]; then \
+      sed "s|__CONSOLE_FRAME_ANCESTORS__|${CONSOLE_FRAME_ANCESTORS}|g" /tmp/nginx.framed.conf > /etc/nginx/conf.d/default.conf; \
+    fi \
+  && rm -f /tmp/nginx.framed.conf \
+  && printf 'ok\n' > /usr/share/nginx/html/health \
   && chown -R nginx:nginx /usr/share/nginx/html
 USER nginx
 EXPOSE 8080

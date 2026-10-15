@@ -84,10 +84,13 @@ Service URLs:
 | --- | --- |
 | Guest app | http://localhost:3000 |
 | Operator console | http://localhost:3001 |
+| Cutaway (local booth) | http://localhost:3090 |
 | VenueOps API | http://localhost:8080 |
 | Environmental Monitor | http://localhost:8000 |
 | Park Flow Intelligence | http://localhost:8100 |
 | Reliability Intelligence | http://localhost:8200 |
+
+Cutaway is the local booth: guest Today and Control Tower side by side, with producer triggers outside both frames. It is started by `./scripts/dev-up.sh` and is not part of `compose.yaml` or `./scripts/dev-up.sh --oidc`. See [docs/cutaway-demo.md](docs/cutaway-demo.md).
 
 Stop without deleting data:
 
@@ -178,6 +181,7 @@ Identity and access control docs:
 - [docs/storm-lifecycle-demo.md](docs/storm-lifecycle-demo.md)
 - [docs/maintenance-lifecycle-demo.md](docs/maintenance-lifecycle-demo.md)
 - [docs/flow-lifecycle-demo.md](docs/flow-lifecycle-demo.md)
+- [docs/cutaway-demo.md](docs/cutaway-demo.md)
 - [docs/security/public-deployment-gate.md](docs/security/public-deployment-gate.md)
 
 Public AWS demo remains blocked until the [public deployment gate](docs/security/public-deployment-gate.md) is signed off.
@@ -207,7 +211,7 @@ Design notes: [docs/aws-demo.md](docs/aws-demo.md).
 
 ## CI
 
-The root `.github/workflows/ci.yml` validates every application plus Compose config, OpenTofu formatting/validation, shell syntax, and the repository security scan on every pull request. `.github/workflows/lifecycle-proofs.yml` starts Compose and runs the storm, maintenance, and flow lifecycle scripts on `workflow_dispatch` and a nightly schedule. It is not attached to pull requests.
+The root `.github/workflows/ci.yml` validates every application plus Compose config, OpenTofu formatting/validation, shell syntax, the Cutaway page tests, and the repository security scan on every pull request. `.github/workflows/lifecycle-proofs.yml` starts Compose and runs the storm, maintenance, and flow lifecycle scripts on `workflow_dispatch` and a nightly schedule. It is not attached to pull requests.
 
 ## Portfolio demo (reviewer path)
 
@@ -215,7 +219,7 @@ Local:
 
 1. `cp .env.example .env` and set `NWS_USER_AGENT`
 2. `./scripts/dev-up.sh`
-3. Open Control Tower and guest app side by side
+3. Open [Cutaway](docs/cutaway-demo.md) at http://localhost:3090, or open Control Tower and the guest app side by side
 4. `./scripts/storm-lifecycle-acceptance.sh` or follow [docs/storm-lifecycle-demo.md](docs/storm-lifecycle-demo.md)
 5. Watch recommendation → incident → hold → advisory → clearance → recovery
 6. `./scripts/maintenance-lifecycle-acceptance.sh` or follow [docs/maintenance-lifecycle-demo.md](docs/maintenance-lifecycle-demo.md)
@@ -233,7 +237,8 @@ Hosted AWS demo is Phase 10–12 and is not provisioned by default.
 - Frontend API origins are build-time (`VITE_*` / `--dart-define`) until runtime config lands
 - Self-managed Postgres on the future EC2 demo lacks managed HA/PITR
 - Phase 13 managed AWS (Fargate/ALB/RDS) is optional and cost-sensitive
-- Stop native `bootRun` / `fastapi` / `npm run dev` before Compose if ports 8080/8000/8100/8200/3000/3001 are already taken
+- Stop native `bootRun` / `fastapi` / `npm run dev` before Compose if ports 8080/8000/8100/8200/3000/3001/3090 are already taken
+- Cutaway is a local booth in `compose.override.yaml` (port 3090). `compose.yaml` does not start it, and `./scripts/dev-up.sh --oidc` does not start it. The local console image allows that origin to frame Control Tower. Production `compose.yaml` headers stay deny.
 - Public AWS demo stays blocked until [docs/security/public-deployment-gate.md](docs/security/public-deployment-gate.md) is signed off
 
 ## Delivery status
