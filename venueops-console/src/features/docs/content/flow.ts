@@ -26,7 +26,7 @@ export const parkFlowArticle: DocArticle = {
       id: 'recommendations',
       title: 'Recommendation review',
       body: [
-        'Operators with flow.command can approve or dismiss pending recommendations. Dismissal and withdrawal require a reason.',
+        'Operators with flow.command can approve or dismiss pending recommendations. The dialog submits Approve or Dismiss. Dismissal and withdrawal require a reason.',
         'If another operator changes the record, the dialog stays open with the form values and submission is blocked until you close it and review the current state.',
       ],
     },
@@ -34,7 +34,7 @@ export const parkFlowArticle: DocArticle = {
       id: 'publication',
       title: 'Guest publication',
       body: [
-        'Publishing or withdrawing guest guidance requires ROLE_SUPERVISOR and venueops/flow.publish.',
+        'Publishing or withdrawing guest guidance requires ROLE_SUPERVISOR and venueops/flow.publish. The dialog submits Publish or Withdraw.',
         'Guests only see published guidance. Operator identities, incidents, work orders, and unpublished recommendations stay inside Control Tower.',
         'Best Next in the guest app must follow that published copy. If the message says an attraction is unavailable, it is not ranked as a good next choice even when posted wait still looks operating. Recommended destinations can still appear when they are operating.',
       ],

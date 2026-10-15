@@ -12,16 +12,17 @@ export const weatherArticle: DocArticle = {
       body: [
         'Weather recommendations appear on the Attractions overview. Each card shows recommended action, evidence, data age, and affected attractions.',
         'Active items need attention. Cleared or already-handled items remain for context.',
-        'Review requires the weather-recommendations.review scope. Without it, you can still read the inbox but cannot acknowledge or dismiss.',
+        'The inbox list is GET /api/v1/operator/weather/recommendations and requires venueops/weather-recommendations.review. Without that scope the list fails, so the Attractions inbox does not load. The dashboard can still show pending weather cards, because GET /api/v1/operator/dashboard requires only venueops/operator.read.',
       ],
     },
     {
       id: 'ack-dismiss',
       title: 'Acknowledge and dismiss',
       body: [
-        'Acknowledge when you have taken ownership of an active recommendation and are working the guidance.',
-        'Dismiss when the recommendation does not require further action. Dismiss records an operator reason for the trail.',
-        'Neither action places attractions on hold by itself—use attraction commands or an incident when operational state must change.',
+        'Acknowledge and Dismiss are on the inbox for a session with venueops/weather-recommendations.review. The same scope is what the API requires for those commands.',
+        'Acknowledge when you have taken ownership of an active recommendation and are working the guidance. The button does not ask for a reason.',
+        'Dismiss when the recommendation does not require further action. The button does not ask for a reason. It files the fixed reason Dismissed from Control Tower.',
+        'Neither action places attractions on hold by itself. Use attraction commands or an incident when operational state must change.',
       ],
     },
     {
