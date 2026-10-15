@@ -1,5 +1,7 @@
 const venueOpsUrl = "http://localhost:8080";
 const operatorToken = "local-development-token";
+const guestTodayUrl = "http://localhost:3000/today";
+const towerDashboardUrl = "http://localhost:3001/dashboard";
 const pollMs = 2000;
 const spentWaitMs = 8000;
 const resetNote =
@@ -10,8 +12,17 @@ const operatorHeaders = {
   Authorization: `Bearer ${operatorToken}`,
 };
 
+const cueSection = {
+  "lightning-hold": "weather-heading",
+  "cypress-vibration": "needs-attention-heading",
+  "mangrove-disruption": "needs-attention-heading",
+};
+
 let refreshToken = 0;
 let mangroveWatch = null;
+let cueFollow = null;
+const sending = new Set();
+let framesWereCovered = false;
 
 const text = (id, value) => {
   document.getElementById(id).textContent = value;
@@ -122,38 +133,120 @@ const setProjection = (value) => {
   else node.dataset.state = "unchanged";
 };
 
+const syncRail = () => {
+  const offline = document.body.classList.contains("is-offline");
+  document.querySelectorAll(".rail button").forEach((button) => {
+    button.disabled = offline || sending.has(button.id);
+  });
+};
+
+const navigateFrame = (frame, url) => {
+  try {
+    frame.contentWindow.location.href = url;
+    return;
+  } catch {
+    frame.src = url;
+  }
+};
+
+const showGuestToday = () => {
+  navigateFrame(document.getElementById("guest-frame"), guestTodayUrl);
+};
+
+const showTowerCard = (hash) => {
+  navigateFrame(document.getElementById("console-frame"), `${towerDashboardUrl}#${hash}`);
+};
+
+const remountFrames = () => {
+  const stamp = Date.now();
+  document.getElementById("guest-frame").src = `${guestTodayUrl}?booth=${stamp}`;
+  document.getElementById("console-frame").src = `${towerDashboardUrl}?booth=${stamp}`;
+};
+
+const setBoothOnline = (online) => {
+  const offline = !online;
+  if (framesWereCovered && online) remountFrames();
+  framesWereCovered = offline;
+  document.body.classList.toggle("is-offline", offline);
+  document.getElementById("booth-offline").hidden = online;
+  syncRail();
+};
+
+const renderOffline = () => {
+  text("last-recommendation", "VenueOps is offline.");
+  text("pending-weather", "Offline");
+  text("pending-reliability", "Offline");
+  text("unpublished-flow", "Offline");
+  text("guest-advisory", "Offline");
+  text("guest-best-next", "Offline");
+  setProjection("Offline");
+  setBoothOnline(false);
+};
+
 function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
   if (!dashboardResult.ok || !dashboardResult.body) {
-    text("last-recommendation", "Unread");
-    text("pending-weather", "Unread");
-    text("pending-reliability", "Unread");
-    text("unpublished-flow", "Unread");
-  } else {
-    const dashboard = dashboardResult.body;
-    const weather = dashboard.pendingWeatherRecommendations || [];
-    const reliability = attention(dashboard, "PENDING_RELIABILITY_RECOMMENDATION");
-    const flow = attention(dashboard, "UNPUBLISHED_FLOW_RECOMMENDATION");
-    const candidates = candidatesFrom(dashboard);
-    text(
-      "last-recommendation",
-      candidates.length ? `${newest(candidates).kind}: ${newest(candidates).text}` : "None",
-    );
-    text("pending-weather", lane(weather, (item) => item.recommendedAction));
-    text("pending-reliability", lane(reliability, (item) => item.subjectLabel || item.reason));
-    text("unpublished-flow", lane(flow, (item) => item.subjectLabel || item.reason));
+    renderOffline();
+    return null;
   }
+
+  setBoothOnline(true);
+  const dashboard = dashboardResult.body;
+  const weather = dashboard.pendingWeatherRecommendations || [];
+  const reliability = attention(dashboard, "PENDING_RELIABILITY_RECOMMENDATION");
+  const flow = attention(dashboard, "UNPUBLISHED_FLOW_RECOMMENDATION");
+  const candidates = candidatesFrom(dashboard);
+  text(
+    "last-recommendation",
+    candidates.length ? `${newest(candidates).kind}: ${newest(candidates).text}` : "None",
+  );
+  text("pending-weather", lane(weather, (item) => item.recommendedAction));
+  text("pending-reliability", lane(reliability, (item) => item.subjectLabel || item.reason));
+  text("unpublished-flow", lane(flow, (item) => item.subjectLabel || item.reason));
 
   if (!advisoryResult.ok || !guidanceResult.ok || !Array.isArray(advisoryResult.body) || !Array.isArray(guidanceResult.body)) {
     text("guest-advisory", "Unread");
     text("guest-best-next", "Unread");
     setProjection("Unread");
-    return dashboardResult.ok ? dashboardResult.body : null;
+    return dashboard;
   }
 
   text("guest-advisory", advisoryLine(advisoryResult.body));
   text("guest-best-next", bestNextLine(guidanceResult.body));
   setProjection(projectionLine(advisoryResult.body, guidanceResult.body));
-  return dashboardResult.body;
+  return dashboard;
+}
+
+const cardHash = (buttonId, dashboard) => {
+  if (buttonId === "lightning-hold") {
+    const item = newest(dashboard.pendingWeatherRecommendations || []);
+    if (item?.id) return `weather-card-${item.id}`;
+    return null;
+  }
+  const kind =
+    buttonId === "cypress-vibration"
+      ? "PENDING_RELIABILITY_RECOMMENDATION"
+      : "UNPUBLISHED_FLOW_RECOMMENDATION";
+  const item = newest(attention(dashboard, kind));
+  if (item?.subjectId) return `attention-card-${kind}-${item.subjectId}`;
+  return null;
+};
+
+function followCue(dashboard) {
+  if (!cueFollow || cueFollow.done) return;
+  if (!dashboard) {
+    cueFollow.done = true;
+    return;
+  }
+  const hash = cardHash(cueFollow.buttonId, dashboard);
+  if (hash) {
+    showTowerCard(hash);
+    cueFollow.done = true;
+    return;
+  }
+  if (Date.now() - cueFollow.startedAt >= spentWaitMs) {
+    showTowerCard(cueSection[cueFollow.buttonId]);
+    cueFollow.done = true;
+  }
 }
 
 const hideResetNote = () => {
@@ -210,11 +303,14 @@ async function refresh() {
   ]);
   if (token !== refreshToken) return;
   const dashboard = renderStrip(dashboardResult, advisoryResult, guidanceResult);
+  followCue(dashboard);
   await evaluateMangrove(token, dashboard);
 }
 
 async function fire(button) {
-  button.disabled = true;
+  if (button.disabled || sending.has(button.id)) return;
+  sending.add(button.id);
+  syncRail();
   setResult(button.id, "pending", "Sending");
   const result = await postScenario(button.dataset.url);
   setResult(button.id, result.ok ? "fired" : "failed", result.ok ? "Fired" : result.status ? `Failed (${result.status})` : "Failed");
@@ -227,7 +323,12 @@ async function fire(button) {
     };
     hideResetNote();
   }
-  button.disabled = false;
+  if (result.ok && cueSection[button.id]) {
+    cueFollow = { buttonId: button.id, startedAt: Date.now(), done: false };
+    showGuestToday();
+  }
+  sending.delete(button.id);
+  syncRail();
   await refresh();
 }
 

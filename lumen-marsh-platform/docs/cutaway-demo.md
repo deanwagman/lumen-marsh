@@ -41,10 +41,10 @@ Simulation has to be on. `compose.override.yaml` already enables it for local de
 
 | Rail button | Call | What should appear before anyone clicks in the tower |
 | --- | --- | --- |
-| Lightning hold | `POST http://localhost:8000/api/v1/simulation/scenarios/hold-conditions` | Pending weather on the strip and in Control Tower. Guest advisory stays quiet. |
-| Clear the storm | `POST http://localhost:8000/api/v1/simulation/scenarios/clearance-period` | The monitor moves to the clearance scenario. Recovery commands still happen in Control Tower. |
-| Cypress Coil vibration | `POST http://localhost:8200/simulation/scenarios/cypress-coil-vibration` | Pending reliability on the strip and in Control Tower. The guest app stays quiet. |
-| Mangrove disruption | `POST http://localhost:8100/simulation/scenarios/mangrove-disruption` | Unpublished flow on the strip and in Control Tower. Best Next does not treat Mangrove as down. |
+| Lightning hold | `POST http://localhost:8000/api/v1/simulation/scenarios/hold-conditions` | Pending weather on the strip. Control Tower scrolls the matching weather card into view. The guest frame stays on Today, and the advisory stays quiet. |
+| Clear the storm | `POST http://localhost:8000/api/v1/simulation/scenarios/clearance-period` | The monitor moves to the clearance scenario. The frames stay where they are. Recovery commands still happen in Control Tower. |
+| Cypress Coil vibration | `POST http://localhost:8200/simulation/scenarios/cypress-coil-vibration` | Pending reliability on the strip. Control Tower scrolls that attention card into view. The guest frame stays on Today and stays quiet. |
+| Mangrove disruption | `POST http://localhost:8100/simulation/scenarios/mangrove-disruption` | Unpublished flow on the strip. Control Tower scrolls that attention card into view. The guest frame stays on Today. Best Next does not treat Mangrove as down. |
 
 ## What you still click
 
@@ -65,6 +65,10 @@ Until a supervisor publishes:
 
 The strip is that split. Operator rows come from `GET /api/v1/operator/dashboard`. Guest rows come from `GET /api/v1/advisories` and `GET /api/v1/flow/recommendations`. A pending card with a quiet guest row means the publish has not happened.
 
+The Control Tower frame is wide enough for the workstation layout, so it does not use the narrow “compacted for a narrower display” arrangement. The dashboard attention queue stays in that frame. Lightning, vibration, and mangrove disruption move the matching card into view. Clear the storm does not move either frame.
+
+If VenueOps cannot be read, Cutaway covers both rooms with one offline state and disables the rail until the dashboard can be read again. The guest app and Control Tower do not each show their own error.
+
 ## Spent mangrove
 
 Mangrove disruption reuses one recommendation id. After that id is dismissed, published, or otherwise no longer a new pending review, another click will not open a new unpublished card.
@@ -80,8 +84,9 @@ The strip then shows a reset note. It is not a button. From `lumen-marsh-platfor
 
 On a stack started with `./scripts/dev-up.sh`:
 
-- Cutaway shows Today and Control Tower together. The console frame is not blank.
-- Lightning shows a pending weather recommendation in Control Tower without a reload. Today gains an advisory only after someone publishes one in the tower.
-- Vibration does the same for the reliability row.
+- Cutaway shows Today and Control Tower together. The console frame is not blank, and it is wide enough that the workstation layout and the attention queue stay on screen.
+- Lightning shows a pending weather recommendation in Control Tower and brings that card into view. The guest frame stays on Today. Today gains an advisory only after someone publishes one in the tower.
+- Vibration does the same for the reliability card.
 - Mangrove disruption does the same for unpublished flow. Best Next does not treat Mangrove as down until that guidance is published.
+- If VenueOps is down, one offline state covers both rooms and the rail stays disabled until the stack is healthy.
 - A spent mangrove id shows the reset note and does not reset the databases by itself.

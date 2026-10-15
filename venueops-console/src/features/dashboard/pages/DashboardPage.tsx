@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/auth/AuthContext';
 import { useAttractionStreamHealth } from '@/features/attractions/hooks/useAttractionStream';
@@ -56,7 +56,17 @@ export default function DashboardPage() {
   const attractions = useAttractions();
   const now = useParkClock();
   const [handoffOpen, setHandoffOpen] = useState(false);
+  const location = useLocation();
+  const revealedCard = useRef<string | null>(null);
   const snapshot = dashboard.data;
+  useEffect(() => {
+    const id = decodeURIComponent(location.hash.replace(/^#/, ''));
+    if (!id || !snapshot || revealedCard.current === id) return;
+    const card = document.getElementById(id);
+    if (!card) return;
+    card.scrollIntoView({ block: 'center', inline: 'nearest' });
+    revealedCard.current = id;
+  }, [location.hash, snapshot]);
   const names = new Map((attractions.data ?? []).map((attraction) => [attraction.id, attraction.name]));
   const announcement = useImportantChangeAnnouncement(snapshot);
   const showUnavailable = dashboard.isError && !snapshot;
@@ -265,7 +275,7 @@ function NeedsAttention({ items }: { items: OperatorDashboard['needsAttention'] 
       ) : (
         <ol className={styles.attentionList}>
           {items.map((item) => (
-            <li key={`${item.kind}-${item.subjectId}`}>
+            <li key={`${item.kind}-${item.subjectId}`} id={`attention-card-${item.kind}-${item.subjectId}`}>
               <Link className={styles.attentionItem} to={item.href}>
                 <span className={styles.attentionIdentity}>
                   <StatusBadge tone={attentionTone[item.kind]} label={attentionKindLabels[item.kind]} />
@@ -382,7 +392,7 @@ function WeatherRecommendations({
       ) : (
         <ul className={styles.cardList}>
           {items.map((item) => (
-            <li key={item.id}>
+            <li key={item.id} id={`weather-card-${item.id}`}>
               <Link className={styles.cardLink} to="/attractions#weather-recommendations-heading">
                 <span className={styles.badgeRow}>
                   <StatusBadge tone={weatherSeverityTone(item.severity)} label={formatLabel(item.severity)} />

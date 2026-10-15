@@ -27,6 +27,7 @@
             type="button"
             id="lightning-hold"
             data-url="http://localhost:8000/api/v1/simulation/scenarios/hold-conditions"
+            disabled
           >
             Lightning hold
           </button>
@@ -37,6 +38,7 @@
             type="button"
             id="clear-storm"
             data-url="http://localhost:8000/api/v1/simulation/scenarios/clearance-period"
+            disabled
           >
             Clear the storm
           </button>
@@ -47,6 +49,7 @@
             type="button"
             id="cypress-vibration"
             data-url="http://localhost:8200/simulation/scenarios/cypress-coil-vibration"
+            disabled
           >
             Cypress Coil vibration
           </button>
@@ -58,6 +61,7 @@
             id="mangrove-disruption"
             data-url="http://localhost:8100/simulation/scenarios/mangrove-disruption"
             data-watch="mangrove"
+            disabled
           >
             Mangrove disruption
           </button>
@@ -65,6 +69,15 @@
         </div>
       </aside>
       <div class="rooms">
+        <div id="booth-offline" class="booth-offline" hidden role="status">
+          <div>
+            <h2>Cutaway is offline</h2>
+            <p>
+              VenueOps is not reachable, so both rooms stay covered. The rail stays off until the stack is
+              healthy.
+            </p>
+          </div>
+        </div>
         <figure class="room">
           <figcaption>Guest</figcaption>
           <iframe id="guest-frame" title="Guest app, Today" src="http://localhost:3000/today"></iframe>

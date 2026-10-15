@@ -66,7 +66,17 @@ async function installBooth(page: Page, state: BoothState) {
     route.fulfill({
       status: 200,
       contentType: "text/html",
-      body: "<!doctype html><html><body><h1>Operations dashboard</h1></body></html>",
+      body: `<!doctype html><html><head><style>
+        html, body { margin: 0; }
+        .notice { display: none; }
+        @media (max-width: 52.5rem) { .notice { display: block; } }
+        .above { height: 40rem; }
+      </style></head><body>
+        <h1>Operations dashboard</h1>
+        <p class="notice">Designed for operator workstations. This layout is compacted for a narrower display.</p>
+        <div class="above"></div>
+        <section id="needs-attention"><h2>Needs attention</h2></section>
+      </body></html>`,
     }),
   );
 
@@ -139,6 +149,9 @@ test.beforeEach(async ({ page }) => {
 
 const booth = (page: Page) => (page as Page & { booth: BoothState }).booth;
 
+const frameUrl = (page: Page, port: string) =>
+  page.frames().find((frame) => frame.url().includes(`:${port}`))?.url() ?? "";
+
 test("shell shows both frames, the rail, and the strip", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Cutaway" })).toBeVisible();
   const rail = page.getByRole("complementary", { name: "Producer triggers" });
@@ -158,7 +171,9 @@ test("shell shows both frames, the rail, and the strip", async ({ page }) => {
     page.frameLocator("#console-frame").getByRole("heading", { name: "Operations dashboard" }),
   ).toBeVisible();
 
+  await expect(page.getByRole("button", { name: "Lightning hold" })).toBeEnabled();
   await expect(page.getByRole("region", { name: "VenueOps projection" })).toBeVisible();
+  await expect(page.locator("#booth-offline")).toBeHidden();
   for (const name of ["Place weather hold", "Accept", "Dismiss", "Publish", "Confirm command"]) {
     await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
   }
@@ -301,14 +316,135 @@ test("a failed simulation call shows failed", async ({ page }) => {
   expect(state.calls[0]?.body).toBe("{}");
 });
 
-test("an unread VenueOps snapshot is not described as quiet", async ({ page }) => {
+test("an unread guest payload is not described as quiet", async ({ page }) => {
+  const state = booth(page);
+  state.advisories = null;
+  state.guidance = null;
+
+  await page.getByRole("button", { name: "Lightning hold" }).click();
+  await expect(page.locator("#guest-advisory")).toHaveText("Unread");
+  await expect(page.locator("#guest-projection")).toHaveText("Unread");
+  await expect(page.locator("#booth-offline")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Lightning hold" })).toBeEnabled();
+});
+
+test("producer cues reveal the matching tower card and keep Today", async ({ page }) => {
+  const state = booth(page);
+  const guest = page.locator("#guest-frame");
+
+  await guest.evaluate((frame: HTMLIFrameElement) => {
+    frame.src = "http://localhost:3000/field-guide";
+  });
+  await expect.poll(() => frameUrl(page, "3000")).toContain("/field-guide");
+  state.dashboard = {
+    pendingWeatherRecommendations: [
+      { id: "wx-1", recommendedAction: "Hold outdoor attractions", updatedAt: "2026-10-15T18:00:00Z" },
+    ],
+    needsAttention: [],
+  };
+  await page.getByRole("button", { name: "Lightning hold" }).click();
+  await expect.poll(() => frameUrl(page, "3000")).toBe("http://localhost:3000/today");
+  await expect.poll(() => frameUrl(page, "3001")).toBe("http://localhost:3001/dashboard#weather-card-wx-1");
+  await expect(page.locator("#guest-advisory")).toHaveText("Quiet");
+  await expect(page.locator("#guest-projection")).toHaveText("Unchanged");
+
+  await guest.evaluate((frame: HTMLIFrameElement) => {
+    frame.src = "http://localhost:3000/attractions";
+  });
+  await expect.poll(() => frameUrl(page, "3000")).toContain("/attractions");
+  state.dashboard = {
+    pendingWeatherRecommendations: [],
+    needsAttention: [
+      {
+        kind: "PENDING_RELIABILITY_RECOMMENDATION",
+        subjectId: "rec-vib",
+        subjectLabel: "Vibration",
+        updatedAt: "2026-10-15T18:05:00Z",
+      },
+    ],
+  };
+  await page.getByRole("button", { name: "Cypress Coil vibration" }).click();
+  await expect.poll(() => frameUrl(page, "3000")).toBe("http://localhost:3000/today");
+  await expect
+    .poll(() => frameUrl(page, "3001"))
+    .toBe("http://localhost:3001/dashboard#attention-card-PENDING_RELIABILITY_RECOMMENDATION-rec-vib");
+  await expect(page.locator("#guest-projection")).toHaveText("Unchanged");
+
+  await guest.evaluate((frame: HTMLIFrameElement) => {
+    frame.src = "http://localhost:3000/inbox";
+  });
+  await expect.poll(() => frameUrl(page, "3000")).toContain("/inbox");
+  state.recommendationStatus = "PENDING_REVIEW";
+  state.dashboard = {
+    pendingWeatherRecommendations: [],
+    needsAttention: [
+      {
+        kind: "UNPUBLISHED_FLOW_RECOMMENDATION",
+        subjectId: "rec-mangrove",
+        subjectLabel: "Mangrove Run boarding is down",
+        updatedAt: "2026-10-15T18:06:00Z",
+      },
+    ],
+  };
+  await page.getByRole("button", { name: "Mangrove disruption" }).click();
+  await expect.poll(() => frameUrl(page, "3000")).toBe("http://localhost:3000/today");
+  await expect
+    .poll(() => frameUrl(page, "3001"))
+    .toBe("http://localhost:3001/dashboard#attention-card-UNPUBLISHED_FLOW_RECOMMENDATION-rec-mangrove");
+  await expect(page.locator("#guest-best-next")).toHaveText("Quiet");
+  await expect(page.locator("#guest-projection")).toHaveText("Unchanged");
+});
+
+test("clear the storm leaves both frames where they are", async ({ page }) => {
+  const guest = frameUrl(page, "3000");
+  const tower = frameUrl(page, "3001");
+  await page.getByRole("button", { name: "Clear the storm" }).click();
+  await expect(page.locator("[data-result='clear-storm']")).toHaveText("Fired");
+  expect(frameUrl(page, "3000")).toBe(guest);
+  expect(frameUrl(page, "3001")).toBe(tower);
+});
+
+test("control tower is wide enough to leave the compact layout", async ({ page }) => {
+  await page.setViewportSize({ width: 2100, height: 1400 });
+  const box = await page.locator("#console-frame").boundingBox();
+  expect(box?.width).toBeGreaterThan(72 * 16);
+  const tower = page.frameLocator("#console-frame");
+  await expect(tower.getByText("compacted for a narrower display")).toBeHidden();
+  await expect(tower.locator("#needs-attention")).toBeInViewport();
+});
+
+test("a down VenueOps stack covers both rooms and disables the rail", async ({ page }) => {
   const state = booth(page);
   state.dashboard = null;
   state.advisories = null;
   state.guidance = null;
 
   await page.getByRole("button", { name: "Lightning hold" }).click();
-  await expect(page.locator("#pending-weather")).toHaveText("Unread");
-  await expect(page.locator("#guest-advisory")).toHaveText("Unread");
-  await expect(page.locator("#guest-projection")).toHaveText("Unread");
+  await expect(page.locator("#booth-offline")).toBeVisible();
+  await expect(page.locator("#booth-offline")).toContainText("both rooms stay covered");
+  await expect(page.locator("#last-recommendation")).toHaveText("VenueOps is offline.");
+  await expect(page.locator("#guest-projection")).toHaveText("Offline");
+  await expect(page.locator("#guest-advisory")).not.toHaveText("Quiet");
+  for (const name of ["Lightning hold", "Clear the storm", "Cypress Coil vibration", "Mangrove disruption"]) {
+    await expect(page.getByRole("button", { name })).toBeDisabled();
+  }
+  await expect(page.frameLocator("#guest-frame").getByRole("heading", { name: "Today" })).toBeHidden();
+  await expect(
+    page.frameLocator("#console-frame").getByRole("heading", { name: "Operations dashboard" }),
+  ).toBeHidden();
+
+  const calls = state.calls.length;
+  await page.getByRole("button", { name: "Clear the storm" }).click({ force: true });
+  expect(state.calls.length).toBe(calls);
+
+  state.dashboard = emptyDashboard();
+  state.advisories = [];
+  state.guidance = [];
+  await expect(page.locator("#booth-offline")).toBeHidden({ timeout: 6000 });
+  await expect(page.getByRole("button", { name: "Lightning hold" })).toBeEnabled();
+  await expect(page.frameLocator("#guest-frame").getByRole("heading", { name: "Today" })).toBeVisible();
+  await expect(
+    page.frameLocator("#console-frame").getByRole("heading", { name: "Operations dashboard" }),
+  ).toBeVisible();
+  await expect(page.locator("#guest-projection")).toHaveText("Unchanged");
 });
