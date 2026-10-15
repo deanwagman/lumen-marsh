@@ -152,9 +152,44 @@ const booth = (page: Page) => (page as Page & { booth: BoothState }).booth;
 const frameUrl = (page: Page, port: string) =>
   page.frames().find((frame) => frame.url().includes(`:${port}`))?.url() ?? "";
 
+test("docs view covers how to use the booth", async ({ page }) => {
+  await page.getByRole("link", { name: "Docs" }).click();
+  await expect(page).toHaveURL(/\/docs\.html$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Using Cutaway" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "On this page" })).toBeVisible();
+
+  const guide = page.locator(".guide-article");
+  for (const name of [
+    "What Cutaway is",
+    "How to open it",
+    "What each rail button does",
+    "What the operator still clicks",
+    "What the guest must not see until publish",
+  ]) {
+    await expect(guide.getByRole("heading", { level: 2, name })).toBeVisible();
+  }
+
+  await expect(page.locator("#rail-buttons")).toContainText("hold-conditions");
+  await expect(page.locator("#rail-buttons")).toContainText("clearance-period");
+  await expect(page.locator("#rail-buttons")).toContainText("cypress-coil-vibration");
+  await expect(page.locator("#rail-buttons")).toContainText("mangrove-disruption");
+  await expect(page.locator("#guest-must-not-see")).toContainText("Until a supervisor publishes");
+  await expect(page.locator("#operator-clicks")).toContainText("Control Tower");
+  for (const name of ["Place weather hold", "Accept", "Dismiss", "Publish", "Confirm command"]) {
+    await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
+  }
+
+  await page.getByRole("link", { name: "Cutaway", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Cutaway", exact: true })).toBeVisible();
+  await expect(page.locator("#guest-frame")).toBeVisible();
+});
+
 test("shell shows both frames, the rail, and the strip", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Cutaway" })).toBeVisible();
   const rail = page.getByRole("complementary", { name: "Producer triggers" });
+  await expect(page.getByRole("link", { name: "Docs" })).toBeVisible();
+  await expect(rail.getByRole("link", { name: "Docs" })).toHaveCount(0);
   await expect(rail).toBeVisible();
   await expect(rail.locator("iframe")).toHaveCount(0);
   await expect(rail.getByRole("button")).toHaveCount(4);
