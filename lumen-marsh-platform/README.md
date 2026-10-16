@@ -90,7 +90,7 @@ Service URLs:
 | Park Flow Intelligence | http://localhost:8100 |
 | Reliability Intelligence | http://localhost:8200 |
 
-Cutaway is the local booth: guest Today and Control Tower side by side, with producer triggers outside both frames. It is started by `./scripts/dev-up.sh` and is not part of `compose.yaml` or `./scripts/dev-up.sh --oidc`. See [docs/cutaway-demo.md](docs/cutaway-demo.md).
+Cutaway is the local booth: guest Today and Control Tower side by side, with producer triggers outside both frames. It is started by `./scripts/dev-up.sh` and is not part of `compose.yaml` or `./scripts/dev-up.sh --oidc`. Guide: http://localhost:3090/docs.html.
 
 Stop without deleting data:
 
@@ -181,7 +181,7 @@ Identity and access control docs:
 - [docs/storm-lifecycle-demo.md](docs/storm-lifecycle-demo.md)
 - [docs/maintenance-lifecycle-demo.md](docs/maintenance-lifecycle-demo.md)
 - [docs/flow-lifecycle-demo.md](docs/flow-lifecycle-demo.md)
-- [docs/cutaway-demo.md](docs/cutaway-demo.md)
+- Cutaway guide: http://localhost:3090/docs.html
 - [docs/security/public-deployment-gate.md](docs/security/public-deployment-gate.md)
 
 Public AWS demo remains blocked until the [public deployment gate](docs/security/public-deployment-gate.md) is signed off.
@@ -219,7 +219,7 @@ Local:
 
 1. `cp .env.example .env` and set `NWS_USER_AGENT`
 2. `./scripts/dev-up.sh`
-3. Open [Cutaway](docs/cutaway-demo.md) at http://localhost:3090, or open Control Tower and the guest app side by side
+3. Open http://localhost:3090 (guide: http://localhost:3090/docs.html), or open Control Tower and the guest app side by side
 4. `./scripts/storm-lifecycle-acceptance.sh` or follow [docs/storm-lifecycle-demo.md](docs/storm-lifecycle-demo.md)
 5. Watch recommendation → incident → hold → advisory → clearance → recovery
 6. `./scripts/maintenance-lifecycle-acceptance.sh` or follow [docs/maintenance-lifecycle-demo.md](docs/maintenance-lifecycle-demo.md)
