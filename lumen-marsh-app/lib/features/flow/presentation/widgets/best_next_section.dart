@@ -20,11 +20,13 @@ class BestNextSection extends StatefulWidget {
     required this.catalog,
     required this.favoriteIds,
     required this.onAttractionPressed,
+    this.guideLink,
   });
 
   final List<AttractionSummary> catalog;
   final Set<String> favoriteIds;
   final void Function(String attractionId) onAttractionPressed;
+  final Widget? guideLink;
 
   @override
   State<BestNextSection> createState() => _BestNextSectionState();
@@ -77,6 +79,7 @@ class _BestNextSectionState extends State<BestNextSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (widget.guideLink != null) widget.guideLink!,
                 Text(
                   'Choose where you are now. Suggestions use posted waits, a 30-minute outlook, and published park guidance.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -132,8 +135,7 @@ class _BestNextSectionState extends State<BestNextSection> {
                   const SizedBox(height: LumenSpacing.md),
                   const LumenNoticeBanner(
                     tone: LumenTone.informational,
-                    message:
-                        'No suggested experiences match published park guidance right now.',
+                    message: 'No suggested experiences match published park guidance right now.',
                   ),
                 ],
               ],
