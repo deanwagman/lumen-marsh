@@ -11,7 +11,7 @@ export const dashboardArticle: DocArticle = {
       title: 'Landing page',
       body: [
         'After sign-in, the console opens on the operations dashboard. It is read-only. Commands still happen in Attractions, Incidents, Maintenance, Park Flow, and the weather review inbox.',
-        'Use Needs attention first, then open the linked workspace for the item you will work. Pending reliability recommendations, open P1 work orders, and unpublished flow recommendations appear in that queue alongside weather and incidents.',
+        'Use Needs attention first. Pending weather, pending reliability, and unpublished flow open the matching step in the shift guide. Incidents, weather holds, open P1 work orders, and other rows open the workspace for the item you will work.',
         'Pending weather cards on this page come from the dashboard snapshot and need venueops/operator.read. The Attractions weather inbox is a separate list and needs venueops/weather-recommendations.review.',
       ],
     },

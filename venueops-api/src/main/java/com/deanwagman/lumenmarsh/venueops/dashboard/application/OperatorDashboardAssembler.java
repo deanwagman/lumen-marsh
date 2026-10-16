@@ -50,6 +50,11 @@ public final class OperatorDashboardAssembler {
     public static final int RECENT_ACTIVITY_LIMIT = 20;
     public static final Duration STALE_AFTER = Duration.ofMinutes(5);
 
+    /** Control Tower shift guide. Keep aligned with the console article anchors. */
+    static final String SHIFT_PENDING_WEATHER = "/docs/shift#pending-weather";
+    static final String SHIFT_PENDING_RELIABILITY = "/docs/shift#pending-reliability";
+    static final String SHIFT_UNPUBLISHED_FLOW = "/docs/shift#unpublished-flow";
+
     private OperatorDashboardAssembler() {
     }
 
@@ -240,7 +245,7 @@ public final class OperatorDashboardAssembler {
                 items.add(attention(
                         DashboardAttentionKind.WEATHER_HAZARD,
                         "Pending warning-level weather recommendation: " + recommendation.recommendedAction(),
-                        "/attractions",
+                        SHIFT_PENDING_WEATHER,
                         recommendation.id().value(),
                         recommendation.summary(),
                         recommendation.updatedAt()
@@ -251,7 +256,7 @@ public final class OperatorDashboardAssembler {
             items.add(attention(
                     DashboardAttentionKind.PENDING_RELIABILITY_RECOMMENDATION,
                     "Pending reliability recommendation: " + recommendation.recommendedAction(),
-                    "/maintenance",
+                    SHIFT_PENDING_RELIABILITY,
                     recommendation.id().toString(),
                     signalLabel(recommendation.signalType()),
                     recommendation.updatedAt()
@@ -292,7 +297,7 @@ public final class OperatorDashboardAssembler {
             items.add(attention(
                     DashboardAttentionKind.UNPUBLISHED_FLOW_RECOMMENDATION,
                     "Unpublished flow recommendation: " + recommendation.summary(),
-                    "/park-flow",
+                    SHIFT_UNPUBLISHED_FLOW,
                     recommendation.id().value(),
                     recommendation.summary(),
                     recommendation.updatedAt()

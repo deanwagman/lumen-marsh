@@ -59,7 +59,7 @@ describe('Operations dashboard', () => {
     expect(document.getElementById('attention-card-UNPUBLISHED_FLOW_RECOMMENDATION-flow-rec-1')).not.toBeNull();
   });
 
-  it('orders needs-attention items and links each to a workspace', async () => {
+  it('orders needs-attention items and opens shift-guide steps for pending rows', async () => {
     renderDashboard();
 
     const region = await screen.findByRole('region', { name: 'Needs attention' });
@@ -67,15 +67,33 @@ describe('Operations dashboard', () => {
     expect(items.map((item) => item.getAttribute('href'))).toEqual([
       '/incidents/inc-critical-1',
       '/incidents/inc-lightning-1',
-      '/attractions',
-      '/maintenance',
+      '/docs/shift#pending-weather',
+      '/docs/shift#pending-reliability',
       '/attractions/cypress-coil',
       '/maintenance/work-orders/6dbb04f2-b20d-4b16-ae57-43072fc2e408',
-      '/park-flow',
+      '/docs/shift#unpublished-flow',
       '/incidents/inc-queue-1?assignment=unassigned',
     ]);
     expect(within(region).getByText(/critical incident is open/i)).toBeInTheDocument();
     expect(within(region).getByText(/cypress coil is on weather hold/i)).toBeInTheDocument();
+  });
+
+  it('opens the matching shift-guide step from a needs-attention row', async () => {
+    const user = userEvent.setup();
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    renderDashboard();
+
+    const region = await screen.findByRole('region', { name: 'Needs attention' });
+    await user.click(within(region).getByRole('link', { name: /pending reliability recommendation/i }));
+
+    expect(await screen.findByRole('heading', { name: 'Shift guide', level: 1 })).toBeInTheDocument();
+    const step = document.getElementById('pending-reliability') as HTMLElement;
+    expect(within(step).getByRole('heading', { name: 'Pending reliability' })).toBeInTheDocument();
+    expect(within(step).getByText(/next click in control tower: open maintenance/i)).toBeInTheDocument();
+    expect(within(step).getByText(/guests must not see the asset code/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Accept recommendation' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Place weather hold' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
   });
 
   it('navigates summary metrics to filtered workspaces', async () => {

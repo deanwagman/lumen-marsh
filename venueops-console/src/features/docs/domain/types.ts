@@ -2,6 +2,7 @@ import type { OperatorRole } from '@/auth/session';
 
 export type DocCategory =
   | 'overview'
+  | 'shift'
   | 'attractions'
   | 'incidents'
   | 'weather'

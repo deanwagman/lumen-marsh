@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -45,6 +45,11 @@ describe('docs pages', () => {
         name: /maintenance.*reliability recommendations/i,
       }),
     ).toHaveAttribute('href', '/docs/maintenance');
+    expect(
+      screen.getByRole('link', {
+        name: /shift guide.*pending weather, pending reliability, or unpublished flow/i,
+      }),
+    ).toHaveAttribute('href', '/docs/shift');
     expect(screen.getByRole('navigation', { name: 'Console' })).toContainElement(
       screen.getByRole('link', { name: 'Docs' }),
     );
@@ -61,6 +66,32 @@ describe('docs pages', () => {
     expect(
       screen.getByRole('link', { name: 'Attraction commands' }),
     ).toHaveAttribute('href', '/docs/attractions#commands');
+  });
+
+  it('renders shift-guide steps without performing hold, accept, or publish', async () => {
+    renderApp({ initialEntries: ['/docs/shift'], session: operatorSession });
+
+    expect(await screen.findByRole('heading', { name: 'Shift guide', level: 1 })).toBeInTheDocument();
+
+    const weather = document.getElementById('pending-weather') as HTMLElement;
+    const reliability = document.getElementById('pending-reliability') as HTMLElement;
+    const flow = document.getElementById('unpublished-flow') as HTMLElement;
+
+    expect(within(weather).getByText(/next click in control tower: open attractions/i)).toBeInTheDocument();
+    expect(within(weather).getByText(/place weather hold/i)).toBeInTheDocument();
+    expect(within(weather).getByText(/guests must not see the weather recommendation/i)).toBeInTheDocument();
+
+    expect(within(reliability).getByText(/next click in control tower: open maintenance/i)).toBeInTheDocument();
+    expect(within(reliability).getByText(/accept recommendation/i)).toBeInTheDocument();
+    expect(within(reliability).getByText(/guests must not see the asset code/i)).toBeInTheDocument();
+
+    expect(within(flow).getByText(/next click in control tower: open park flow/i)).toBeInTheDocument();
+    expect(within(flow).getByText(/confirms publish/i)).toBeInTheDocument();
+    expect(within(flow).getByText(/guests must not see the operator explanation/i)).toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: 'Place weather hold' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Accept recommendation' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
   });
 
   it('renders the maintenance guide', async () => {

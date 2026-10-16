@@ -78,7 +78,7 @@ class OperatorDashboardControllerTest {
             if ("PENDING_RELIABILITY_RECOMMENDATION".equals(item.path("kind").asText())
                     && "b7e2c1a0-4c11-4c11-8c11-27679ca40303".equals(item.path("subjectId").asText())) {
                 found = true;
-                assertThat(item.path("href").asText()).isEqualTo("/maintenance");
+                assertThat(item.path("href").asText()).isEqualTo("/docs/shift#pending-reliability");
                 assertThat(item.path("subjectLabel").asText()).isEqualTo("Vibration");
                 assertThat(item.toString()).doesNotContain("CC-TRAIN-01-WHEEL-A");
                 assertThat(item.toString()).doesNotContain("workOrderNumber");

@@ -66,7 +66,7 @@ export const stormDashboard: OperatorDashboard = {
     {
       kind: 'WEATHER_HAZARD',
       reason: 'Pending warning-level weather recommendation: Place outdoor attractions on weather hold',
-      href: '/attractions',
+      href: '/docs/shift#pending-weather',
       subjectId: 'rec-lightning-1',
       subjectLabel: 'Lightning hold for outdoor attractions',
       updatedAt: '2026-09-10T20:28:00Z',
@@ -75,7 +75,7 @@ export const stormDashboard: OperatorDashboard = {
       kind: 'PENDING_RELIABILITY_RECOMMENDATION',
       reason:
         'Pending reliability recommendation: Inspect the wheel assembly and consider reduced-capacity operation.',
-      href: '/maintenance',
+      href: '/docs/shift#pending-reliability',
       subjectId: 'b7e2c1a0-4c11-4c11-8c11-27679ca40303',
       subjectLabel: 'Vibration',
       updatedAt: '2026-09-10T20:28:40Z',
@@ -99,7 +99,7 @@ export const stormDashboard: OperatorDashboard = {
     {
       kind: 'UNPUBLISHED_FLOW_RECOMMENDATION',
       reason: 'Unpublished flow recommendation: Redistribute from Mangrove Run',
-      href: '/park-flow',
+      href: '/docs/shift#unpublished-flow',
       subjectId: 'flow-rec-1',
       subjectLabel: 'Redistribute from Mangrove Run',
       updatedAt: '2026-09-10T20:28:10Z',
