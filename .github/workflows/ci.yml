@@ -132,6 +132,13 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      - name: Upload golden failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guest-app-golden-failures
+          path: lumen-marsh-app/test/design_system/failures
+          if-no-files-found: ignore
       - run: flutter build web --release
 
   platform:
