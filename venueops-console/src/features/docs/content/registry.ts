@@ -5,12 +5,14 @@ import { parkFlowArticle } from '@/features/docs/content/flow';
 import { gettingStartedArticle } from '@/features/docs/content/getting-started';
 import { incidentsArticle } from '@/features/docs/content/incidents';
 import { maintenanceArticle } from '@/features/docs/content/maintenance';
+import { shiftGuideArticle } from '@/features/docs/content/shift';
 import { weatherArticle } from '@/features/docs/content/weather';
 import type { DocArticle, DocSection } from '@/features/docs/domain/types';
 
 const articles: DocArticle[] = [
   gettingStartedArticle,
   dashboardArticle,
+  shiftGuideArticle,
   attractionsArticle,
   incidentsArticle,
   weatherArticle,

@@ -11,6 +11,7 @@ describe('docs registry', () => {
     expect(listArticles().map((article) => article.slug)).toEqual([
       'getting-started',
       'dashboard',
+      'shift',
       'attractions',
       'incidents',
       'weather',
@@ -54,7 +55,12 @@ describe('docs registry', () => {
   });
 
   it('includes all articles for both roles in the starter set', () => {
-    expect(listArticles({ role: 'operator' })).toHaveLength(7);
-    expect(listArticles({ role: 'supervisor' })).toHaveLength(7);
+    expect(listArticles({ role: 'operator' })).toHaveLength(8);
+    expect(listArticles({ role: 'supervisor' })).toHaveLength(8);
+    expect(getArticle('shift', { role: 'operator' })?.sections.map((section) => section.id)).toEqual([
+      'pending-weather',
+      'pending-reliability',
+      'unpublished-flow',
+    ]);
   });
 });

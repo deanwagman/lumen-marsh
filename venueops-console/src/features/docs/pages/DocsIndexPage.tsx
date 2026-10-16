@@ -7,6 +7,7 @@ import styles from './DocsPages.module.css';
 
 const categoryLabels: Record<string, string> = {
   overview: 'Overview',
+  shift: 'Shift',
   attractions: 'Attractions',
   incidents: 'Incidents',
   weather: 'Weather',

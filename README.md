@@ -89,7 +89,7 @@ The storm scenario follows weather observation → recommendation → operator r
 
 Control Tower is where humans review recommendations, issue versioned commands, and publish guest copy. The Flutter app is the guest companion: live attractions, advisories, rounded waits, and Best Next from **published** park-flow guidance. Guests never see `internalDescription`, actor names, work-order numbers, unpublished recommendations, or weather-inbox events.
 
-Operator product procedures live in the console **Docs** section (`/docs`), next to the workspaces they describe. Do not keep a second parallel manual.
+Operator product procedures live in the console **Docs** section (`/docs`), next to the workspaces they describe. Do not keep a second parallel manual. Needs attention rows for pending weather, pending reliability, and unpublished flow open the matching step in the shift guide (`/docs/shift`).
 
 Stop the stack without deleting its databases:
 

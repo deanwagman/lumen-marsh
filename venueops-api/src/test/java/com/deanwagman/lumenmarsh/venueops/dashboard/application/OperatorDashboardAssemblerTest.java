@@ -146,6 +146,8 @@ class OperatorDashboardAssemblerTest {
                         DashboardAttentionKind.WEATHER_HAZARD,
                         DashboardAttentionKind.WEATHER_HOLD
                 );
+        assertThat(dashboard.needsAttention().get(2).href())
+                .isEqualTo(OperatorDashboardAssembler.SHIFT_PENDING_WEATHER);
         assertThat(dashboard.openIncidents())
                 .extracting(OperatorDashboardResponse.DashboardIncidentResponse::id)
                 .containsExactly("inc-critical", "inc-major");
@@ -325,7 +327,8 @@ class OperatorDashboardAssemblerTest {
                 );
         assertThat(dashboard.needsAttention().getFirst().href())
                 .isEqualTo("/maintenance/work-orders/6dbb04f2-b20d-4b16-ae57-43072fc2e408");
-        assertThat(dashboard.needsAttention().getLast().href()).isEqualTo("/park-flow");
+        assertThat(dashboard.needsAttention().getLast().href())
+                .isEqualTo(OperatorDashboardAssembler.SHIFT_UNPUBLISHED_FLOW);
     }
 
     @Test
@@ -356,7 +359,7 @@ class OperatorDashboardAssemblerTest {
         assertThat(before.needsAttention()).hasSize(1);
         OperatorDashboardResponse.DashboardAttentionItemResponse item = before.needsAttention().getFirst();
         assertThat(item.kind()).isEqualTo(DashboardAttentionKind.PENDING_RELIABILITY_RECOMMENDATION);
-        assertThat(item.href()).isEqualTo("/maintenance");
+        assertThat(item.href()).isEqualTo(OperatorDashboardAssembler.SHIFT_PENDING_RELIABILITY);
         assertThat(item.subjectId()).isEqualTo(pending.id().toString());
         assertThat(item.subjectLabel()).isEqualTo("Vibration");
         assertThat(item.reason()).contains("consider reduced-capacity operation");
