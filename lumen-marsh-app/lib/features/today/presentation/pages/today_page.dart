@@ -30,6 +30,7 @@ import '../../../../design_system/components/status/lumen_tone.dart';
 import '../../../../design_system/foundations/lumen_breakpoints.dart';
 import '../../../../design_system/foundations/lumen_spacing.dart';
 import '../today_view_model.dart';
+import '../widgets/board_guide_link.dart';
 
 class TodayPage extends StatelessWidget {
   const TodayPage({super.key});
@@ -214,12 +215,27 @@ class _TodayDashboard extends StatelessWidget {
               const SizedBox(height: LumenSpacing.lg),
               LumenSection(
                 title: 'Park conditions',
-                child: _SummaryFacts(viewModel: viewModel, wide: wide),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _SummaryFacts(viewModel: viewModel, wide: wide),
+                    const BoardGuideLink(
+                      key: Key('today-guide-waits'),
+                      sectionId: 'waits',
+                      label: 'What a wait means',
+                    ),
+                  ],
+                ),
               ),
               BestNextSection(
                 catalog: attractions,
                 favoriteIds: favoriteIds.toSet(),
                 onAttractionPressed: (id) => context.push('/attractions/$id'),
+                guideLink: const BoardGuideLink(
+                  key: Key('today-guide-best-next'),
+                  sectionId: 'best-next',
+                  label: 'Why this suggestion',
+                ),
               ),
               if (viewModel.savedAdventures.isNotEmpty) ...[
                 const SizedBox(height: LumenSpacing.lg),
@@ -318,11 +334,21 @@ class _CatalogFallbackRecommendation extends StatelessWidget {
   Widget _card(BuildContext context) {
     return LumenSection(
       title: 'Best next adventure',
-      child: AttractionCard(
-        key: const Key('today-recommendation'),
-        attraction: attraction,
-        isFavorite: isFavorite,
-        onPressed: () => context.push('/attractions/${attraction.id}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const BoardGuideLink(
+            key: Key('today-guide-best-next-fallback'),
+            sectionId: 'best-next',
+            label: 'Why this suggestion',
+          ),
+          AttractionCard(
+            key: const Key('today-recommendation'),
+            attraction: attraction,
+            isFavorite: isFavorite,
+            onPressed: () => context.push('/attractions/${attraction.id}'),
+          ),
+        ],
       ),
     );
   }

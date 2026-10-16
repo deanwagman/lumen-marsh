@@ -13,6 +13,7 @@ import 'package:lumen_marsh_app/features/advisories/presentation/pages/advisorie
 import 'package:lumen_marsh_app/features/advisories/presentation/pages/advisory_detail_page.dart';
 import 'package:lumen_marsh_app/features/field_guide/presentation/pages/field_guide_detail_page.dart';
 import 'package:lumen_marsh_app/features/field_guide/presentation/pages/field_guide_page.dart';
+import 'package:lumen_marsh_app/features/today/presentation/pages/live_board_guide_page.dart';
 import 'package:lumen_marsh_app/features/today/presentation/pages/today_page.dart';
 
 GoRouter createRouter({String initialLocation = '/today'}) {
@@ -53,6 +54,15 @@ GoRouter createRouter({String initialLocation = '/today'}) {
                 path: '/today',
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: TodayPage()),
+                routes: [
+                  GoRoute(
+                    path: 'board',
+                    parentNavigatorKey: rootNavigatorKey,
+                    builder: (context, state) => LiveBoardGuidePage(
+                      sectionId: state.uri.queryParameters['section'],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

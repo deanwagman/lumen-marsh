@@ -113,4 +113,35 @@ void main() {
 
     expect(find.text('Lumen Ghost Orchid'), findsOneWidget);
   });
+
+  testWidgets('cold opens the live board guide', (tester) async {
+    tester.view.physicalSize = const Size(400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = createRouter(
+      initialLocation: '/today/board?section=still-open',
+    );
+    await tester.pumpWidget(
+      LumenMarshApp(
+        config: const AppConfig(apiBaseUrl: 'http://localhost:8080'),
+        eventHub: eventHub,
+        attractionRepository: repository,
+        advisoryRepository: advisoryRepository,
+        favoritesRepository: favoritesRepository,
+        fieldGuideRepository: fieldGuideRepository,
+        flowRepository: flowRepository,
+        router: router,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('How the board works'), findsOneWidget);
+    expect(
+      find.byKey(const Key('live-board-section-still-open')),
+      findsOneWidget,
+    );
+    expect(find.text('Lumen Ghost Orchid'), findsNothing);
+  });
 }
