@@ -14,18 +14,20 @@
     <header class="mast">
       <p class="kicker">Lumen Marsh</p>
       <h1><a href="./">Cutaway</a></h1>
-      <p class="lede">The guest room and the operator room, open at the same time.</p>
+      <p class="lede">Cause an event. Watch the park decide what guests see.</p>
       <nav class="mast-nav" aria-label="Booth">
         <a href="docs.html">Docs</a>
       </nav>
     </header>
-    <div class="stage">
-      <aside class="rail" aria-label="Producer triggers">
-        <h2>Rail</h2>
-        <p class="rail-note">
-          These start a producer. Place hold, accept, dismiss, and publish stay in Control Tower.
-        </p>
-        <div class="trigger">
+    <section id="opening" class="now" aria-label="Now" data-beat="waiting">
+      <div class="now-copy" id="now-copy">
+        <p id="opening-kicker" class="opening-kicker" hidden>Start here</p>
+        <h2>Now</h2>
+        <p id="opening-cue" class="opening-cue"></p>
+      </div>
+      <div id="now-action" class="now-action">
+        <div class="trigger" id="trigger-lightning-hold">
+          <p class="start-here" id="lightning-start" hidden>Start here</p>
           <button
             type="button"
             id="lightning-hold"
@@ -36,68 +38,37 @@
           </button>
           <p class="trigger-result" data-result="lightning-hold" aria-live="polite">Ready</p>
         </div>
-        <div class="trigger">
-          <button
-            type="button"
-            id="clear-storm"
-            data-url="http://localhost:8000/api/v1/simulation/scenarios/clearance-period"
-            disabled
-          >
-            Clear the storm
-          </button>
-          <p class="trigger-result" data-result="clear-storm" aria-live="polite">Ready</p>
-        </div>
-        <div class="trigger">
-          <button
-            type="button"
-            id="cypress-vibration"
-            data-url="http://localhost:8200/simulation/scenarios/cypress-coil-vibration"
-            disabled
-          >
-            Cypress Coil vibration
-          </button>
-          <p class="trigger-result" data-result="cypress-vibration" aria-live="polite">Ready</p>
-        </div>
-        <div class="trigger">
-          <button
-            type="button"
-            id="mangrove-disruption"
-            data-url="http://localhost:8100/simulation/scenarios/mangrove-disruption"
-            data-watch="mangrove"
-            disabled
-          >
-            Mangrove disruption
-          </button>
-          <p class="trigger-result" data-result="mangrove-disruption" aria-live="polite">Ready</p>
-        </div>
-      </aside>
+      </div>
+    </section>
+    <div class="rooms-wrap">
+      <div class="room-switch" id="room-switch" role="tablist" aria-label="Rooms">
+        <button type="button" role="tab" id="tab-guest" aria-controls="guest-room" aria-selected="true" tabindex="0">
+          Guest
+        </button>
+        <button type="button" role="tab" id="tab-tower" aria-controls="tower-room" aria-selected="false" tabindex="-1">
+          Control Tower
+        </button>
+      </div>
       <div class="rooms">
         <div id="booth-offline" class="booth-offline" hidden role="status">
           <div>
             <h2>Cutaway is offline</h2>
-            <p>
-              VenueOps is not reachable, so both rooms stay covered. The rail stays off until the stack is
-              healthy.
-            </p>
+            <p>VenueOps is not reachable, so both rooms stay covered until the stack is healthy.</p>
           </div>
         </div>
-        <figure class="room">
+        <figure class="room is-shown" id="guest-room" role="tabpanel" aria-labelledby="tab-guest">
           <figcaption>Guest</figcaption>
           <iframe id="guest-frame" title="Guest app, Today" src="http://localhost:3000/today"></iframe>
         </figure>
-        <figure class="room">
+        <figure class="room" id="tower-room" role="tabpanel" aria-labelledby="tab-tower">
           <figcaption>Control Tower</figcaption>
           <iframe id="console-frame" title="Control Tower" src="http://localhost:3001/dashboard"></iframe>
         </figure>
       </div>
     </div>
-    <section class="strip" id="strip" aria-live="polite" aria-label="VenueOps projection">
-      <div class="strip-title">
-        <h2>Strip</h2>
-        <p id="last-recommendation">Reading VenueOps.</p>
-      </div>
-      <div>
-        <h3>Operator</h3>
+    <section class="strip" id="strip" aria-live="polite" aria-label="Operator knows and Guest sees">
+      <div class="strip-side" id="strip-operator">
+        <h2>Operator knows</h2>
         <dl>
           <div>
             <dt>Pending weather</dt>
@@ -113,8 +84,8 @@
           </div>
         </dl>
       </div>
-      <div>
-        <h3>Guest</h3>
+      <div class="strip-side" id="strip-guest">
+        <h2>Guest sees</h2>
         <dl>
           <div>
             <dt>Advisory</dt>
@@ -130,8 +101,49 @@
           </div>
         </dl>
       </div>
+      <p id="last-recommendation" class="strip-latest">Reading VenueOps.</p>
+      <p id="opening-seam" class="strip-seam">The strip is the seam. Pending on one side, published on the other.</p>
       <p id="reset-note" hidden></p>
     </section>
+    <details class="explore" id="explore">
+      <summary>Explore other scenarios</summary>
+      <div id="explore-triggers" class="explore-triggers">
+        <div class="trigger" id="trigger-clear-storm">
+          <button
+            type="button"
+            id="clear-storm"
+            data-url="http://localhost:8000/api/v1/simulation/scenarios/clearance-period"
+            disabled
+          >
+            Clear the storm
+          </button>
+          <p class="trigger-result" data-result="clear-storm" aria-live="polite">Ready</p>
+        </div>
+        <div class="trigger" id="trigger-cypress-vibration">
+          <button
+            type="button"
+            id="cypress-vibration"
+            data-url="http://localhost:8200/simulation/scenarios/cypress-coil-vibration"
+            disabled
+          >
+            Cypress Coil vibration
+          </button>
+          <p class="trigger-result" data-result="cypress-vibration" aria-live="polite">Ready</p>
+        </div>
+        <div class="trigger" id="trigger-mangrove-disruption">
+          <button
+            type="button"
+            id="mangrove-disruption"
+            data-url="http://localhost:8100/simulation/scenarios/mangrove-disruption"
+            data-watch="mangrove"
+            disabled
+          >
+            Mangrove disruption
+          </button>
+          <p class="trigger-result" data-result="mangrove-disruption" aria-live="polite">Ready</p>
+        </div>
+      </div>
+    </details>
     <script src="cutaway.js"></script>
   </body>
 </html>

@@ -18,11 +18,73 @@ const cueSection = {
   "mangrove-disruption": "needs-attention-heading",
 };
 
+const openingDwellMs = 6000;
+
+const openingCopy = {
+  quiet: {
+    cue: "Press Lightning hold.",
+    detail: "Control Tower will get a decision, and the guest room will not, until someone publishes.",
+  },
+  operator: {
+    cue: "Look right. That row is the ask.",
+    detail: "Leave it unpublished, then look left.",
+  },
+  guest: {
+    cue: "The ride still looks open.",
+    detail: "That is the published picture.",
+  },
+  publish: {
+    cue: "In Control Tower, review the weather recommendation and publish the guest advisory.",
+    detail:
+      "This room opens as Local Operator, already signed in. If it shows VenueOps sign in, sign in with your operator account to open the console.",
+  },
+  clear: {
+    cue: "Press Clear the storm.",
+    detail: "Clear the storm is the way back to the quiet park.",
+  },
+  unread: {
+    cue: "The guest side is unread, so this page cannot say the ride still looks open.",
+    detail: "",
+  },
+};
+
+const primaryTrigger = {
+  quiet: "trigger-lightning-hold",
+  clear: "trigger-clear-storm",
+};
+
+const triggerOrder = [
+  "trigger-lightning-hold",
+  "trigger-clear-storm",
+  "trigger-cypress-vibration",
+  "trigger-mangrove-disruption",
+];
+
+const roomForBeat = {
+  operator: "tower",
+  unread: "tower",
+  publish: "tower",
+  guest: "guest",
+};
+
+const openingTargets = {
+  quiet: ["trigger-lightning-hold"],
+  operator: ["tower-room", "strip-operator"],
+  guest: ["guest-room", "strip-guest"],
+  publish: ["tower-room"],
+  clear: ["trigger-clear-storm"],
+  unread: ["tower-room", "strip-operator"],
+};
+
 let refreshToken = 0;
 let mangroveWatch = null;
 let cueFollow = null;
 const sending = new Set();
 let framesWereCovered = false;
+let openingPhase = null;
+let openingTimer = null;
+let openingReading = null;
+let shownRoom = "guest";
 
 const text = (id, value) => {
   document.getElementById(id).textContent = value;
@@ -135,9 +197,34 @@ const setProjection = (value) => {
 
 const syncRail = () => {
   const offline = document.body.classList.contains("is-offline");
-  document.querySelectorAll(".rail button").forEach((button) => {
+  document.querySelectorAll(".trigger button").forEach((button) => {
     button.disabled = offline || sending.has(button.id);
   });
+};
+
+const placeTriggers = (beat) => {
+  const primaryId = primaryTrigger[beat] || null;
+  const now = document.getElementById("now-action");
+  const drawer = document.getElementById("explore-triggers");
+  for (const id of triggerOrder) {
+    const node = document.getElementById(id);
+    (id === primaryId ? now : drawer).appendChild(node);
+  }
+};
+
+const selectRoom = (which) => {
+  shownRoom = which;
+  document.getElementById("guest-room").classList.toggle("is-shown", which === "guest");
+  document.getElementById("tower-room").classList.toggle("is-shown", which === "tower");
+  document.getElementById("tab-guest").setAttribute("aria-selected", which === "guest" ? "true" : "false");
+  document.getElementById("tab-tower").setAttribute("aria-selected", which === "tower" ? "true" : "false");
+  document.getElementById("tab-guest").tabIndex = which === "guest" ? 0 : -1;
+  document.getElementById("tab-tower").tabIndex = which === "tower" ? 0 : -1;
+};
+
+const syncTabCue = () => {
+  document.getElementById("tab-guest").classList.toggle("is-cued", document.getElementById("guest-room").classList.contains("is-cued"));
+  document.getElementById("tab-tower").classList.toggle("is-cued", document.getElementById("tower-room").classList.contains("is-cued"));
 };
 
 const navigateFrame = (frame, url) => {
@@ -172,15 +259,119 @@ const setBoothOnline = (online) => {
   syncRail();
 };
 
+const isHoldPhase = (beat) => beat === "operator" || beat === "guest" || beat === "publish";
+
+// Pending weather with a quiet guest advisory is one strip reading. The page
+// walks Control Tower, the guest room, then the publish line. The strip cannot
+// separate those three. A guest advisory that is no longer Quiet is the next
+// reading the strip can actually show.
+
+const observedBeat = (reading) => {
+  if (!reading.online) return "offline";
+  const weather = reading.pendingWeather;
+  const advisory = reading.guestAdvisory;
+  if (weather === "Offline" || advisory === "Offline") return "offline";
+  if (weather === "Reading VenueOps." || advisory === "Reading VenueOps.") return "waiting";
+  if (advisory === "Unread") return weather === "None" ? "waiting" : "unread";
+  if (advisory !== "Quiet") return "clear";
+  if (weather !== "None") return "hold";
+  return "quiet";
+};
+
+const copyFor = (beat, reading) => {
+  if (
+    beat === "guest" &&
+    reading &&
+    (reading.guestAdvisory !== "Quiet" || reading.projection !== "Unchanged")
+  ) {
+    return {
+      cue: "The guest advisory is still quiet, so this page will not call that the last open picture.",
+      detail: "",
+    };
+  }
+  return openingCopy[beat];
+};
+
+const clearOpeningMarks = () => {
+  document.querySelectorAll(".is-cued").forEach((node) => node.classList.remove("is-cued"));
+  document.getElementById("lightning-start").hidden = true;
+  document.getElementById("opening-kicker").hidden = true;
+};
+
+const paintOpening = (beat) => {
+  const opening = document.getElementById("opening");
+  clearOpeningMarks();
+  opening.dataset.beat = beat;
+  if (beat === "offline" || beat === "waiting") {
+    text("opening-cue", "");
+    return;
+  }
+  const copy = copyFor(beat, openingReading);
+  text("opening-cue", copy.cue);
+  if (beat === "quiet") {
+    document.getElementById("opening-kicker").hidden = false;
+    document.getElementById("lightning-start").hidden = false;
+  }
+  for (const id of openingTargets[beat]) document.getElementById(id).classList.add("is-cued");
+  placeTriggers(beat);
+  if (roomForBeat[beat]) selectRoom(roomForBeat[beat]);
+  syncTabCue();
+};
+
+const armOpeningDwell = () => {
+  window.clearTimeout(openingTimer);
+  openingTimer = window.setTimeout(() => {
+    openingTimer = null;
+    if (openingPhase === "operator") openingPhase = "guest";
+    else if (openingPhase === "guest") openingPhase = "publish";
+    else return;
+    paintOpening(openingPhase);
+    if (openingPhase === "guest") armOpeningDwell();
+  }, openingDwellMs);
+};
+
+const leaveHold = () => {
+  openingPhase = null;
+  window.clearTimeout(openingTimer);
+  openingTimer = null;
+};
+
+function syncOpening(reading) {
+  openingReading = reading;
+  const beat = observedBeat(reading);
+  if (beat === "hold") {
+    if (!isHoldPhase(openingPhase)) {
+      openingPhase = "operator";
+      armOpeningDwell();
+    }
+    paintOpening(openingPhase);
+    return;
+  }
+  if (openingPhase !== null) leaveHold();
+  paintOpening(beat);
+}
+
+const setLatest = (value) => {
+  const node = document.getElementById("last-recommendation");
+  node.textContent = value;
+  node.hidden = value === "None";
+};
+
 const renderOffline = () => {
-  text("last-recommendation", "VenueOps is offline.");
-  text("pending-weather", "Offline");
-  text("pending-reliability", "Offline");
-  text("unpublished-flow", "Offline");
-  text("guest-advisory", "Offline");
-  text("guest-best-next", "Offline");
-  setProjection("Offline");
+  setLatest("—");
+  text("pending-weather", "—");
+  text("pending-reliability", "—");
+  text("unpublished-flow", "—");
+  text("guest-advisory", "—");
+  text("guest-best-next", "—");
+  setProjection("—");
   setBoothOnline(false);
+  syncOpening({
+    online: false,
+    pendingWeather: "—",
+    guestAdvisory: "—",
+    projection: "—",
+  });
 };
 
 function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
@@ -195,24 +386,25 @@ function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
   const reliability = attention(dashboard, "PENDING_RELIABILITY_RECOMMENDATION");
   const flow = attention(dashboard, "UNPUBLISHED_FLOW_RECOMMENDATION");
   const candidates = candidatesFrom(dashboard);
-  text(
-    "last-recommendation",
-    candidates.length ? `${newest(candidates).kind}: ${newest(candidates).text}` : "None",
-  );
-  text("pending-weather", lane(weather, (item) => item.recommendedAction));
+  const pendingWeather = lane(weather, (item) => item.recommendedAction);
+  setLatest(candidates.length ? `${newest(candidates).kind}: ${newest(candidates).text}` : "None");
+  text("pending-weather", pendingWeather);
   text("pending-reliability", lane(reliability, (item) => item.subjectLabel || item.reason));
   text("unpublished-flow", lane(flow, (item) => item.subjectLabel || item.reason));
 
-  if (!advisoryResult.ok || !guidanceResult.ok || !Array.isArray(advisoryResult.body) || !Array.isArray(guidanceResult.body)) {
-    text("guest-advisory", "Unread");
-    text("guest-best-next", "Unread");
-    setProjection("Unread");
-    return dashboard;
+  let guestAdvisory = "Unread";
+  let guestBestNext = "Unread";
+  let projection = "Unread";
+  if (advisoryResult.ok && guidanceResult.ok && Array.isArray(advisoryResult.body) && Array.isArray(guidanceResult.body)) {
+    guestAdvisory = advisoryLine(advisoryResult.body);
+    guestBestNext = bestNextLine(guidanceResult.body);
+    projection = projectionLine(advisoryResult.body, guidanceResult.body);
   }
 
-  text("guest-advisory", advisoryLine(advisoryResult.body));
-  text("guest-best-next", bestNextLine(guidanceResult.body));
-  setProjection(projectionLine(advisoryResult.body, guidanceResult.body));
+  text("guest-advisory", guestAdvisory);
+  text("guest-best-next", guestBestNext);
+  setProjection(projection);
+  syncOpening({ online: true, pendingWeather, guestAdvisory, projection });
   return dashboard;
 }
 
@@ -332,10 +524,20 @@ async function fire(button) {
   await refresh();
 }
 
-document.querySelectorAll(".rail button").forEach((button) => {
+document.querySelectorAll(".trigger button").forEach((button) => {
   button.addEventListener("click", () => {
     void fire(button);
   });
+});
+
+document.getElementById("tab-guest").addEventListener("click", () => selectRoom("guest"));
+document.getElementById("tab-tower").addEventListener("click", () => selectRoom("tower"));
+document.getElementById("room-switch").addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+  event.preventDefault();
+  const next = shownRoom === "guest" ? "tower" : "guest";
+  selectRoom(next);
+  document.getElementById(next === "guest" ? "tab-guest" : "tab-tower").focus();
 });
 
 void refresh();
