@@ -5,6 +5,7 @@ import { incidentSeverities, incidentStatuses } from '@/features/incidents/domai
 import {
   weatherRecommendationOperatorStatuses,
   weatherRecommendationSeverities,
+  weatherRecommendationStatuses,
 } from '@/features/weather/domain/recommendation';
 
 import {
@@ -73,6 +74,7 @@ const attractionSchema = z.object({
 
 const weatherSchema = z.object({
   id: z.string().min(1),
+  status: z.enum(weatherRecommendationStatuses),
   severity: z.enum(weatherRecommendationSeverities),
   recommendedAction: z.string().min(1),
   evidence: z.string().min(1),

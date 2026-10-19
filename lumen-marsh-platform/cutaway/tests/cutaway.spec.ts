@@ -28,6 +28,7 @@ type BoothState = {
 
 const emptyDashboard = () => ({
   pendingWeatherRecommendations: [],
+  attractionsNeedingAttention: [],
   needsAttention: [],
 });
 
@@ -195,11 +196,15 @@ test("docs view covers how to use the booth", async ({ page }) => {
   await expect(opening).toContainText(
     "Control Tower will get a decision, and the guest room will not, until someone publishes",
   );
-  await expect(opening).toContainText("look right. That row is the ask. Leave it unpublished, then look left");
+  await expect(opening).toContainText("review or acknowledge the recommendation");
+  await expect(opening).toContainText("does not put a ride on hold");
   await expect(opening).toContainText("the ride still looks open. That is the published picture");
-  await expect(opening).toContainText("review the weather recommendation and publish the guest advisory");
+  await expect(opening).toContainText("place each affected attraction on weather hold");
+  await expect(opening).toContainText("Publish guest guidance after the operational decision");
   await expect(opening).toContainText("sign in with your operator account");
   await expect(opening).toContainText("press Clear the storm");
+  await expect(opening).toContainText("Return-to-service review");
+  await expect(opening).toContainText("clear each weather hold, complete testing");
   await expect(opening).toContainText("The strip is the seam. Pending on one side, published on the other.");
 
   const guideText = await page.locator(".guide").innerText();
@@ -238,10 +243,27 @@ const holdWeather = () => ({
   pendingWeatherRecommendations: [
     {
       id: "wx-1",
+      status: "ACTIVE",
       recommendedAction: "Hold outdoor attractions",
+      affectedAttractionIds: ["cypress-coil", "mangrove-run"],
       updatedAt: "2026-10-15T18:00:00Z",
     },
   ],
+  attractionsNeedingAttention: [],
+  needsAttention: [],
+});
+
+const clearanceWeather = (attractionsNeedingAttention: unknown[] = []) => ({
+  pendingWeatherRecommendations: [
+    {
+      id: "wx-1",
+      status: "CLEARED",
+      recommendedAction: "Review weather holds for return-to-service",
+      affectedAttractionIds: ["cypress-coil", "mangrove-run"],
+      updatedAt: "2026-10-15T18:30:00Z",
+    },
+  ],
+  attractionsNeedingAttention,
   needsAttention: [],
 });
 
@@ -285,7 +307,9 @@ test("a hold points the cue at Control Tower while the guest picture stays unpub
   await expect(page.locator("#guest-best-next")).toHaveText("Quiet");
   await expect(page.locator("#guest-projection")).toHaveText("Unchanged");
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "operator");
-  await expect(page.locator("#opening-cue")).toHaveText("Look right. That row is the ask.");
+  await expect(page.locator("#opening-cue")).toHaveText(
+    "In Control Tower, review or acknowledge the weather recommendation.",
+  );
   await expect(page.locator("#now-action .trigger")).toHaveCount(0);
   await expect(page.locator("#tower-room")).toHaveClass(/is-cued/);
   await expect(page.locator("#strip-operator")).toHaveClass(/is-cued/);
@@ -300,12 +324,116 @@ test("a hold points the cue at Control Tower while the guest picture stays unpub
     timeout: 6000,
   });
   await expect(page.locator("#guest-projection")).toHaveText("Changed: advisory");
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "hold-rides");
+  await expect(page.locator("#opening-cue")).toContainText(
+    "affected attractions are not all on weather hold",
+  );
+  await expect(page.locator("#now-action #clear-storm")).toHaveCount(0);
+
+  state.dashboard = {
+    ...holdWeather(),
+    attractionsNeedingAttention: [
+      { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+      { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
+    ],
+  };
+  await expect(page.locator("#weather-holds")).toHaveText("Cypress Coil, Mangrove Run", {
+    timeout: 6000,
+  });
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clear");
   await expect(page.locator("#opening-cue")).toHaveText("Press Clear the storm.");
   await expect(page.locator("#now-action #clear-storm")).toBeVisible();
   await expect(page.locator("#trigger-clear-storm")).toHaveClass(/is-cued/);
   await expect(page.locator("#tower-room")).not.toHaveClass(/is-cued/);
   await expect(page.locator("#guest-room")).not.toHaveClass(/is-cued/);
+});
+
+test("hold and clearance recommendations produce different observable cues", async ({ page }) => {
+  const state = booth(page);
+  state.dashboard = holdWeather();
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "operator", {
+    timeout: 6000,
+  });
+  await expect(page.locator("#opening-cue")).toContainText("review or acknowledge");
+
+  state.dashboard = clearanceWeather([
+    { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+    { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
+  ]);
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clearance", {
+    timeout: 6000,
+  });
+  await expect(page.locator("#opening-cue")).toContainText(
+    "Review the return-to-service recommendation in Control Tower",
+  );
+  await expect(page.locator("#opening-cue")).toContainText("Guest guidance is quiet");
+  await expect(page.locator("#opening-cue")).toContainText(
+    "Cypress Coil and Mangrove Run remain on weather hold",
+  );
+  await expect(page.locator("#now-action #clear-storm")).toHaveCount(0);
+});
+
+test("Clear the storm moves Now to the return-to-service decision", async ({ page }) => {
+  const state = booth(page);
+  state.dashboard = {
+    ...holdWeather(),
+    attractionsNeedingAttention: [
+      { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+      { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
+    ],
+  };
+  state.advisories = [{ title: "Weather hold", message: "Outdoor attractions are paused." }];
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clear", {
+    timeout: 6000,
+  });
+
+  await pressTrigger(page, "Clear the storm");
+  state.dashboard = clearanceWeather([
+    { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+    { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
+  ]);
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clearance", {
+    timeout: 6000,
+  });
+  await expect(page.locator("#opening-cue")).toContainText(
+    "The published guest advisory remains in place",
+  );
+  await expect(page.locator("#opening-cue")).not.toContainText("Press Clear the storm");
+  await expect(page.locator("#now-action #clear-storm")).toHaveCount(0);
+});
+
+test("quiet opening waits for pending weather, published guidance, and weather holds to clear", async ({
+  page,
+}) => {
+  const state = booth(page);
+  state.dashboard = clearanceWeather([
+    { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+  ]);
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clearance", {
+    timeout: 6000,
+  });
+
+  state.dashboard = {
+    ...emptyDashboard(),
+    attractionsNeedingAttention: [
+      { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+    ],
+  };
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "recovery", {
+    timeout: 6000,
+  });
+
+  state.dashboard = emptyDashboard();
+  state.advisories = [{ title: "Weather hold", message: "Outdoor attractions are paused." }];
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "withdraw", {
+    timeout: 6000,
+  });
+
+  state.advisories = [];
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "quiet", {
+    timeout: 6000,
+  });
+  await expect(page.locator("#opening-cue")).toHaveText("Press Lightning hold.");
 });
 
 test("an unpublished hold walks from Control Tower to the guest room without a Next button", async ({ page }) => {
@@ -328,7 +456,7 @@ test("an unpublished hold walks from Control Tower to the guest room without a N
 
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "publish", { timeout: 8000 });
   await expect(page.locator("#opening-cue")).toHaveText(
-    "In Control Tower, review the weather recommendation and publish the guest advisory.",
+    "Place the affected attractions on weather hold as a separate action, then publish guest guidance.",
   );
   await expect(page.locator("#tower-room")).toHaveClass(/is-cued/);
   await expect(page.locator("#guest-room")).not.toHaveClass(/is-cued/);

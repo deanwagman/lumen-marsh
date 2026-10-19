@@ -22,7 +22,7 @@
       <p class="guide-kicker">Documentation</p>
       <h1>Using Cutaway</h1>
       <p class="guide-summary">
-        Now starts with Lightning hold. Operator knows and Guest sees show the split. Publish stays inside Control Tower, then clear.
+        Now starts with Lightning hold. Sensors recommend; operators review, hold attractions, publish guidance, and decide return to service in Control Tower.
       </p>
       <div class="guide-layout">
         <nav class="toc" aria-label="On this page">
@@ -40,7 +40,7 @@
           <section id="opening">
             <h2>Opening</h2>
             <p>
-              Now holds the cue and the one current action. It follows Operator knows and Guest sees. Lightning hold is the action in Now while the park is quiet. Cypress Coil vibration and Mangrove disruption stay under Explore other scenarios. Clear the storm moves into Now when a guest advisory is on the strip.
+              Now holds the cue and the one current action. It follows Operator knows and Guest sees. Lightning hold is the action in Now only while the park is quiet. Cypress Coil vibration and Mangrove disruption stay under Explore other scenarios. Clear the storm moves into Now only after guest guidance is published and every affected attraction is observably on weather hold.
             </p>
             <p>There is no Next button. Now does not publish. Publishing stays inside Control Tower.</p>
             <ol>
@@ -48,20 +48,23 @@
                 <strong>Quiet park.</strong> The cue says press Lightning hold. That button is marked Start here. The line under it says Control Tower will get a decision, and the guest room will not, until someone publishes.
               </li>
               <li>
-                <strong>Hold accepted.</strong> Pending weather shows under Operator knows. The cue highlights Control Tower and that side. It says: look right. That row is the ask. Leave it unpublished, then look left.
+                <strong>Recommendation received.</strong> Pending weather shows under Operator knows. In Control Tower, review or acknowledge the recommendation. That review does not put a ride on hold.
               </li>
               <li>
                 <strong>Guest still on the last picture.</strong> The cue highlights the guest room and Guest sees. It says: the ride still looks open. That is the published picture. The advisory still reads Quiet, and the projection still reads Unchanged.
               </li>
               <li>
-                <strong>Publish, then clear.</strong> The cue names the action inside Control Tower: review the weather recommendation and publish the guest advisory. This room opens as Local Operator, already signed in. If it shows VenueOps sign in, sign in with your operator account to open the console. When the strip’s guest advisory changes, the cue says press Clear the storm.
+                <strong>Hold, publish, then clear.</strong> In Control Tower, place each affected attraction on weather hold as a separate attraction command. Publish guest guidance after the operational decision. This room opens as Local Operator, already signed in. If it shows VenueOps sign in, sign in with your operator account to open the console. When the guidance is published and all affected attractions are held, the cue says press Clear the storm.
+              </li>
+              <li>
+                <strong>Return-to-service review.</strong> Clear the storm creates a clearance recommendation; it does not clear a ride or withdraw guidance. Now points to Control Tower and names the published guidance and held rides it can still observe. Review the recommendation, clear each weather hold, complete testing, and approve return to service when appropriate. Withdraw guest guidance separately.
               </li>
             </ol>
             <p>
-              Pending weather with a quiet guest advisory is one reading. The strip cannot tell the Control Tower look, the guest look, and the publish line apart. The page shows them in that order, one room at a time. The change the strip can see is a guest advisory that is no longer Quiet. That is when the cue says press Clear the storm.
+              An active hold recommendation with quiet guest guidance is one reading. The page walks through review, the unchanged guest picture, the separate attraction hold, and publication. It uses the recommendation’s lifecycle status to distinguish that hold from a pending clearance recommendation.
             </p>
             <p>
-              Open the page during a hold and the cue starts from the strip, not from Start here. Clear the storm is the way back to the quiet park. Start here returns when pending weather is none and the guest advisory is Quiet again. Pressing Clear the storm does not publish, and it does not by itself take a guest advisory off the strip.
+              Open the page during a hold and the cue starts from the strip, not from Start here. Start here returns only when no weather action is pending, guest guidance is quiet, and no attraction remains on weather hold. The monitor does not make operator decisions, and Cutaway never uses its full reset endpoint as a shortcut.
             </p>
             <p>Under the comparison, one line stays with Operator knows and Guest sees. The strip is the seam. Pending on one side, published on the other.</p>
           </section>
@@ -75,7 +78,7 @@
               <li>Explore other scenarios: vibration, queue disruption, and any trigger that is not the current action.</li>
             </ul>
             <p>
-              Now only starts a situation. Holding a ride, accepting a recommendation, dismissing one, and publishing what guests read all stay in Control Tower.
+              Now only starts a sensor situation. Reviewing a recommendation, holding a ride, clearing its hold, completing testing, approving return to service, and publishing or withdrawing what guests read all stay in Control Tower.
             </p>
             <p>
               Lightning hold, Cypress Coil vibration, and Mangrove disruption leave the guest on Today and bring the matching card into view in Control Tower. Clear the storm leaves both rooms where they are.
@@ -99,7 +102,7 @@
                 <strong>Lightning hold.</strong> Starts the lightning situation. The strip shows pending weather, and Control Tower brings that weather card into view. The guest stays on Today, with no advisory yet.
               </li>
               <li>
-                <strong>Clear the storm.</strong> Moves the weather into the period after the hold. Both rooms stay where they are. Sending rides back into service still happens in Control Tower.
+                <strong>Clear the storm.</strong> Creates a return-to-service recommendation and leaves published guidance in place. Both rooms stay where they are. Review, ride clearance, testing, return-to-service approval, and guidance withdrawal still happen in Control Tower.
               </li>
               <li>
                 <strong>Cypress Coil vibration.</strong> Starts a vibration cue for Cypress Coil. The strip shows pending reliability, and Control Tower brings that card into view. The guest stays on Today and does not hear about the work.
@@ -115,11 +118,11 @@
           <section id="operator-clicks">
             <h2>What the operator still clicks</h2>
             <p>
-              Now never holds a ride, accepts a recommendation, dismisses one, or publishes what guests read. Those clicks are in Control Tower.
+              Now never holds a ride, accepts a recommendation, returns a ride to service, or publishes or withdraws what guests read. Those clicks are in Control Tower.
             </p>
             <ul>
               <li>
-                After lightning, review the weather card, open the incident, and place the hold. Publish the guest advisory when Today should show it. Until then, Guest sees keeps the advisory Quiet and the projection Unchanged.
+                After lightning, review or acknowledge the weather card and create or link the incident. Then open each affected attraction, choose Place weather hold, enter the reason, and confirm the command. Publishing guest guidance is a separate incident action. Until publication, Guest sees keeps the advisory Quiet and the projection Unchanged.
               </li>
               <li>
                 After vibration, accept the reliability recommendation and carry the work through inspection and testing. The cue does not open that work by itself. Guests do not see work-order numbers, asset codes, or internal notes.
@@ -127,7 +130,9 @@
               <li>
                 After Mangrove disruption, approve the recommendation if you want to use it, then publish it as a supervisor. Best Next stays empty until that publish.
               </li>
-              <li>After clearing the storm, return to service is still a click in Control Tower.</li>
+              <li>
+                After Clear the storm, review the return-to-service recommendation. For each held attraction, clear the weather hold, complete testing, and approve return to service when appropriate. Withdraw published guest guidance separately. Cutaway returns to the quiet opening only after the pending weather action, guidance, and observable weather holds are gone.
+              </li>
             </ul>
           </section>
           <section id="guest-must-not-see">
