@@ -67,6 +67,7 @@ const roomForBeat = {
   operator: "tower",
   unread: "tower",
   publish: "tower",
+  "publish-guidance": "tower",
   guest: "guest",
   "hold-rides": "tower",
   clearance: "tower",
@@ -79,6 +80,7 @@ const openingTargets = {
   operator: ["tower-room", "strip-operator"],
   guest: ["guest-room", "strip-guest"],
   publish: ["tower-room"],
+  "publish-guidance": ["tower-room", "strip-operator"],
   clear: ["trigger-clear-storm"],
   unread: ["tower-room", "strip-operator"],
   "hold-rides": ["tower-room", "strip-operator"],
@@ -333,7 +335,8 @@ const observedBeat = (reading) => {
     return "quiet";
   }
   if (reading.weatherPhase === "PLACE_WEATHER_HOLD") {
-    if (reading.allAffectedHeld) return reading.hasWeatherAdvisory ? "clear" : "publish";
+    if (reading.allAffectedHeld) return reading.hasWeatherAdvisory ? "clear" : "publish-guidance";
+    if (reading.hasWeatherAdvisory) return "hold-rides";
     if (reading.hasPendingHold) return "hold";
     return "hold-rides";
   }
@@ -363,7 +366,7 @@ const copyFor = (beat, reading) => {
       detail: "",
     };
   }
-  if (beat === "publish") {
+  if (beat === "publish-guidance") {
     return {
       cue: "The affected attractions are on weather hold. Publish guest guidance in Control Tower.",
       detail: "",

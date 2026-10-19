@@ -372,6 +372,7 @@ test("acknowledgement gap retains the place-rides-on-hold cue", async ({ page })
   const state = booth(page);
   state.dashboard = holdWeather();
   await pressTrigger(page, "Lightning hold");
+  await expect(page.locator("#pending-weather")).toHaveText("Hold outdoor attractions");
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "operator");
 
   state.dashboard = emptyDashboard();
@@ -396,7 +397,7 @@ test("held affected rides with no advisory ask for guest guidance publication", 
       { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
     ],
   };
-  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "publish", {
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "publish-guidance", {
     timeout: 6000,
   });
   await expect(page.locator("#opening-cue")).toHaveText(
@@ -516,9 +517,12 @@ test("quiet opening waits for pending weather, published guidance, and weather h
     publishedGuestAdvisories: [publishedWeatherAdvisory],
   };
   state.advisories = [{ title: "Weather hold", message: "Outdoor attractions are paused." }];
-  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "withdraw", {
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "recovery", {
     timeout: 6000,
   });
+  await expect(page.locator("#opening-cue")).toContainText(
+    "Withdraw guest guidance after the operational decision",
+  );
 
   state.advisories = [];
   state.dashboard = emptyDashboard();
@@ -732,7 +736,7 @@ test("an unread guest payload is not described as quiet", async ({ page }) => {
   await expect(page.locator("#guest-advisory")).toHaveText("Unread");
   await expect(page.locator("#guest-projection")).toHaveText("Unread");
   await expect(page.locator("#booth-offline")).toBeHidden();
-  await expect(page.getByRole("button", { name: "Lightning hold" })).toBeEnabled();
+  await expect(page.locator("#lightning-hold")).toBeEnabled();
 });
 
 test("producer cues reveal the matching tower card and keep Today", async ({ page }) => {
