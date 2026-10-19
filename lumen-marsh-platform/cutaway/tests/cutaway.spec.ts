@@ -779,6 +779,44 @@ test("a narrow window uses room tabs instead of crushing the frames", async ({ p
   await expect(page.locator("#strip")).toBeVisible();
 });
 
+test("captures the corrected weather walkthrough when evidence output is requested", async ({
+  page,
+}) => {
+  const evidenceDir = process.env.CUTAWAY_EVIDENCE_DIR;
+  test.skip(!evidenceDir, "Set CUTAWAY_EVIDENCE_DIR to capture walkthrough evidence.");
+  const state = booth(page);
+  await page.setViewportSize({ width: 1440, height: 1100 });
+
+  state.dashboard = holdWeather();
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "operator", {
+    timeout: 6000,
+  });
+  await page.screenshot({
+    path: `${evidenceDir}/cutaway-hold-steps.png`,
+    fullPage: true,
+  });
+
+  state.dashboard = clearanceWeather([
+    { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+    { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
+  ]);
+  state.advisories = [{ title: "Weather hold", message: "Outdoor attractions are paused." }];
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clearance", {
+    timeout: 6000,
+  });
+  await page.screenshot({
+    path: `${evidenceDir}/cutaway-clearance-step.png`,
+    fullPage: true,
+  });
+
+  await page.getByRole("link", { name: "Docs" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Using Cutaway" })).toBeVisible();
+  await page.screenshot({
+    path: `${evidenceDir}/cutaway-weather-docs.png`,
+    fullPage: true,
+  });
+});
+
 test("a down VenueOps stack covers both rooms and disables the rail", async ({ page }) => {
   const state = booth(page);
   state.dashboard = null;
