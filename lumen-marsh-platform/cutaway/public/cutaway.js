@@ -526,6 +526,7 @@ function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
     triggeredWeatherPhase = null;
   } else if (
     serverAction === "PLACE_WEATHER_HOLD" &&
+    triggeredWeatherPhase !== "RETURN_TO_SERVICE" &&
     (activeWorkflow !== null || weatherIntent?.phase !== "RETURN_TO_SERVICE")
   ) {
     retainWeatherIntent("PLACE_WEATHER_HOLD", serverAffectedIds);
