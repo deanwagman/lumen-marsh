@@ -18,6 +18,7 @@ export const calmDashboard: OperatorDashboard = {
   openIncidents: [],
   attractionsNeedingAttention: [],
   pendingWeatherRecommendations: [],
+  activeWeatherWorkflow: null,
   publishedGuestAdvisories: [],
   recentActivity: [],
   freshness: {
@@ -177,6 +178,16 @@ export const stormDashboard: OperatorDashboard = {
       simulated: true,
     },
   ],
+  activeWeatherWorkflow: {
+    recommendationId: 'rec-lightning-1',
+    status: 'ACTIVE',
+    operatorStatus: 'PENDING',
+    action: 'PLACE_WEATHER_HOLD',
+    affectedAttractionIds: ['mangrove-run', 'cypress-coil'],
+    linkedIncidentId: 'inc-lightning-1',
+    observedAt: '2026-09-10T20:28:00Z',
+    updatedAt: '2026-09-10T20:28:00Z',
+  },
   publishedGuestAdvisories: [
     {
       id: 'inc-lightning-1',

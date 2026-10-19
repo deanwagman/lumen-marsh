@@ -62,6 +62,9 @@ class OperatorDashboardControllerTest {
                 .andExpect(jsonPath(
                         "$.pendingWeatherRecommendations[?(@.id=='rec-dashboard-clearance')].action"
                 ).value(org.hamcrest.Matchers.hasItem("RETURN_TO_SERVICE")))
+                .andExpect(jsonPath("$.activeWeatherWorkflow.action").value("RETURN_TO_SERVICE"))
+                .andExpect(jsonPath("$.activeWeatherWorkflow.affectedAttractionIds")
+                        .value(org.hamcrest.Matchers.containsInAnyOrder("mangrove-run", "cypress-coil")))
                 .andReturn();
 
         assertThat(result.getResponse().getContentAsString())
@@ -128,6 +131,20 @@ class OperatorDashboardControllerTest {
         assertThat(guest).doesNotContain("assetCode");
         assertThat(guest).doesNotContain("internalDescription");
         assertThat(guest).doesNotContain("INTERNAL ONLY");
+        assertThat(guest).doesNotContain("activeWeatherWorkflow");
+        assertThat(guest).doesNotContain("RETURN_TO_SERVICE");
+        assertThat(guest).doesNotContain("PLACE_WEATHER_HOLD");
+        assertThat(guest).doesNotContain("affectedAttractionIds");
+
+        String guestAdvisories = mockMvc.perform(get("/api/v1/advisories"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(guestAdvisories).doesNotContain("activeWeatherWorkflow");
+        assertThat(guestAdvisories).doesNotContain("RETURN_TO_SERVICE");
+        assertThat(guestAdvisories).doesNotContain("PLACE_WEATHER_HOLD");
+        assertThat(guestAdvisories).doesNotContain("operatorStatus");
     }
 
     @Test

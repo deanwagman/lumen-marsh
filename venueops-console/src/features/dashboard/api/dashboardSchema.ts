@@ -88,6 +88,17 @@ const weatherSchema = z.object({
   simulated: z.boolean(),
 });
 
+const weatherWorkflowSchema = z.object({
+  recommendationId: z.string().min(1),
+  status: z.enum(weatherRecommendationStatuses),
+  operatorStatus: z.enum(weatherRecommendationOperatorStatuses),
+  action: z.enum(dashboardWeatherActions),
+  affectedAttractionIds: z.array(z.string().min(1)),
+  linkedIncidentId: z.string().nullable(),
+  observedAt: instantSchema,
+  updatedAt: instantSchema,
+});
+
 const advisorySchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -121,6 +132,7 @@ export const operatorDashboardSchema: z.ZodType<OperatorDashboard> = z.object({
   openIncidents: z.array(incidentSchema),
   attractionsNeedingAttention: z.array(attractionSchema),
   pendingWeatherRecommendations: z.array(weatherSchema),
+  activeWeatherWorkflow: weatherWorkflowSchema.nullable(),
   publishedGuestAdvisories: z.array(advisorySchema),
   recentActivity: z.array(activitySchema),
   freshness: z.object({

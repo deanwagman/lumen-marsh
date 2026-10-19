@@ -517,14 +517,18 @@ function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
   const dashboard = dashboardResult.body;
   const weather = dashboard.pendingWeatherRecommendations || [];
   const currentWeather = newest(weather);
-  if (currentWeather?.action === "RETURN_TO_SERVICE") {
-    retainWeatherIntent("RETURN_TO_SERVICE", currentWeather.affectedAttractionIds);
+  const activeWorkflow = dashboard.activeWeatherWorkflow || null;
+  const serverAction = activeWorkflow?.action || currentWeather?.action || null;
+  const serverAffectedIds =
+    activeWorkflow?.affectedAttractionIds || currentWeather?.affectedAttractionIds || [];
+  if (serverAction === "RETURN_TO_SERVICE") {
+    retainWeatherIntent("RETURN_TO_SERVICE", serverAffectedIds);
     triggeredWeatherPhase = null;
   } else if (
-    currentWeather?.action === "PLACE_WEATHER_HOLD" &&
-    weatherIntent?.phase !== "RETURN_TO_SERVICE"
+    serverAction === "PLACE_WEATHER_HOLD" &&
+    (activeWorkflow !== null || weatherIntent?.phase !== "RETURN_TO_SERVICE")
   ) {
-    retainWeatherIntent("PLACE_WEATHER_HOLD", currentWeather.affectedAttractionIds);
+    retainWeatherIntent("PLACE_WEATHER_HOLD", serverAffectedIds);
     triggeredWeatherPhase = null;
   }
   let weatherPhase = weatherIntent?.phase || null;
@@ -558,7 +562,16 @@ function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
     heldAttractions.length === 0 &&
     publishedWeatherAdvisories.length === 0 &&
     openAffectedIncidentCount === 0;
-  if (weatherPhase === "RETURN_TO_SERVICE" && isActuallyQuiet) {
+  const hasServerWorkflow =
+    activeWorkflow !== null ||
+    currentWeather?.action === "PLACE_WEATHER_HOLD" ||
+    currentWeather?.action === "RETURN_TO_SERVICE";
+  if (
+    weatherPhase !== null &&
+    !hasServerWorkflow &&
+    triggeredWeatherPhase === null &&
+    isActuallyQuiet
+  ) {
     clearWeatherIntent();
     triggeredWeatherPhase = null;
     weatherPhase = null;

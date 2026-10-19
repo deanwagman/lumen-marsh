@@ -21,6 +21,7 @@ public record OperatorDashboardResponse(
         List<DashboardIncidentResponse> openIncidents,
         List<DashboardAttractionResponse> attractionsNeedingAttention,
         List<DashboardWeatherResponse> pendingWeatherRecommendations,
+        DashboardWeatherWorkflowResponse activeWeatherWorkflow,
         List<DashboardAdvisoryResponse> publishedGuestAdvisories,
         List<DashboardActivityResponse> recentActivity,
         DashboardFreshnessResponse freshness
@@ -88,6 +89,18 @@ public record OperatorDashboardResponse(
             Instant observedAt,
             Instant updatedAt,
             boolean simulated
+    ) {
+    }
+
+    public record DashboardWeatherWorkflowResponse(
+            String recommendationId,
+            WeatherRecommendationStatus status,
+            WeatherRecommendationOperatorStatus operatorStatus,
+            DashboardWeatherAction action,
+            List<String> affectedAttractionIds,
+            String linkedIncidentId,
+            Instant observedAt,
+            Instant updatedAt
     ) {
     }
 

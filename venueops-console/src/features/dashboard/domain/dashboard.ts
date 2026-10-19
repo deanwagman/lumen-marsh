@@ -96,6 +96,17 @@ export type DashboardWeatherRecommendation = {
   simulated: boolean;
 };
 
+export type DashboardWeatherWorkflow = {
+  recommendationId: string;
+  status: WeatherRecommendationStatus;
+  operatorStatus: WeatherRecommendationOperatorStatus;
+  action: DashboardWeatherAction;
+  affectedAttractionIds: string[];
+  linkedIncidentId: string | null;
+  observedAt: string;
+  updatedAt: string;
+};
+
 export type DashboardAdvisory = {
   id: string;
   title: string;
@@ -134,6 +145,7 @@ export type OperatorDashboard = {
   openIncidents: DashboardIncident[];
   attractionsNeedingAttention: DashboardAttraction[];
   pendingWeatherRecommendations: DashboardWeatherRecommendation[];
+  activeWeatherWorkflow: DashboardWeatherWorkflow | null;
   publishedGuestAdvisories: DashboardAdvisory[];
   recentActivity: DashboardActivity[];
   freshness: DashboardFreshness;

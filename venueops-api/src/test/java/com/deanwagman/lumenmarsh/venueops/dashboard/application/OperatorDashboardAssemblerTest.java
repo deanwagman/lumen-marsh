@@ -131,6 +131,76 @@ class OperatorDashboardAssemblerTest {
     }
 
     @Test
+    void acknowledgedHoldRemainsWorkflowButLeavesPendingAttention() {
+        WeatherRecommendation acknowledged = WeatherRecommendation.receive(
+                inbound("rec-hold", WeatherRecommendationSeverity.WARNING),
+                CLOCK
+        );
+        acknowledged.acknowledge("Operator One", null, CLOCK);
+
+        OperatorDashboardResponse dashboard = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(),
+                List.of(),
+                List.of(acknowledged)
+        );
+
+        assertThat(dashboard.pendingWeatherRecommendations()).isEmpty();
+        assertThat(dashboard.needsAttention()).noneMatch(
+                item -> item.kind() == DashboardAttentionKind.WEATHER_HAZARD
+        );
+        assertThat(dashboard.activeWeatherWorkflow()).isNotNull();
+        assertThat(dashboard.activeWeatherWorkflow().operatorStatus().name()).isEqualTo("ACKNOWLEDGED");
+        assertThat(dashboard.activeWeatherWorkflow().action())
+                .isEqualTo(DashboardWeatherAction.PLACE_WEATHER_HOLD);
+        assertThat(dashboard.activeWeatherWorkflow().affectedAttractionIds())
+                .containsExactly("cypress-coil");
+    }
+
+    @Test
+    void acknowledgedReturnWorkflowPersistsUntilOperationalStateIsQuiet() {
+        WeatherRecommendation acknowledged = WeatherRecommendation.receive(
+                inbound(
+                        "rec-clearance",
+                        WeatherRecommendationSeverity.INFO,
+                        "simulated-lightning-clearance"
+                ),
+                CLOCK
+        );
+        acknowledged.acknowledge("Operator One", null, CLOCK);
+
+        OperatorDashboardResponse held = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(attraction(
+                        "cypress-coil",
+                        "Cypress Coil",
+                        AttractionStatus.WEATHER_HOLD,
+                        CapacityMode.NOT_APPLICABLE,
+                        1
+                )),
+                List.of(),
+                List.of(acknowledged)
+        );
+        OperatorDashboardResponse completed = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(attraction(
+                        "cypress-coil",
+                        "Cypress Coil",
+                        AttractionStatus.OPERATING,
+                        CapacityMode.NORMAL,
+                        2
+                )),
+                List.of(),
+                List.of(acknowledged)
+        );
+
+        assertThat(held.activeWeatherWorkflow()).isNotNull();
+        assertThat(held.activeWeatherWorkflow().action())
+                .isEqualTo(DashboardWeatherAction.RETURN_TO_SERVICE);
+        assertThat(completed.activeWeatherWorkflow()).isNull();
+    }
+
+    @Test
     void attentionOrderIsCriticalThenWeatherThenHolds() {
         Attraction hold = attraction("cypress-coil", "Cypress Coil", AttractionStatus.WEATHER_HOLD, CapacityMode.NOT_APPLICABLE, 1);
         Incident critical = Incident.report(

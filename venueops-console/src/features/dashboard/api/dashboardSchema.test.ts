@@ -9,5 +9,9 @@ describe('operatorDashboardSchema', () => {
     const storm = operatorDashboardSchema.parse(stormDashboard);
     expect(storm.openIncidents).toHaveLength(3);
     expect(storm.pendingWeatherRecommendations[0]?.action).toBe('PLACE_WEATHER_HOLD');
+    expect(storm.activeWeatherWorkflow?.affectedAttractionIds).toEqual([
+      'mangrove-run',
+      'cypress-coil',
+    ]);
   });
 });
