@@ -160,6 +160,7 @@ test("docs view covers how to use the booth", async ({ page }) => {
 
   const guide = page.locator(".guide-article");
   for (const name of [
+    "Opening",
     "What Cutaway is",
     "How to open it",
     "What each rail button does",
@@ -168,6 +169,19 @@ test("docs view covers how to use the booth", async ({ page }) => {
   ]) {
     await expect(guide.getByRole("heading", { level: 2, name })).toBeVisible();
   }
+
+  const opening = page.locator("#opening");
+  await expect(opening).toContainText("Start here");
+  await expect(opening).toContainText("press Lightning hold");
+  await expect(opening).toContainText(
+    "Control Tower will get a decision, and the guest room will not, until someone publishes",
+  );
+  await expect(opening).toContainText("look right. That row is the ask. Leave it unpublished, then look left");
+  await expect(opening).toContainText("the ride still looks open. That is the published picture");
+  await expect(opening).toContainText("review the weather recommendation and publish the guest advisory");
+  await expect(opening).toContainText("sign in with your operator account");
+  await expect(opening).toContainText("press Clear the storm");
+  await expect(opening).toContainText("The strip is the seam. Pending on one side, published on the other.");
 
   const guideText = await page.locator(".guide").innerText();
   await expect(page.locator("#rail-buttons")).toContainText("Lightning hold");
@@ -199,6 +213,105 @@ test("docs view covers how to use the booth", async ({ page }) => {
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { level: 1, name: "Cutaway", exact: true })).toBeVisible();
   await expect(page.locator("#guest-frame")).toBeVisible();
+});
+
+const holdWeather = () => ({
+  pendingWeatherRecommendations: [
+    {
+      id: "wx-1",
+      recommendedAction: "Hold outdoor attractions",
+      updatedAt: "2026-10-15T18:00:00Z",
+    },
+  ],
+  needsAttention: [],
+});
+
+test("quiet park points the cue at Lightning hold", async ({ page }) => {
+  const opening = page.locator("#opening");
+  await expect(opening).toBeVisible();
+  await expect(opening).toHaveAttribute("data-beat", "quiet");
+  await expect(page.locator("#opening-cue")).toHaveText("Press Lightning hold.");
+  await expect(page.locator("#opening-detail")).toHaveText(
+    "Control Tower will get a decision, and the guest room will not, until someone publishes.",
+  );
+  await expect(page.locator("#opening-seam")).toHaveText(
+    "The strip is the seam. Pending on one side, published on the other.",
+  );
+  await expect(page.locator("#opening-kicker")).toHaveText("Start here");
+  await expect(page.locator("#lightning-start")).toBeVisible();
+  await expect(page.locator("#lightning-start")).toHaveText("Start here");
+  await expect(page.locator("#trigger-lightning-hold")).toHaveClass(/is-cued/);
+  for (const id of ["trigger-clear-storm", "trigger-cypress-vibration", "trigger-mangrove-disruption"]) {
+    await expect(page.locator(`#${id}`)).not.toHaveClass(/is-cued/);
+    await expect(page.locator(`#${id} .start-here`)).toHaveCount(0);
+  }
+  await expect(page.locator("#guest-room")).not.toHaveClass(/is-cued/);
+  await expect(page.locator("#tower-room")).not.toHaveClass(/is-cued/);
+  await expect(page.getByRole("button", { name: "Next", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0);
+});
+
+test("a hold points the cue at Control Tower while the guest picture stays unpublished", async ({ page }) => {
+  const state = booth(page);
+  state.dashboard = holdWeather();
+
+  await page.getByRole("button", { name: "Lightning hold" }).click();
+  await expect(page.locator("#pending-weather")).toHaveText("Hold outdoor attractions");
+  await expect(page.locator("#guest-advisory")).toHaveText("Quiet");
+  await expect(page.locator("#guest-best-next")).toHaveText("Quiet");
+  await expect(page.locator("#guest-projection")).toHaveText("Unchanged");
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "operator");
+  await expect(page.locator("#opening-cue")).toHaveText("Look right. That row is the ask.");
+  await expect(page.locator("#opening-detail")).toHaveText("Leave it unpublished, then look left.");
+  await expect(page.locator("#tower-room")).toHaveClass(/is-cued/);
+  await expect(page.locator("#strip-operator")).toHaveClass(/is-cued/);
+  await expect(page.locator("#guest-room")).not.toHaveClass(/is-cued/);
+  await expect(page.locator("#strip-guest")).not.toHaveClass(/is-cued/);
+  await expect(page.locator("#lightning-start")).toBeHidden();
+  await expect(page.locator("#trigger-lightning-hold")).not.toHaveClass(/is-cued/);
+  await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0);
+
+  state.advisories = [{ title: "Weather hold", message: "Outdoor attractions are paused." }];
+  await expect(page.locator("#guest-advisory")).toHaveText("Weather hold: Outdoor attractions are paused.", {
+    timeout: 6000,
+  });
+  await expect(page.locator("#guest-projection")).toHaveText("Changed: advisory");
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clear");
+  await expect(page.locator("#opening-cue")).toHaveText("Press Clear the storm.");
+  await expect(page.locator("#trigger-clear-storm")).toHaveClass(/is-cued/);
+  await expect(page.locator("#tower-room")).not.toHaveClass(/is-cued/);
+  await expect(page.locator("#guest-room")).not.toHaveClass(/is-cued/);
+});
+
+test("an unpublished hold walks from Control Tower to the guest room without a Next button", async ({ page }) => {
+  test.setTimeout(20_000);
+  const state = booth(page);
+  state.dashboard = holdWeather();
+  await page.reload();
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "operator");
+  await expect(page.locator("#lightning-start")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Next", exact: true })).toHaveCount(0);
+
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "guest", { timeout: 8000 });
+  await expect(page.locator("#opening-cue")).toHaveText("The ride still looks open.");
+  await expect(page.locator("#opening-detail")).toHaveText("That is the published picture.");
+  await expect(page.locator("#guest-room")).toHaveClass(/is-cued/);
+  await expect(page.locator("#strip-guest")).toHaveClass(/is-cued/);
+  await expect(page.locator("#tower-room")).not.toHaveClass(/is-cued/);
+  await expect(page.locator("#strip-operator")).not.toHaveClass(/is-cued/);
+  await expect(page.locator("#guest-advisory")).toHaveText("Quiet");
+  await expect(page.locator("#guest-projection")).toHaveText("Unchanged");
+
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "publish", { timeout: 8000 });
+  await expect(page.locator("#opening-cue")).toHaveText(
+    "In Control Tower, review the weather recommendation and publish the guest advisory.",
+  );
+  await expect(page.locator("#opening-detail")).toContainText("VenueOps sign in");
+  await expect(page.locator("#opening-detail")).toContainText("sign in with your operator account to open the console");
+  await expect(page.locator("#tower-room")).toHaveClass(/is-cued/);
+  await expect(page.locator("#guest-room")).not.toHaveClass(/is-cued/);
+  await expect(page.locator("#guest-advisory")).toHaveText("Quiet");
+  await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0);
 });
 
 test("shell shows both frames, the rail, and the strip", async ({ page }) => {

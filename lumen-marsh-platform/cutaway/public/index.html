@@ -22,10 +22,19 @@
     <div class="stage">
       <aside class="rail" aria-label="Producer triggers">
         <h2>Rail</h2>
+        <section id="opening" class="opening" aria-label="Opening" aria-live="polite" hidden>
+          <p id="opening-kicker" class="opening-kicker" hidden>Start here</p>
+          <p id="opening-cue" class="opening-cue"></p>
+          <p id="opening-detail" class="opening-detail"></p>
+          <p id="opening-seam" class="opening-seam">
+            The strip is the seam. Pending on one side, published on the other.
+          </p>
+        </section>
         <p class="rail-note">
           These start a producer. Place hold, accept, dismiss, and publish stay in Control Tower.
         </p>
-        <div class="trigger">
+        <div class="trigger" id="trigger-lightning-hold">
+          <p class="start-here" id="lightning-start" hidden>Start here</p>
           <button
             type="button"
             id="lightning-hold"
@@ -36,7 +45,7 @@
           </button>
           <p class="trigger-result" data-result="lightning-hold" aria-live="polite">Ready</p>
         </div>
-        <div class="trigger">
+        <div class="trigger" id="trigger-clear-storm">
           <button
             type="button"
             id="clear-storm"
@@ -47,7 +56,7 @@
           </button>
           <p class="trigger-result" data-result="clear-storm" aria-live="polite">Ready</p>
         </div>
-        <div class="trigger">
+        <div class="trigger" id="trigger-cypress-vibration">
           <button
             type="button"
             id="cypress-vibration"
@@ -58,7 +67,7 @@
           </button>
           <p class="trigger-result" data-result="cypress-vibration" aria-live="polite">Ready</p>
         </div>
-        <div class="trigger">
+        <div class="trigger" id="trigger-mangrove-disruption">
           <button
             type="button"
             id="mangrove-disruption"
@@ -81,11 +90,11 @@
             </p>
           </div>
         </div>
-        <figure class="room">
+        <figure class="room" id="guest-room">
           <figcaption>Guest</figcaption>
           <iframe id="guest-frame" title="Guest app, Today" src="http://localhost:3000/today"></iframe>
         </figure>
-        <figure class="room">
+        <figure class="room" id="tower-room">
           <figcaption>Control Tower</figcaption>
           <iframe id="console-frame" title="Control Tower" src="http://localhost:3001/dashboard"></iframe>
         </figure>
@@ -96,7 +105,7 @@
         <h2>Strip</h2>
         <p id="last-recommendation">Reading VenueOps.</p>
       </div>
-      <div>
+      <div class="strip-side" id="strip-operator">
         <h3>Operator</h3>
         <dl>
           <div>
@@ -113,7 +122,7 @@
           </div>
         </dl>
       </div>
-      <div>
+      <div class="strip-side" id="strip-guest">
         <h3>Guest</h3>
         <dl>
           <div>
