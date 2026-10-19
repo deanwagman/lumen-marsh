@@ -43,9 +43,28 @@ const openingCopy = {
     detail: "Clear the storm is the way back to the quiet park.",
   },
   unread: {
-    cue: "Look right. That row is the ask.",
-    detail: "The guest side of the strip is unread, so this page cannot say whether the ride still looks open.",
+    cue: "The guest side is unread, so this page cannot say the ride still looks open.",
+    detail: "",
   },
+};
+
+const primaryTrigger = {
+  quiet: "trigger-lightning-hold",
+  clear: "trigger-clear-storm",
+};
+
+const triggerOrder = [
+  "trigger-lightning-hold",
+  "trigger-clear-storm",
+  "trigger-cypress-vibration",
+  "trigger-mangrove-disruption",
+];
+
+const roomForBeat = {
+  operator: "tower",
+  unread: "tower",
+  publish: "tower",
+  guest: "guest",
 };
 
 const openingTargets = {
@@ -65,6 +84,7 @@ let framesWereCovered = false;
 let openingPhase = null;
 let openingTimer = null;
 let openingReading = null;
+let shownRoom = "guest";
 
 const text = (id, value) => {
   document.getElementById(id).textContent = value;
@@ -177,9 +197,34 @@ const setProjection = (value) => {
 
 const syncRail = () => {
   const offline = document.body.classList.contains("is-offline");
-  document.querySelectorAll(".rail button").forEach((button) => {
+  document.querySelectorAll(".trigger button").forEach((button) => {
     button.disabled = offline || sending.has(button.id);
   });
+};
+
+const placeTriggers = (beat) => {
+  const primaryId = primaryTrigger[beat] || null;
+  const now = document.getElementById("now-action");
+  const drawer = document.getElementById("explore-triggers");
+  for (const id of triggerOrder) {
+    const node = document.getElementById(id);
+    (id === primaryId ? now : drawer).appendChild(node);
+  }
+};
+
+const selectRoom = (which) => {
+  shownRoom = which;
+  document.getElementById("guest-room").classList.toggle("is-shown", which === "guest");
+  document.getElementById("tower-room").classList.toggle("is-shown", which === "tower");
+  document.getElementById("tab-guest").setAttribute("aria-selected", which === "guest" ? "true" : "false");
+  document.getElementById("tab-tower").setAttribute("aria-selected", which === "tower" ? "true" : "false");
+  document.getElementById("tab-guest").tabIndex = which === "guest" ? 0 : -1;
+  document.getElementById("tab-tower").tabIndex = which === "tower" ? 0 : -1;
+};
+
+const syncTabCue = () => {
+  document.getElementById("tab-guest").classList.toggle("is-cued", document.getElementById("guest-room").classList.contains("is-cued"));
+  document.getElementById("tab-tower").classList.toggle("is-cued", document.getElementById("tower-room").classList.contains("is-cued"));
 };
 
 const navigateFrame = (frame, url) => {
@@ -240,8 +285,8 @@ const copyFor = (beat, reading) => {
     (reading.guestAdvisory !== "Quiet" || reading.projection !== "Unchanged")
   ) {
     return {
-      cue: "The guest advisory is still quiet.",
-      detail: "The guest side of the strip is not the last open picture, so this page will not call it that.",
+      cue: "The guest advisory is still quiet, so this page will not call that the last open picture.",
+      detail: "",
     };
   }
   return openingCopy[beat];
@@ -258,18 +303,19 @@ const paintOpening = (beat) => {
   clearOpeningMarks();
   opening.dataset.beat = beat;
   if (beat === "offline" || beat === "waiting") {
-    opening.hidden = true;
+    text("opening-cue", "");
     return;
   }
   const copy = copyFor(beat, openingReading);
-  opening.hidden = false;
   text("opening-cue", copy.cue);
-  text("opening-detail", copy.detail);
   if (beat === "quiet") {
     document.getElementById("opening-kicker").hidden = false;
     document.getElementById("lightning-start").hidden = false;
   }
   for (const id of openingTargets[beat]) document.getElementById(id).classList.add("is-cued");
+  placeTriggers(beat);
+  if (roomForBeat[beat]) selectRoom(roomForBeat[beat]);
+  syncTabCue();
 };
 
 const armOpeningDwell = () => {
@@ -305,20 +351,26 @@ function syncOpening(reading) {
   paintOpening(beat);
 }
 
+const setLatest = (value) => {
+  const node = document.getElementById("last-recommendation");
+  node.textContent = value;
+  node.hidden = value === "None";
+};
+
 const renderOffline = () => {
-  text("last-recommendation", "VenueOps is offline.");
-  text("pending-weather", "Offline");
-  text("pending-reliability", "Offline");
-  text("unpublished-flow", "Offline");
-  text("guest-advisory", "Offline");
-  text("guest-best-next", "Offline");
-  setProjection("Offline");
+  setLatest("—");
+  text("pending-weather", "—");
+  text("pending-reliability", "—");
+  text("unpublished-flow", "—");
+  text("guest-advisory", "—");
+  text("guest-best-next", "—");
+  setProjection("—");
   setBoothOnline(false);
   syncOpening({
     online: false,
-    pendingWeather: "Offline",
-    guestAdvisory: "Offline",
-    projection: "Offline",
+    pendingWeather: "—",
+    guestAdvisory: "—",
+    projection: "—",
   });
 };
 
@@ -335,10 +387,7 @@ function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
   const flow = attention(dashboard, "UNPUBLISHED_FLOW_RECOMMENDATION");
   const candidates = candidatesFrom(dashboard);
   const pendingWeather = lane(weather, (item) => item.recommendedAction);
-  text(
-    "last-recommendation",
-    candidates.length ? `${newest(candidates).kind}: ${newest(candidates).text}` : "None",
-  );
+  setLatest(candidates.length ? `${newest(candidates).kind}: ${newest(candidates).text}` : "None");
   text("pending-weather", pendingWeather);
   text("pending-reliability", lane(reliability, (item) => item.subjectLabel || item.reason));
   text("unpublished-flow", lane(flow, (item) => item.subjectLabel || item.reason));
@@ -475,10 +524,20 @@ async function fire(button) {
   await refresh();
 }
 
-document.querySelectorAll(".rail button").forEach((button) => {
+document.querySelectorAll(".trigger button").forEach((button) => {
   button.addEventListener("click", () => {
     void fire(button);
   });
+});
+
+document.getElementById("tab-guest").addEventListener("click", () => selectRoom("guest"));
+document.getElementById("tab-tower").addEventListener("click", () => selectRoom("tower"));
+document.getElementById("room-switch").addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+  event.preventDefault();
+  const next = shownRoom === "guest" ? "tower" : "guest";
+  selectRoom(next);
+  document.getElementById(next === "guest" ? "tab-guest" : "tab-tower").focus();
 });
 
 void refresh();
