@@ -32,6 +32,8 @@
             type="button"
             id="lightning-hold"
             data-url="http://localhost:8000/api/v1/simulation/scenarios/hold-conditions"
+            data-weather-phase="PLACE_WEATHER_HOLD"
+            data-affected-attractions="cypress-coil,mangrove-run"
             disabled
           >
             Lightning hold
@@ -117,6 +119,8 @@
             type="button"
             id="clear-storm"
             data-url="http://localhost:8000/api/v1/simulation/scenarios/clearance-period"
+            data-weather-phase="RETURN_TO_SERVICE"
+            data-affected-attractions="cypress-coil,mangrove-run"
             disabled
           >
             Clear the storm

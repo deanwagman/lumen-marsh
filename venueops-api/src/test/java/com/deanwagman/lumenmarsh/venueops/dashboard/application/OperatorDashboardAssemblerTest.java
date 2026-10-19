@@ -8,6 +8,7 @@ import com.deanwagman.lumenmarsh.venueops.attraction.domain.CapacityMode;
 import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardResponse;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardAttentionKind;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardFreshnessStatus;
+import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardWeatherAction;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendation;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationCommand;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationId;
@@ -99,6 +100,8 @@ class OperatorDashboardAssemblerTest {
         assertThat(dashboard.summary().pendingWeatherRecommendations()).isEqualTo(1);
         assertThat(dashboard.pendingWeatherRecommendations().getFirst().status())
                 .isEqualTo(com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendationStatus.ACTIVE);
+        assertThat(dashboard.pendingWeatherRecommendations().getFirst().action())
+                .isEqualTo(DashboardWeatherAction.PLACE_WEATHER_HOLD);
         assertThat(dashboard.openIncidents()).extracting(OperatorDashboardResponse.DashboardIncidentResponse::id)
                 .containsExactly("inc-major");
         assertThat(dashboard.attractionsNeedingAttention()).extracting(OperatorDashboardResponse.DashboardAttractionResponse::id)
@@ -106,6 +109,95 @@ class OperatorDashboardAssemblerTest {
         assertThat(dashboard.attractionsNeedingAttention().getFirst().relatedOpenIncidentCount()).isEqualTo(1);
         assertThat(dashboard.publishedGuestAdvisories()).isEmpty();
         assertThat(dashboard.freshness().venueOps().status()).isEqualTo(DashboardFreshnessStatus.LIVE);
+    }
+
+    @Test
+    void activeClearanceRuleProjectsReturnToServiceAction() {
+        WeatherRecommendation pending = WeatherRecommendation.receive(
+                inbound("rec-clearance", WeatherRecommendationSeverity.INFO, "simulated-lightning-clearance"),
+                CLOCK
+        );
+
+        OperatorDashboardResponse dashboard = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(),
+                List.of(),
+                List.of(pending)
+        );
+
+        assertThat(dashboard.pendingWeatherRecommendations()).singleElement()
+                .extracting(OperatorDashboardResponse.DashboardWeatherResponse::action)
+                .isEqualTo(DashboardWeatherAction.RETURN_TO_SERVICE);
+    }
+
+    @Test
+    void acknowledgedHoldRemainsWorkflowButLeavesPendingAttention() {
+        WeatherRecommendation acknowledged = WeatherRecommendation.receive(
+                inbound("rec-hold", WeatherRecommendationSeverity.WARNING),
+                CLOCK
+        );
+        acknowledged.acknowledge("Operator One", null, CLOCK);
+
+        OperatorDashboardResponse dashboard = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(),
+                List.of(),
+                List.of(acknowledged)
+        );
+
+        assertThat(dashboard.pendingWeatherRecommendations()).isEmpty();
+        assertThat(dashboard.needsAttention()).noneMatch(
+                item -> item.kind() == DashboardAttentionKind.WEATHER_HAZARD
+        );
+        assertThat(dashboard.activeWeatherWorkflow()).isNotNull();
+        assertThat(dashboard.activeWeatherWorkflow().operatorStatus().name()).isEqualTo("ACKNOWLEDGED");
+        assertThat(dashboard.activeWeatherWorkflow().action())
+                .isEqualTo(DashboardWeatherAction.PLACE_WEATHER_HOLD);
+        assertThat(dashboard.activeWeatherWorkflow().affectedAttractionIds())
+                .containsExactly("cypress-coil");
+    }
+
+    @Test
+    void acknowledgedReturnWorkflowPersistsUntilOperationalStateIsQuiet() {
+        WeatherRecommendation acknowledged = WeatherRecommendation.receive(
+                inbound(
+                        "rec-clearance",
+                        WeatherRecommendationSeverity.INFO,
+                        "simulated-lightning-clearance"
+                ),
+                CLOCK
+        );
+        acknowledged.acknowledge("Operator One", null, CLOCK);
+
+        OperatorDashboardResponse held = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(attraction(
+                        "cypress-coil",
+                        "Cypress Coil",
+                        AttractionStatus.WEATHER_HOLD,
+                        CapacityMode.NOT_APPLICABLE,
+                        1
+                )),
+                List.of(),
+                List.of(acknowledged)
+        );
+        OperatorDashboardResponse completed = OperatorDashboardAssembler.assemble(
+                NOW,
+                List.of(attraction(
+                        "cypress-coil",
+                        "Cypress Coil",
+                        AttractionStatus.OPERATING,
+                        CapacityMode.NORMAL,
+                        2
+                )),
+                List.of(),
+                List.of(acknowledged)
+        );
+
+        assertThat(held.activeWeatherWorkflow()).isNotNull();
+        assertThat(held.activeWeatherWorkflow().action())
+                .isEqualTo(DashboardWeatherAction.RETURN_TO_SERVICE);
+        assertThat(completed.activeWeatherWorkflow()).isNull();
     }
 
     @Test
@@ -644,9 +736,17 @@ class OperatorDashboardAssemblerTest {
     }
 
     private static WeatherRecommendationInbound inbound(String id, WeatherRecommendationSeverity severity) {
+        return inbound(id, severity, "simulated-lightning-hold");
+    }
+
+    private static WeatherRecommendationInbound inbound(
+            String id,
+            WeatherRecommendationSeverity severity,
+            String ruleId
+    ) {
         return new WeatherRecommendationInbound(
                 new WeatherRecommendationId(id),
-                "simulated-lightning-hold",
+                ruleId,
                 WeatherRecommendationStatus.ACTIVE,
                 severity,
                 "Place outdoor attractions on weather hold",

@@ -13,8 +13,10 @@ import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardRespons
 import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardResponse.DashboardSourceFreshnessResponse;
 import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardResponse.DashboardSummaryResponse;
 import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardResponse.DashboardWeatherResponse;
+import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardResponse.DashboardWeatherWorkflowResponse;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardAttentionKind;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardFreshnessStatus;
+import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardWeatherAction;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowEventType;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendation;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationStatus;
@@ -111,6 +113,12 @@ public final class OperatorDashboardAssembler {
                 .filter(Incident::hasActiveGuestAdvisory)
                 .sorted(Comparator.comparing(Incident::updatedAt).reversed().thenComparing(incident -> incident.id().value()))
                 .toList();
+        DashboardWeatherWorkflowResponse activeWeatherWorkflow = activeWeatherWorkflow(
+                recommendations,
+                attractions,
+                openIncidents,
+                publishedAdvisories
+        );
         List<MaintenanceWorkOrder> openP1WorkOrders = workOrders.stream()
                 .filter(OperatorDashboardAssembler::isOpenP1)
                 .sorted(workOrderOrder())
@@ -166,6 +174,7 @@ public final class OperatorDashboardAssembler {
                         .map(attraction -> attractionItem(attraction, relatedIncidents.getOrDefault(attraction.id().value(), 0)))
                         .toList(),
                 pendingWeather.stream().map(OperatorDashboardAssembler::weatherItem).toList(),
+                activeWeatherWorkflow,
                 publishedAdvisories.stream().map(OperatorDashboardAssembler::advisoryItem).toList(),
                 recentActivity(attractions, incidents, recommendations, workOrders, flowRecommendations, maintenanceRecommendations),
                 freshness
@@ -407,6 +416,7 @@ public final class OperatorDashboardAssembler {
         return new DashboardWeatherResponse(
                 recommendation.id().value(),
                 recommendation.status(),
+                weatherAction(recommendation),
                 recommendation.severity(),
                 recommendation.recommendedAction(),
                 recommendation.evidence(),
@@ -417,6 +427,68 @@ public final class OperatorDashboardAssembler {
                 recommendation.updatedAt(),
                 recommendation.simulated()
         );
+    }
+
+    private static DashboardWeatherAction weatherAction(WeatherRecommendation recommendation) {
+        return switch (recommendation.ruleId()) {
+            case "simulated-lightning-hold" -> DashboardWeatherAction.PLACE_WEATHER_HOLD;
+            case "simulated-lightning-clearance" -> DashboardWeatherAction.RETURN_TO_SERVICE;
+            default -> DashboardWeatherAction.OTHER;
+        };
+    }
+
+    private static DashboardWeatherWorkflowResponse activeWeatherWorkflow(
+            List<WeatherRecommendation> recommendations,
+            List<Attraction> attractions,
+            List<Incident> openIncidents,
+            List<Incident> publishedAdvisories
+    ) {
+        WeatherRecommendation latest = recommendations.stream()
+                .filter(recommendation -> weatherAction(recommendation) != DashboardWeatherAction.OTHER)
+                .max(Comparator.comparing(WeatherRecommendation::updatedAt)
+                        .thenComparing(recommendation -> recommendation.id().value()))
+                .orElse(null);
+        if (latest == null
+                || latest.status() != WeatherRecommendationStatus.ACTIVE
+                || latest.operatorStatus() == WeatherRecommendationOperatorStatus.DISMISSED) {
+            return null;
+        }
+
+        DashboardWeatherAction action = weatherAction(latest);
+        if (action == DashboardWeatherAction.RETURN_TO_SERVICE
+                && latest.operatorStatus() != WeatherRecommendationOperatorStatus.PENDING
+                && returnWorkflowComplete(latest, attractions, openIncidents, publishedAdvisories)) {
+            return null;
+        }
+
+        return new DashboardWeatherWorkflowResponse(
+                latest.id().value(),
+                latest.status(),
+                latest.operatorStatus(),
+                action,
+                latest.affectedAttractionIds().stream().map(id -> id.value()).toList(),
+                latest.linkedIncidentId() == null ? null : latest.linkedIncidentId().value(),
+                latest.observedAt(),
+                latest.updatedAt()
+        );
+    }
+
+    private static boolean returnWorkflowComplete(
+            WeatherRecommendation recommendation,
+            List<Attraction> attractions,
+            List<Incident> openIncidents,
+            List<Incident> publishedAdvisories
+    ) {
+        var affectedIds = recommendation.affectedAttractionIds();
+        boolean allAffectedOperating = !affectedIds.isEmpty()
+                && affectedIds.stream().allMatch(affectedId -> attractions.stream()
+                .anyMatch(attraction -> attraction.id().equals(affectedId)
+                        && attraction.status() == AttractionStatus.OPERATING));
+        boolean hasPublishedAdvisory = publishedAdvisories.stream()
+                .anyMatch(incident -> incident.attractionIds().stream().anyMatch(affectedIds::contains));
+        boolean hasOpenIncident = openIncidents.stream()
+                .anyMatch(incident -> incident.attractionIds().stream().anyMatch(affectedIds::contains));
+        return allAffectedOperating && !hasPublishedAdvisory && !hasOpenIncident;
     }
 
     private static DashboardAdvisoryResponse advisoryItem(Incident incident) {

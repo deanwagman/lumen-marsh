@@ -25,6 +25,13 @@ export const dashboardAttentionKinds = [
 ] as const;
 export type DashboardAttentionKind = (typeof dashboardAttentionKinds)[number];
 
+export const dashboardWeatherActions = [
+  'PLACE_WEATHER_HOLD',
+  'RETURN_TO_SERVICE',
+  'OTHER',
+] as const;
+export type DashboardWeatherAction = (typeof dashboardWeatherActions)[number];
+
 export const dashboardActivityDomains = ['ATTRACTION', 'INCIDENT', 'WEATHER', 'MAINTENANCE', 'FLOW'] as const;
 export type DashboardActivityDomain = (typeof dashboardActivityDomains)[number];
 
@@ -77,6 +84,7 @@ export type DashboardAttraction = {
 export type DashboardWeatherRecommendation = {
   id: string;
   status: WeatherRecommendationStatus;
+  action: DashboardWeatherAction;
   severity: WeatherRecommendationSeverity;
   recommendedAction: string;
   evidence: string;
@@ -86,6 +94,17 @@ export type DashboardWeatherRecommendation = {
   observedAt: string;
   updatedAt: string;
   simulated: boolean;
+};
+
+export type DashboardWeatherWorkflow = {
+  recommendationId: string;
+  status: WeatherRecommendationStatus;
+  operatorStatus: WeatherRecommendationOperatorStatus;
+  action: DashboardWeatherAction;
+  affectedAttractionIds: string[];
+  linkedIncidentId: string | null;
+  observedAt: string;
+  updatedAt: string;
 };
 
 export type DashboardAdvisory = {
@@ -126,6 +145,7 @@ export type OperatorDashboard = {
   openIncidents: DashboardIncident[];
   attractionsNeedingAttention: DashboardAttraction[];
   pendingWeatherRecommendations: DashboardWeatherRecommendation[];
+  activeWeatherWorkflow: DashboardWeatherWorkflow | null;
   publishedGuestAdvisories: DashboardAdvisory[];
   recentActivity: DashboardActivity[];
   freshness: DashboardFreshness;

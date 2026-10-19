@@ -37,6 +37,41 @@ class OperatorDashboardControllerTest {
     }
 
     @Test
+    void operatorDashboardProjectsTypedWeatherActionWithoutRuleIdentity() throws Exception {
+        mockMvc.perform(post("/api/v1/integrations/weather/recommendations")
+                        .with(TestAuth.weatherService())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "recommendationId": "rec-dashboard-clearance",
+                                  "ruleId": "simulated-lightning-clearance",
+                                  "status": "ACTIVE",
+                                  "severity": "INFO",
+                                  "summary": "Review held attractions",
+                                  "evidence": "Simulated clearance period completed.",
+                                  "recommendedAction": "Review held attractions for return to service",
+                                  "affectedAttractionIds": ["mangrove-run", "cypress-coil"],
+                                  "observedAt": "2026-09-01T16:30:00Z",
+                                  "version": 1
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        MvcResult result = mockMvc.perform(get("/api/v1/operator/dashboard").with(TestAuth.operator()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(
+                        "$.pendingWeatherRecommendations[?(@.id=='rec-dashboard-clearance')].action"
+                ).value(org.hamcrest.Matchers.hasItem("RETURN_TO_SERVICE")))
+                .andExpect(jsonPath("$.activeWeatherWorkflow.action").value("RETURN_TO_SERVICE"))
+                .andExpect(jsonPath("$.activeWeatherWorkflow.affectedAttractionIds")
+                        .value(org.hamcrest.Matchers.containsInAnyOrder("mangrove-run", "cypress-coil")))
+                .andReturn();
+
+        assertThat(result.getResponse().getContentAsString())
+                .doesNotContain("simulated-lightning-clearance");
+    }
+
+    @Test
     void operatorCanReadSnapshotWithoutWritingActivity() throws Exception {
         mockMvc.perform(get("/api/v1/operator/dashboard").with(TestAuth.operator()))
                 .andExpect(status().isOk())
@@ -96,6 +131,20 @@ class OperatorDashboardControllerTest {
         assertThat(guest).doesNotContain("assetCode");
         assertThat(guest).doesNotContain("internalDescription");
         assertThat(guest).doesNotContain("INTERNAL ONLY");
+        assertThat(guest).doesNotContain("activeWeatherWorkflow");
+        assertThat(guest).doesNotContain("RETURN_TO_SERVICE");
+        assertThat(guest).doesNotContain("PLACE_WEATHER_HOLD");
+        assertThat(guest).doesNotContain("affectedAttractionIds");
+
+        String guestAdvisories = mockMvc.perform(get("/api/v1/advisories"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(guestAdvisories).doesNotContain("activeWeatherWorkflow");
+        assertThat(guestAdvisories).doesNotContain("RETURN_TO_SERVICE");
+        assertThat(guestAdvisories).doesNotContain("PLACE_WEATHER_HOLD");
+        assertThat(guestAdvisories).doesNotContain("operatorStatus");
     }
 
     @Test

@@ -12,6 +12,7 @@ import {
   dashboardActivityDomains,
   dashboardAttentionKinds,
   dashboardFreshnessStatuses,
+  dashboardWeatherActions,
   type OperatorDashboard,
 } from '@/features/dashboard/domain/dashboard';
 
@@ -75,6 +76,7 @@ const attractionSchema = z.object({
 const weatherSchema = z.object({
   id: z.string().min(1),
   status: z.enum(weatherRecommendationStatuses),
+  action: z.enum(dashboardWeatherActions),
   severity: z.enum(weatherRecommendationSeverities),
   recommendedAction: z.string().min(1),
   evidence: z.string().min(1),
@@ -84,6 +86,17 @@ const weatherSchema = z.object({
   observedAt: instantSchema,
   updatedAt: instantSchema,
   simulated: z.boolean(),
+});
+
+const weatherWorkflowSchema = z.object({
+  recommendationId: z.string().min(1),
+  status: z.enum(weatherRecommendationStatuses),
+  operatorStatus: z.enum(weatherRecommendationOperatorStatuses),
+  action: z.enum(dashboardWeatherActions),
+  affectedAttractionIds: z.array(z.string().min(1)),
+  linkedIncidentId: z.string().nullable(),
+  observedAt: instantSchema,
+  updatedAt: instantSchema,
 });
 
 const advisorySchema = z.object({
@@ -119,6 +132,7 @@ export const operatorDashboardSchema: z.ZodType<OperatorDashboard> = z.object({
   openIncidents: z.array(incidentSchema),
   attractionsNeedingAttention: z.array(attractionSchema),
   pendingWeatherRecommendations: z.array(weatherSchema),
+  activeWeatherWorkflow: weatherWorkflowSchema.nullable(),
   publishedGuestAdvisories: z.array(advisorySchema),
   recentActivity: z.array(activitySchema),
   freshness: z.object({
