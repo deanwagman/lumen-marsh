@@ -889,6 +889,7 @@ test("captures the corrected weather walkthrough when evidence output is request
     timeout: 6000,
   });
   await pressTrigger(page, "Lightning hold");
+  await page.waitForTimeout(2500);
   state.dashboard = emptyDashboard();
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "hold-rides", {
     timeout: 6000,
