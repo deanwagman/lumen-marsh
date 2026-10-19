@@ -164,6 +164,7 @@ export const stormDashboard: OperatorDashboard = {
   pendingWeatherRecommendations: [
     {
       id: 'rec-lightning-1',
+      status: 'ACTIVE',
       severity: 'WARNING',
       recommendedAction: 'Place outdoor attractions on weather hold',
       evidence: 'Simulated lightning strike near the western basin.',

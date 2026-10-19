@@ -97,6 +97,8 @@ class OperatorDashboardAssemblerTest {
         assertThat(dashboard.summary().openIncidents()).isEqualTo(1);
         assertThat(dashboard.summary().majorOrCriticalIncidents()).isEqualTo(1);
         assertThat(dashboard.summary().pendingWeatherRecommendations()).isEqualTo(1);
+        assertThat(dashboard.pendingWeatherRecommendations().getFirst().status())
+                .isEqualTo(com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendationStatus.ACTIVE);
         assertThat(dashboard.openIncidents()).extracting(OperatorDashboardResponse.DashboardIncidentResponse::id)
                 .containsExactly("inc-major");
         assertThat(dashboard.attractionsNeedingAttention()).extracting(OperatorDashboardResponse.DashboardAttractionResponse::id)

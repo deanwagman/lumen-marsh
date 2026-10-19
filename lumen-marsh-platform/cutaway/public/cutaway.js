@@ -26,15 +26,15 @@ const openingCopy = {
     detail: "Control Tower will get a decision, and the guest room will not, until someone publishes.",
   },
   operator: {
-    cue: "Look right. That row is the ask.",
-    detail: "Leave it unpublished, then look left.",
+    cue: "In Control Tower, review or acknowledge the weather recommendation.",
+    detail: "The recommendation does not place any attraction on hold.",
   },
   guest: {
     cue: "The ride still looks open.",
     detail: "That is the published picture.",
   },
   publish: {
-    cue: "In Control Tower, review the weather recommendation and publish the guest advisory.",
+    cue: "Place the affected attractions on weather hold as a separate action, then publish guest guidance.",
     detail:
       "This room opens as Local Operator, already signed in. If it shows VenueOps sign in, sign in with your operator account to open the console.",
   },
@@ -65,6 +65,10 @@ const roomForBeat = {
   unread: "tower",
   publish: "tower",
   guest: "guest",
+  "hold-rides": "tower",
+  clearance: "tower",
+  recovery: "tower",
+  withdraw: "tower",
 };
 
 const openingTargets = {
@@ -74,6 +78,10 @@ const openingTargets = {
   publish: ["tower-room"],
   clear: ["trigger-clear-storm"],
   unread: ["tower-room", "strip-operator"],
+  "hold-rides": ["tower-room", "strip-operator"],
+  clearance: ["tower-room", "strip-operator"],
+  recovery: ["tower-room", "strip-operator"],
+  withdraw: ["tower-room", "strip-guest"],
 };
 
 let refreshToken = 0;
@@ -261,20 +269,22 @@ const setBoothOnline = (online) => {
 
 const isHoldPhase = (beat) => beat === "operator" || beat === "guest" || beat === "publish";
 
-// Pending weather with a quiet guest advisory is one strip reading. The page
-// walks Control Tower, the guest room, then the publish line. The strip cannot
-// separate those three. A guest advisory that is no longer Quiet is the next
-// reading the strip can actually show.
-
 const observedBeat = (reading) => {
   if (!reading.online) return "offline";
   const weather = reading.pendingWeather;
   const advisory = reading.guestAdvisory;
   if (weather === "Offline" || advisory === "Offline") return "offline";
   if (weather === "Reading VenueOps." || advisory === "Reading VenueOps.") return "waiting";
-  if (advisory === "Unread") return weather === "None" ? "waiting" : "unread";
-  if (advisory !== "Quiet") return "clear";
-  if (weather !== "None") return "hold";
+  if (advisory === "Unread") {
+    return reading.weatherKind === "none" && reading.heldAttractions.length === 0 ? "waiting" : "unread";
+  }
+  if (reading.weatherKind === "clearance") return "clearance";
+  if (reading.weatherKind === "hold") {
+    if (advisory === "Quiet") return "hold";
+    return reading.allAffectedHeld ? "clear" : "hold-rides";
+  }
+  if (reading.heldAttractions.length > 0) return "recovery";
+  if (advisory !== "Quiet") return "withdraw";
   return "quiet";
 };
 
@@ -286,6 +296,41 @@ const copyFor = (beat, reading) => {
   ) {
     return {
       cue: "The guest advisory is still quiet, so this page will not call that the last open picture.",
+      detail: "",
+    };
+  }
+  if (beat === "hold-rides") {
+    return {
+      cue: "Guest guidance is published, but affected attractions are not all on weather hold. Place them on hold in Control Tower.",
+      detail: "",
+    };
+  }
+  if (beat === "clearance") {
+    const advisory =
+      reading.guestAdvisory === "Quiet"
+        ? "Guest guidance is quiet."
+        : "The published guest advisory remains in place.";
+    const holds = reading.heldAttractions.length
+      ? `${reading.heldAttractions.join(" and ")} ${reading.heldAttractions.length === 1 ? "remains" : "remain"} on weather hold.`
+      : "No attraction remains on weather hold.";
+    return {
+      cue: `Review the return-to-service recommendation in Control Tower. ${advisory} ${holds}`,
+      detail: "",
+    };
+  }
+  if (beat === "recovery") {
+    const advisory =
+      reading.guestAdvisory === "Quiet"
+        ? ""
+        : " Withdraw the guest guidance after the operational decision.";
+    return {
+      cue: `${reading.heldAttractions.join(" and ")} still ${reading.heldAttractions.length === 1 ? "needs" : "need"} a Control Tower return-to-service decision.${advisory}`,
+      detail: "",
+    };
+  }
+  if (beat === "withdraw") {
+    return {
+      cue: "No weather action is pending and no attraction remains on weather hold. Withdraw the published guest guidance in Control Tower.",
       detail: "",
     };
   }
@@ -360,6 +405,7 @@ const setLatest = (value) => {
 const renderOffline = () => {
   setLatest("—");
   text("pending-weather", "—");
+  text("weather-holds", "—");
   text("pending-reliability", "—");
   text("unpublished-flow", "—");
   text("guest-advisory", "—");
@@ -371,6 +417,9 @@ const renderOffline = () => {
     pendingWeather: "—",
     guestAdvisory: "—",
     projection: "—",
+    weatherKind: "none",
+    heldAttractions: [],
+    allAffectedHeld: false,
   });
 };
 
@@ -383,12 +432,26 @@ function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
   setBoothOnline(true);
   const dashboard = dashboardResult.body;
   const weather = dashboard.pendingWeatherRecommendations || [];
+  const currentWeather = newest(weather);
+  const weatherKind =
+    currentWeather?.status === "CLEARED" ? "clearance" : currentWeather ? "hold" : "none";
+  const heldAttractions = (dashboard.attractionsNeedingAttention || []).filter(
+    (item) => item.status === "WEATHER_HOLD",
+  );
+  const heldIds = new Set(heldAttractions.map((item) => item.id));
+  const affectedIds = currentWeather?.affectedAttractionIds || [];
+  const allAffectedHeld =
+    affectedIds.length > 0 && affectedIds.every((attractionId) => heldIds.has(attractionId));
   const reliability = attention(dashboard, "PENDING_RELIABILITY_RECOMMENDATION");
   const flow = attention(dashboard, "UNPUBLISHED_FLOW_RECOMMENDATION");
   const candidates = candidatesFrom(dashboard);
   const pendingWeather = lane(weather, (item) => item.recommendedAction);
   setLatest(candidates.length ? `${newest(candidates).kind}: ${newest(candidates).text}` : "None");
   text("pending-weather", pendingWeather);
+  text(
+    "weather-holds",
+    heldAttractions.length ? heldAttractions.map((item) => item.name || item.id).join(", ") : "None",
+  );
   text("pending-reliability", lane(reliability, (item) => item.subjectLabel || item.reason));
   text("unpublished-flow", lane(flow, (item) => item.subjectLabel || item.reason));
 
@@ -404,7 +467,15 @@ function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
   text("guest-advisory", guestAdvisory);
   text("guest-best-next", guestBestNext);
   setProjection(projection);
-  syncOpening({ online: true, pendingWeather, guestAdvisory, projection });
+  syncOpening({
+    online: true,
+    pendingWeather,
+    guestAdvisory,
+    projection,
+    weatherKind,
+    heldAttractions: heldAttractions.map((item) => item.name || item.id),
+    allAffectedHeld,
+  });
   return dashboard;
 }
 

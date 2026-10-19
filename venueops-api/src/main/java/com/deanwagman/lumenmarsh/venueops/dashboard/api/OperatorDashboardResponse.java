@@ -8,6 +8,7 @@ import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatus;
 import com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendationOperatorStatus;
 import com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendationSeverity;
+import com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendationStatus;
 
 import java.time.Instant;
 import java.util.List;
@@ -75,6 +76,7 @@ public record OperatorDashboardResponse(
 
     public record DashboardWeatherResponse(
             String id,
+            WeatherRecommendationStatus status,
             WeatherRecommendationSeverity severity,
             String recommendedAction,
             String evidence,

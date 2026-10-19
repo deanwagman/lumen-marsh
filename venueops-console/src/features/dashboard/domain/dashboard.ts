@@ -3,6 +3,7 @@ import type { IncidentSeverity, IncidentStatus } from '@/features/incidents/doma
 import type {
   WeatherRecommendationOperatorStatus,
   WeatherRecommendationSeverity,
+  WeatherRecommendationStatus,
 } from '@/features/weather/domain/recommendation';
 
 export const dashboardFreshnessStatuses = ['LIVE', 'STALE', 'UNAVAILABLE'] as const;
@@ -75,6 +76,7 @@ export type DashboardAttraction = {
 
 export type DashboardWeatherRecommendation = {
   id: string;
+  status: WeatherRecommendationStatus;
   severity: WeatherRecommendationSeverity;
   recommendedAction: string;
   evidence: string;

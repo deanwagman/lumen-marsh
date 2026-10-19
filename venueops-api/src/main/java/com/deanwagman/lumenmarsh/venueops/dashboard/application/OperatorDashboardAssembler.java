@@ -406,6 +406,7 @@ public final class OperatorDashboardAssembler {
     private static DashboardWeatherResponse weatherItem(WeatherRecommendation recommendation) {
         return new DashboardWeatherResponse(
                 recommendation.id().value(),
+                recommendation.status(),
                 recommendation.severity(),
                 recommendation.recommendedAction(),
                 recommendation.evidence(),
