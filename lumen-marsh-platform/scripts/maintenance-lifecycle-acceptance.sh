@@ -294,7 +294,7 @@ items = [
 if expect == "present":
     assert items, f"pending reliability row missing for {rec_id}"
     item = items[0]
-    assert item.get("href") == "/maintenance", item
+    assert item.get("href") == "/docs/shift#pending-reliability", item
     blob = json.dumps(item)
     assert "CC-TRAIN-01-WHEEL-A" not in blob, blob
     assert "workOrderNumber" not in blob, blob
