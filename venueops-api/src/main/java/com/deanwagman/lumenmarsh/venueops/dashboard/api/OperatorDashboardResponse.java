@@ -4,6 +4,7 @@ import com.deanwagman.lumenmarsh.venueops.attraction.domain.AttractionStatus;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.CapacityMode;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardAttentionKind;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardFreshnessStatus;
+import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardWeatherAction;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentSeverity;
 import com.deanwagman.lumenmarsh.venueops.incident.domain.IncidentStatus;
 import com.deanwagman.lumenmarsh.venueops.weather.domain.WeatherRecommendationOperatorStatus;
@@ -77,6 +78,7 @@ public record OperatorDashboardResponse(
     public record DashboardWeatherResponse(
             String id,
             WeatherRecommendationStatus status,
+            DashboardWeatherAction action,
             WeatherRecommendationSeverity severity,
             String recommendedAction,
             String evidence,

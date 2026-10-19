@@ -12,6 +12,7 @@ import {
   dashboardActivityDomains,
   dashboardAttentionKinds,
   dashboardFreshnessStatuses,
+  dashboardWeatherActions,
   type OperatorDashboard,
 } from '@/features/dashboard/domain/dashboard';
 
@@ -75,6 +76,7 @@ const attractionSchema = z.object({
 const weatherSchema = z.object({
   id: z.string().min(1),
   status: z.enum(weatherRecommendationStatuses),
+  action: z.enum(dashboardWeatherActions),
   severity: z.enum(weatherRecommendationSeverities),
   recommendedAction: z.string().min(1),
   evidence: z.string().min(1),

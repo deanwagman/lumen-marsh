@@ -4,6 +4,9 @@ const guestTodayUrl = "http://localhost:3000/today";
 const towerDashboardUrl = "http://localhost:3001/dashboard";
 const pollMs = 2000;
 const spentWaitMs = 8000;
+const weatherIntentKey = "cutaway.weather-intent.v1";
+const weatherPhases = new Set(["PLACE_WEATHER_HOLD", "RETURN_TO_SERVICE"]);
+const safeAttractionId = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const resetNote =
   "Mangrove disruption is spent. Park Flow reuses one recommendation id, so this database will not open a new pending review. From lumen-marsh-platform, run ./scripts/reset-demo.sh --confirm and start the stack again.";
 
@@ -93,6 +96,52 @@ let openingPhase = null;
 let openingTimer = null;
 let openingReading = null;
 let shownRoom = "guest";
+let triggeredWeatherPhase = null;
+
+const safeAttractionIds = (items) =>
+  Array.isArray(items)
+    ? [...new Set(items.filter((item) => typeof item === "string" && safeAttractionId.test(item)))].slice(0, 20)
+    : [];
+
+const attractionLabel = (id) =>
+  id
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const readWeatherIntent = () => {
+  try {
+    const value = JSON.parse(window.sessionStorage.getItem(weatherIntentKey) || "null");
+    if (!value || !weatherPhases.has(value.phase)) return null;
+    const affectedAttractionIds = safeAttractionIds(value.affectedAttractionIds);
+    return affectedAttractionIds.length ? { phase: value.phase, affectedAttractionIds } : null;
+  } catch {
+    return null;
+  }
+};
+
+let weatherIntent = readWeatherIntent();
+
+const retainWeatherIntent = (phase, affectedAttractionIds) => {
+  if (!weatherPhases.has(phase)) return;
+  const safeIds = safeAttractionIds(affectedAttractionIds);
+  if (!safeIds.length) return;
+  weatherIntent = { phase, affectedAttractionIds: safeIds };
+  try {
+    window.sessionStorage.setItem(weatherIntentKey, JSON.stringify(weatherIntent));
+  } catch {
+    // The live dashboard still recovers phase when session storage is unavailable.
+  }
+};
+
+const clearWeatherIntent = () => {
+  weatherIntent = null;
+  try {
+    window.sessionStorage.removeItem(weatherIntentKey);
+  } catch {
+    // There is no retained state to clear when storage is unavailable.
+  }
+};
 
 const text = (id, value) => {
   document.getElementById(id).textContent = value;
@@ -276,15 +325,21 @@ const observedBeat = (reading) => {
   if (weather === "Offline" || advisory === "Offline") return "offline";
   if (weather === "Reading VenueOps." || advisory === "Reading VenueOps.") return "waiting";
   if (advisory === "Unread") {
-    return reading.weatherKind === "none" && reading.heldAttractions.length === 0 ? "waiting" : "unread";
+    return reading.weatherPhase === null && reading.heldAttractions.length === 0 ? "waiting" : "unread";
   }
-  if (reading.weatherKind === "clearance") return "clearance";
-  if (reading.weatherKind === "hold") {
-    if (advisory === "Quiet") return "hold";
-    return reading.allAffectedHeld ? "clear" : "hold-rides";
+  if (reading.weatherPhase === "RETURN_TO_SERVICE") {
+    if (reading.hasPendingReturn) return "clearance";
+    if (reading.heldAttractions.length > 0 || reading.hasWeatherAdvisory) return "recovery";
+    return "quiet";
   }
+  if (reading.weatherPhase === "PLACE_WEATHER_HOLD") {
+    if (reading.allAffectedHeld) return reading.hasWeatherAdvisory ? "clear" : "publish";
+    if (reading.hasPendingHold) return "hold";
+    return "hold-rides";
+  }
+  if (reading.hasPendingWeather) return "operator";
   if (reading.heldAttractions.length > 0) return "recovery";
-  if (advisory !== "Quiet") return "withdraw";
+  if (reading.hasWeatherAdvisory) return "withdraw";
   return "quiet";
 };
 
@@ -300,31 +355,50 @@ const copyFor = (beat, reading) => {
     };
   }
   if (beat === "hold-rides") {
+    const names = reading.affectedAttractionIds.length
+      ? reading.affectedAttractionIds.map(attractionLabel).join(" and ")
+      : "The affected attractions";
     return {
-      cue: "Guest guidance is published, but affected attractions are not all on weather hold. Place them on hold in Control Tower.",
+      cue: `${names} ${reading.affectedAttractionIds.length === 1 ? "still needs" : "still need"} weather hold in Control Tower. Recommendation review alone does not hold a ride.`,
+      detail: "",
+    };
+  }
+  if (beat === "publish") {
+    return {
+      cue: "The affected attractions are on weather hold. Publish guest guidance in Control Tower.",
       detail: "",
     };
   }
   if (beat === "clearance") {
     const advisory =
-      reading.guestAdvisory === "Quiet"
+      !reading.hasWeatherAdvisory
         ? "Guest guidance is quiet."
         : "The published guest advisory remains in place.";
-    const holds = reading.heldAttractions.length
-      ? `${reading.heldAttractions.join(" and ")} ${reading.heldAttractions.length === 1 ? "remains" : "remain"} on weather hold.`
-      : "No attraction remains on weather hold.";
+    const conditions = reading.affectedConditions.length
+      ? `${reading.affectedConditions.join("; ")}.`
+      : "No affected attraction condition remains on the dashboard.";
+    const incidents = reading.openAffectedIncidentCount
+      ? ` ${reading.openAffectedIncidentCount} related ${reading.openAffectedIncidentCount === 1 ? "incident remains" : "incidents remain"} open.`
+      : "";
     return {
-      cue: `Review the return-to-service recommendation in Control Tower. ${advisory} ${holds}`,
+      cue: `Review the return-to-service recommendation in Control Tower. ${advisory} ${conditions}${incidents}`,
       detail: "",
     };
   }
   if (beat === "recovery") {
-    const advisory =
-      reading.guestAdvisory === "Quiet"
-        ? ""
-        : " Withdraw the guest guidance after the operational decision.";
+    const conditions = reading.affectedConditions.length
+      ? `${reading.affectedConditions.join("; ")}. `
+      : "";
+    const advisory = reading.hasWeatherAdvisory
+      ? "Withdraw guest guidance after the operational decision. "
+      : "";
+    const incidents = reading.openAffectedIncidentCount
+      ? `${reading.openAffectedIncidentCount} related ${reading.openAffectedIncidentCount === 1 ? "incident remains" : "incidents remain"} open.`
+      : "";
     return {
-      cue: `${reading.heldAttractions.join(" and ")} still ${reading.heldAttractions.length === 1 ? "needs" : "need"} a Control Tower return-to-service decision.${advisory}`,
+      cue:
+        `${conditions}${advisory}${incidents}`.trim() ||
+        "Complete the return-to-service workflow in Control Tower.",
       detail: "",
     };
   }
@@ -417,9 +491,16 @@ const renderOffline = () => {
     pendingWeather: "—",
     guestAdvisory: "—",
     projection: "—",
-    weatherKind: "none",
+    weatherPhase: weatherIntent?.phase || null,
+    hasPendingWeather: false,
+    hasPendingHold: false,
+    hasPendingReturn: false,
+    hasWeatherAdvisory: false,
     heldAttractions: [],
+    affectedAttractionIds: weatherIntent?.affectedAttractionIds || [],
+    affectedConditions: [],
     allAffectedHeld: false,
+    openAffectedIncidentCount: 0,
   });
 };
 
@@ -433,15 +514,53 @@ function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
   const dashboard = dashboardResult.body;
   const weather = dashboard.pendingWeatherRecommendations || [];
   const currentWeather = newest(weather);
-  const weatherKind =
-    currentWeather?.status === "CLEARED" ? "clearance" : currentWeather ? "hold" : "none";
+  if (currentWeather?.action === "RETURN_TO_SERVICE") {
+    retainWeatherIntent("RETURN_TO_SERVICE", currentWeather.affectedAttractionIds);
+    triggeredWeatherPhase = null;
+  } else if (
+    currentWeather?.action === "PLACE_WEATHER_HOLD" &&
+    weatherIntent?.phase !== "RETURN_TO_SERVICE"
+  ) {
+    retainWeatherIntent("PLACE_WEATHER_HOLD", currentWeather.affectedAttractionIds);
+    triggeredWeatherPhase = null;
+  }
+  let weatherPhase = weatherIntent?.phase || null;
+  let affectedIds = weatherIntent?.affectedAttractionIds || [];
   const heldAttractions = (dashboard.attractionsNeedingAttention || []).filter(
     (item) => item.status === "WEATHER_HOLD",
   );
   const heldIds = new Set(heldAttractions.map((item) => item.id));
-  const affectedIds = currentWeather?.affectedAttractionIds || [];
   const allAffectedHeld =
     affectedIds.length > 0 && affectedIds.every((attractionId) => heldIds.has(attractionId));
+  const affectedIdSet = new Set(affectedIds);
+  const affectedConditions = (dashboard.attractionsNeedingAttention || [])
+    .filter((item) => affectedIdSet.has(item.id))
+    .map((item) => `${item.name || item.id}: ${String(item.status || "needs attention").replaceAll("_", " ").toLowerCase()}`);
+  const publishedWeatherAdvisories = (dashboard.publishedGuestAdvisories || []).filter((item) => {
+    const advisoryIds = safeAttractionIds(item.affectedAttractionIds);
+    return affectedIdSet.size === 0 || advisoryIds.some((id) => affectedIdSet.has(id));
+  });
+  const openAffectedIncidentCount = (dashboard.openIncidents || []).filter((item) => {
+    const incidentIds = safeAttractionIds(item.attractionIds);
+    return incidentIds.some((id) => affectedIdSet.has(id));
+  }).length;
+  const hasPendingHold =
+    currentWeather?.action === "PLACE_WEATHER_HOLD" ||
+    triggeredWeatherPhase === "PLACE_WEATHER_HOLD";
+  const hasPendingReturn =
+    currentWeather?.action === "RETURN_TO_SERVICE" ||
+    triggeredWeatherPhase === "RETURN_TO_SERVICE";
+  const isActuallyQuiet =
+    weather.length === 0 &&
+    heldAttractions.length === 0 &&
+    publishedWeatherAdvisories.length === 0 &&
+    openAffectedIncidentCount === 0;
+  if (weatherPhase === "RETURN_TO_SERVICE" && isActuallyQuiet) {
+    clearWeatherIntent();
+    triggeredWeatherPhase = null;
+    weatherPhase = null;
+    affectedIds = [];
+  }
   const reliability = attention(dashboard, "PENDING_RELIABILITY_RECOMMENDATION");
   const flow = attention(dashboard, "UNPUBLISHED_FLOW_RECOMMENDATION");
   const candidates = candidatesFrom(dashboard);
@@ -472,9 +591,16 @@ function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
     pendingWeather,
     guestAdvisory,
     projection,
-    weatherKind,
+    weatherPhase,
+    hasPendingWeather: weather.length > 0,
+    hasPendingHold,
+    hasPendingReturn,
+    hasWeatherAdvisory: publishedWeatherAdvisories.length > 0,
     heldAttractions: heldAttractions.map((item) => item.name || item.id),
+    affectedAttractionIds: affectedIds,
+    affectedConditions,
     allAffectedHeld,
+    openAffectedIncidentCount,
   });
   return dashboard;
 }
@@ -577,6 +703,22 @@ async function fire(button) {
   setResult(button.id, "pending", "Sending");
   const result = await postScenario(button.dataset.url);
   setResult(button.id, result.ok ? "fired" : "failed", result.ok ? "Fired" : result.status ? `Failed (${result.status})` : "Failed");
+  if (result.ok && weatherPhases.has(button.dataset.weatherPhase)) {
+    const affectedAttractionIds =
+      weatherIntent?.affectedAttractionIds ||
+      safeAttractionIds((button.dataset.affectedAttractions || "").split(","));
+    triggeredWeatherPhase = button.dataset.weatherPhase;
+    retainWeatherIntent(button.dataset.weatherPhase, affectedAttractionIds);
+    if (openingReading) {
+      syncOpening({
+        ...openingReading,
+        weatherPhase: button.dataset.weatherPhase,
+        affectedAttractionIds,
+        hasPendingHold: button.dataset.weatherPhase === "PLACE_WEATHER_HOLD",
+        hasPendingReturn: button.dataset.weatherPhase === "RETURN_TO_SERVICE",
+      });
+    }
+  }
   if (result.ok && button.dataset.watch === "mangrove") {
     const recommendationId = result.body?.recommendationId;
     mangroveWatch = {

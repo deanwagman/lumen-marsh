@@ -15,6 +15,7 @@ import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardRespons
 import com.deanwagman.lumenmarsh.venueops.dashboard.api.OperatorDashboardResponse.DashboardWeatherResponse;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardAttentionKind;
 import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardFreshnessStatus;
+import com.deanwagman.lumenmarsh.venueops.dashboard.domain.DashboardWeatherAction;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowEventType;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendation;
 import com.deanwagman.lumenmarsh.venueops.flow.domain.FlowRecommendationStatus;
@@ -407,6 +408,7 @@ public final class OperatorDashboardAssembler {
         return new DashboardWeatherResponse(
                 recommendation.id().value(),
                 recommendation.status(),
+                weatherAction(recommendation),
                 recommendation.severity(),
                 recommendation.recommendedAction(),
                 recommendation.evidence(),
@@ -417,6 +419,14 @@ public final class OperatorDashboardAssembler {
                 recommendation.updatedAt(),
                 recommendation.simulated()
         );
+    }
+
+    private static DashboardWeatherAction weatherAction(WeatherRecommendation recommendation) {
+        return switch (recommendation.ruleId()) {
+            case "simulated-lightning-hold" -> DashboardWeatherAction.PLACE_WEATHER_HOLD;
+            case "simulated-lightning-clearance" -> DashboardWeatherAction.RETURN_TO_SERVICE;
+            default -> DashboardWeatherAction.OTHER;
+        };
     }
 
     private static DashboardAdvisoryResponse advisoryItem(Incident incident) {

@@ -6,6 +6,8 @@ import { calmDashboard, stormDashboard } from '@/features/dashboard/test/fixture
 describe('operatorDashboardSchema', () => {
   it('accepts the calm and storm fixtures', () => {
     expect(operatorDashboardSchema.parse(calmDashboard).generatedAt).toBe(calmDashboard.generatedAt);
-    expect(operatorDashboardSchema.parse(stormDashboard).openIncidents).toHaveLength(3);
+    const storm = operatorDashboardSchema.parse(stormDashboard);
+    expect(storm.openIncidents).toHaveLength(3);
+    expect(storm.pendingWeatherRecommendations[0]?.action).toBe('PLACE_WEATHER_HOLD');
   });
 });

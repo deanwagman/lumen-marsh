@@ -37,6 +37,38 @@ class OperatorDashboardControllerTest {
     }
 
     @Test
+    void operatorDashboardProjectsTypedWeatherActionWithoutRuleIdentity() throws Exception {
+        mockMvc.perform(post("/api/v1/integrations/weather/recommendations")
+                        .with(TestAuth.weatherService())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "recommendationId": "rec-dashboard-clearance",
+                                  "ruleId": "simulated-lightning-clearance",
+                                  "status": "ACTIVE",
+                                  "severity": "INFO",
+                                  "summary": "Review held attractions",
+                                  "evidence": "Simulated clearance period completed.",
+                                  "recommendedAction": "Review held attractions for return to service",
+                                  "affectedAttractionIds": ["mangrove-run", "cypress-coil"],
+                                  "observedAt": "2026-09-01T16:30:00Z",
+                                  "version": 1
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        MvcResult result = mockMvc.perform(get("/api/v1/operator/dashboard").with(TestAuth.operator()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(
+                        "$.pendingWeatherRecommendations[?(@.id=='rec-dashboard-clearance')].action"
+                ).value(org.hamcrest.Matchers.hasItem("RETURN_TO_SERVICE")))
+                .andReturn();
+
+        assertThat(result.getResponse().getContentAsString())
+                .doesNotContain("simulated-lightning-clearance");
+    }
+
+    @Test
     void operatorCanReadSnapshotWithoutWritingActivity() throws Exception {
         mockMvc.perform(get("/api/v1/operator/dashboard").with(TestAuth.operator()))
                 .andExpect(status().isOk())

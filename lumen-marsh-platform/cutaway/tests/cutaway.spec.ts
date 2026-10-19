@@ -29,6 +29,8 @@ type BoothState = {
 const emptyDashboard = () => ({
   pendingWeatherRecommendations: [],
   attractionsNeedingAttention: [],
+  publishedGuestAdvisories: [],
+  openIncidents: [],
   needsAttention: [],
 });
 
@@ -244,28 +246,41 @@ const holdWeather = () => ({
     {
       id: "wx-1",
       status: "ACTIVE",
+      action: "PLACE_WEATHER_HOLD",
       recommendedAction: "Hold outdoor attractions",
       affectedAttractionIds: ["cypress-coil", "mangrove-run"],
       updatedAt: "2026-10-15T18:00:00Z",
     },
   ],
   attractionsNeedingAttention: [],
+  publishedGuestAdvisories: [],
+  openIncidents: [],
   needsAttention: [],
 });
 
-const clearanceWeather = (attractionsNeedingAttention: unknown[] = []) => ({
+const returnWeather = (attractionsNeedingAttention: unknown[] = []) => ({
   pendingWeatherRecommendations: [
     {
-      id: "wx-1",
-      status: "CLEARED",
+      id: "wx-return-1",
+      status: "ACTIVE",
+      action: "RETURN_TO_SERVICE",
       recommendedAction: "Review weather holds for return-to-service",
       affectedAttractionIds: ["cypress-coil", "mangrove-run"],
       updatedAt: "2026-10-15T18:30:00Z",
     },
   ],
   attractionsNeedingAttention,
+  publishedGuestAdvisories: [],
+  openIncidents: [],
   needsAttention: [],
 });
+
+const publishedWeatherAdvisory = {
+  id: "adv-weather",
+  title: "Weather hold",
+  message: "Outdoor attractions are paused.",
+  affectedAttractionIds: ["cypress-coil", "mangrove-run"],
+};
 
 test("quiet park points the cue at Lightning hold", async ({ page }) => {
   const opening = page.locator("#opening");
@@ -320,13 +335,17 @@ test("a hold points the cue at Control Tower while the guest picture stays unpub
   await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0);
 
   state.advisories = [{ title: "Weather hold", message: "Outdoor attractions are paused." }];
+  state.dashboard = {
+    ...holdWeather(),
+    publishedGuestAdvisories: [publishedWeatherAdvisory],
+  };
   await expect(page.locator("#guest-advisory")).toHaveText("Weather hold: Outdoor attractions are paused.", {
     timeout: 6000,
   });
   await expect(page.locator("#guest-projection")).toHaveText("Changed: advisory");
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "hold-rides");
   await expect(page.locator("#opening-cue")).toContainText(
-    "affected attractions are not all on weather hold",
+    "Cypress Coil and Mangrove Run still need weather hold",
   );
   await expect(page.locator("#now-action #clear-storm")).toHaveCount(0);
 
@@ -336,6 +355,7 @@ test("a hold points the cue at Control Tower while the guest picture stays unpub
       { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
       { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
     ],
+    publishedGuestAdvisories: [publishedWeatherAdvisory],
   };
   await expect(page.locator("#weather-holds")).toHaveText("Cypress Coil, Mangrove Run", {
     timeout: 6000,
@@ -348,7 +368,44 @@ test("a hold points the cue at Control Tower while the guest picture stays unpub
   await expect(page.locator("#guest-room")).not.toHaveClass(/is-cued/);
 });
 
-test("hold and clearance recommendations produce different observable cues", async ({ page }) => {
+test("acknowledgement gap retains the place-rides-on-hold cue", async ({ page }) => {
+  const state = booth(page);
+  state.dashboard = holdWeather();
+  await pressTrigger(page, "Lightning hold");
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "operator");
+
+  state.dashboard = emptyDashboard();
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "hold-rides", {
+    timeout: 6000,
+  });
+  await expect(page.locator("#opening-cue")).toContainText(
+    "Cypress Coil and Mangrove Run still need weather hold",
+  );
+  await expect(page.locator("#opening")).not.toHaveAttribute("data-beat", "quiet");
+});
+
+test("held affected rides with no advisory ask for guest guidance publication", async ({ page }) => {
+  const state = booth(page);
+  state.dashboard = holdWeather();
+  await pressTrigger(page, "Lightning hold");
+
+  state.dashboard = {
+    ...emptyDashboard(),
+    attractionsNeedingAttention: [
+      { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+      { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
+    ],
+  };
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "publish", {
+    timeout: 6000,
+  });
+  await expect(page.locator("#opening-cue")).toHaveText(
+    "The affected attractions are on weather hold. Publish guest guidance in Control Tower.",
+  );
+  await expect(page.locator("#now-action #clear-storm")).toHaveCount(0);
+});
+
+test("typed active return recommendation differs from an active hold recommendation", async ({ page }) => {
   const state = booth(page);
   state.dashboard = holdWeather();
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "operator", {
@@ -356,7 +413,7 @@ test("hold and clearance recommendations produce different observable cues", asy
   });
   await expect(page.locator("#opening-cue")).toContainText("review or acknowledge");
 
-  state.dashboard = clearanceWeather([
+  state.dashboard = returnWeather([
     { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
     { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
   ]);
@@ -368,9 +425,34 @@ test("hold and clearance recommendations produce different observable cues", asy
   );
   await expect(page.locator("#opening-cue")).toContainText("Guest guidance is quiet");
   await expect(page.locator("#opening-cue")).toContainText(
-    "Cypress Coil and Mangrove Run remain on weather hold",
+    "Cypress Coil: weather hold; Mangrove Run: weather hold",
   );
   await expect(page.locator("#now-action #clear-storm")).toHaveCount(0);
+});
+
+test("reload during an active return recommendation recovers from its typed action", async ({
+  page,
+}) => {
+  const state = booth(page);
+  state.dashboard = returnWeather([
+    { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+    { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
+  ]);
+  await page.evaluate(() => sessionStorage.removeItem("cutaway.weather-intent.v1"));
+  await page.reload();
+
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clearance");
+  await expect(page.locator("#opening-cue")).toContainText(
+    "Review the return-to-service recommendation in Control Tower",
+  );
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(sessionStorage.getItem("cutaway.weather-intent.v1") || "null"),
+    ),
+  ).toEqual({
+    phase: "RETURN_TO_SERVICE",
+    affectedAttractionIds: ["cypress-coil", "mangrove-run"],
+  });
 });
 
 test("Clear the storm moves Now to the return-to-service decision", async ({ page }) => {
@@ -381,6 +463,7 @@ test("Clear the storm moves Now to the return-to-service decision", async ({ pag
       { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
       { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
     ],
+    publishedGuestAdvisories: [publishedWeatherAdvisory],
   };
   state.advisories = [{ title: "Weather hold", message: "Outdoor attractions are paused." }];
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clear", {
@@ -388,25 +471,30 @@ test("Clear the storm moves Now to the return-to-service decision", async ({ pag
   });
 
   await pressTrigger(page, "Clear the storm");
-  state.dashboard = clearanceWeather([
-    { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
-    { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
-  ]);
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clearance", {
-    timeout: 6000,
+    timeout: 1000,
   });
-  await expect(page.locator("#opening-cue")).toContainText(
-    "The published guest advisory remains in place",
-  );
   await expect(page.locator("#opening-cue")).not.toContainText("Press Clear the storm");
   await expect(page.locator("#now-action #clear-storm")).toHaveCount(0);
+
+  state.dashboard = {
+    ...returnWeather([
+      { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+      { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
+    ]),
+    publishedGuestAdvisories: [publishedWeatherAdvisory],
+  };
+  await expect(page.locator("#opening-cue")).toContainText(
+    "The published guest advisory remains in place",
+    { timeout: 6000 },
+  );
 });
 
 test("quiet opening waits for pending weather, published guidance, and weather holds to clear", async ({
   page,
 }) => {
   const state = booth(page);
-  state.dashboard = clearanceWeather([
+  state.dashboard = returnWeather([
     { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
   ]);
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clearance", {
@@ -423,17 +511,22 @@ test("quiet opening waits for pending weather, published guidance, and weather h
     timeout: 6000,
   });
 
-  state.dashboard = emptyDashboard();
+  state.dashboard = {
+    ...emptyDashboard(),
+    publishedGuestAdvisories: [publishedWeatherAdvisory],
+  };
   state.advisories = [{ title: "Weather hold", message: "Outdoor attractions are paused." }];
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "withdraw", {
     timeout: 6000,
   });
 
   state.advisories = [];
+  state.dashboard = emptyDashboard();
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "quiet", {
     timeout: 6000,
   });
   await expect(page.locator("#opening-cue")).toHaveText("Press Lightning hold.");
+  expect(await page.evaluate(() => sessionStorage.getItem("cutaway.weather-intent.v1"))).toBeNull();
 });
 
 test("an unpublished hold walks from Control Tower to the guest room without a Next button", async ({ page }) => {
@@ -788,31 +881,29 @@ test("captures the corrected weather walkthrough when evidence output is request
   await page.setViewportSize({ width: 1440, height: 1100 });
 
   state.dashboard = holdWeather();
-  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "operator", {
+  await pressTrigger(page, "Lightning hold");
+  state.dashboard = emptyDashboard();
+  await expect(page.locator("#opening")).toHaveAttribute("data-beat", "hold-rides", {
     timeout: 6000,
   });
   await page.screenshot({
-    path: `${evidenceDir}/cutaway-hold-steps.png`,
+    path: `${evidenceDir}/cutaway-phase-place-holds.png`,
     fullPage: true,
   });
 
-  state.dashboard = clearanceWeather([
-    { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
-    { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
-  ]);
+  state.dashboard = {
+    ...returnWeather([
+      { id: "cypress-coil", name: "Cypress Coil", status: "WEATHER_HOLD" },
+      { id: "mangrove-run", name: "Mangrove Run", status: "WEATHER_HOLD" },
+    ]),
+    publishedGuestAdvisories: [publishedWeatherAdvisory],
+  };
   state.advisories = [{ title: "Weather hold", message: "Outdoor attractions are paused." }];
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "clearance", {
     timeout: 6000,
   });
   await page.screenshot({
-    path: `${evidenceDir}/cutaway-clearance-step.png`,
-    fullPage: true,
-  });
-
-  await page.getByRole("link", { name: "Docs" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Using Cutaway" })).toBeVisible();
-  await page.screenshot({
-    path: `${evidenceDir}/cutaway-weather-docs.png`,
+    path: `${evidenceDir}/cutaway-phase-return.png`,
     fullPage: true,
   });
 });
