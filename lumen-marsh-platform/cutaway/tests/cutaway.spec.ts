@@ -885,6 +885,9 @@ test("captures the corrected weather walkthrough when evidence output is request
   await page.setViewportSize({ width: 1440, height: 1100 });
 
   state.dashboard = holdWeather();
+  await expect(page.locator("#pending-weather")).toHaveText("Hold outdoor attractions", {
+    timeout: 6000,
+  });
   await pressTrigger(page, "Lightning hold");
   state.dashboard = emptyDashboard();
   await expect(page.locator("#opening")).toHaveAttribute("data-beat", "hold-rides", {
