@@ -31,6 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "venueops.historical.seed=true",
         "venueops.demo-sandbox.enabled=true",
         "venueops.demo-sandbox.internal-secret=0123456789abcdef0123456789abcdef",
+        "venueops.demo-sandbox.secure-cookie=false",
+        "venueops.security.issuer-uri=https://demo.localhost:8443",
         "spring.autoconfigure.exclude="
 })
 @AutoConfigureMockMvc
