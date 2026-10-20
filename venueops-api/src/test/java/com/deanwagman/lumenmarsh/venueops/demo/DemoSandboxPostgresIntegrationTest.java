@@ -1,6 +1,9 @@
 package com.deanwagman.lumenmarsh.venueops.demo;
 
+import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceRecommendationRepository;
+import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendationId;
 import com.deanwagman.lumenmarsh.venueops.security.TestAuth;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -8,6 +11,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -19,9 +23,12 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -31,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "venueops.demo-sandbox.enabled=true",
         "venueops.demo-sandbox.internal-secret=0123456789abcdef0123456789abcdef",
         "venueops.demo-sandbox.secure-cookie=false",
+        "venueops.security.issuer-uri=https://demo.localhost:8443",
         "spring.autoconfigure.exclude="
 })
 @AutoConfigureMockMvc
@@ -53,6 +61,11 @@ class DemoSandboxPostgresIntegrationTest {
 
     @Autowired
     private DemoSandboxProperties properties;
+
+    @Autowired
+    private MaintenanceRecommendationRepository maintenanceRecommendations;
+
+    private final JsonMapper json = JsonMapper.builder().build();
 
     @Test
     void onlyOneConcurrentReservationWinsAndForgedTokensFail() throws Exception {
@@ -151,6 +164,61 @@ class DemoSandboxPostgresIntegrationTest {
         mockMvc.perform(get("/api/v1/operator/dashboard")
                         .header(DemoGatewayAuthenticationFilter.SECRET_HEADER, "forged"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void privateGatewayIssuerSupportsAuditedMaintenanceDismissal() throws Exception {
+        DemoLeaseStore.Lease existing = store.find();
+        if (existing.tokenHash() != null) {
+            store.expire(existing.tokenHash());
+        }
+        String leaseToken = "audited-maintenance-holder";
+        Instant now = Instant.now();
+        String leaseHash = DemoTokens.hash(leaseToken);
+        store.reserve(leaseHash, now, properties).orElseThrow();
+        store.activate(leaseHash, now, properties);
+
+        MvcResult ingest = mockMvc.perform(post("/api/v1/integrations/reliability/recommendations")
+                        .with(TestAuth.reliabilityService())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "observationId": "demo-gateway-audit-issuer",
+                                  "observedAt": "2026-09-14T18:25:00Z",
+                                  "assetCode": "CC-TRAIN-01-WHEEL-A",
+                                  "signalType": "VIBRATION",
+                                  "severity": "WARNING",
+                                  "value": 8.4,
+                                  "unit": "mm/s",
+                                  "evidence": "Sandbox issuer audit test.",
+                                  "recommendedAction": "Inspect the wheel assembly."
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        JsonNode body = json.readTree(ingest.getResponse().getContentAsByteArray());
+        MaintenanceRecommendationId recommendationId =
+                new MaintenanceRecommendationId(UUID.fromString(body.get("recommendationId").asString()));
+
+        mockMvc.perform(post("/api/v1/operator/maintenance/recommendations/"
+                        + recommendationId.value() + "/commands")
+                        .header(DemoGatewayAuthenticationFilter.SECRET_HEADER, SECRET)
+                        .cookie(new Cookie(DemoLeaseService.COOKIE, leaseToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "commandId": "%s",
+                                  "type": "DISMISS",
+                                  "expectedVersion": 1,
+                                  "reason": "Audited sandbox dismissal"
+                                }
+                                """.formatted(UUID.randomUUID())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DISMISSED"));
+
+        assertThat(maintenanceRecommendations.findById(recommendationId).orElseThrow().reviewedBy())
+                .isEqualTo("Demo Visitor");
+        store.expire(leaseHash);
     }
 
     @Test

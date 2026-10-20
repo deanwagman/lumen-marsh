@@ -3,6 +3,7 @@ package com.deanwagman.lumenmarsh.venueops.demo;
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionExperienceRepository;
 import com.deanwagman.lumenmarsh.venueops.attraction.application.AttractionRepository;
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceAssetRepository;
+import com.deanwagman.lumenmarsh.venueops.security.VenueOpsSecurityProperties;
 import jakarta.persistence.EntityManager;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -72,7 +73,10 @@ class DemoSandboxConfiguration {
     }
 
     @Bean
-    DemoGatewayAuthenticationFilter demoGatewayAuthenticationFilter(DemoSandboxProperties properties) {
-        return new DemoGatewayAuthenticationFilter(properties);
+    DemoGatewayAuthenticationFilter demoGatewayAuthenticationFilter(
+            DemoSandboxProperties properties,
+            VenueOpsSecurityProperties securityProperties
+    ) {
+        return new DemoGatewayAuthenticationFilter(properties, securityProperties);
     }
 }

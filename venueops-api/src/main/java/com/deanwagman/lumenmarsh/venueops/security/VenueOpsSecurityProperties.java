@@ -2,6 +2,7 @@ package com.deanwagman.lumenmarsh.venueops.security;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -39,6 +40,7 @@ public record VenueOpsSecurityProperties(
         if (issuerUri == null || issuerUri.isBlank()) {
             throw new IllegalStateException("venueops.security.issuer-uri is required");
         }
+        issuerUri = validateIssuerUri(issuerUri);
         if (allowedClientIds == null || allowedClientIds.isBlank()) {
             allowedClientIds = LOCAL_CONSOLE_CLIENT_ID + "," + LOCAL_MONITOR_CLIENT_ID + ","
                     + LOCAL_RELIABILITY_CLIENT_ID + "," + LOCAL_FLOW_CLIENT_ID;
@@ -63,6 +65,28 @@ public record VenueOpsSecurityProperties(
 
     public String[] allowedOriginPatterns() {
         return parseCsv(allowedOrigins).toArray(String[]::new);
+    }
+
+    private static String validateIssuerUri(String value) {
+        String normalized = value.trim();
+        try {
+            URI issuer = URI.create(normalized);
+            if (!issuer.isAbsolute()
+                    || issuer.getHost() == null
+                    || (!"https".equalsIgnoreCase(issuer.getScheme())
+                    && !"http".equalsIgnoreCase(issuer.getScheme()))
+                    || issuer.getUserInfo() != null
+                    || issuer.getQuery() != null
+                    || issuer.getFragment() != null) {
+                throw new IllegalArgumentException();
+            }
+        } catch (IllegalArgumentException invalid) {
+            throw new IllegalStateException(
+                    "venueops.security.issuer-uri must be an absolute HTTP(S) URL without credentials, query, or fragment",
+                    invalid
+            );
+        }
+        return normalized;
     }
 
     private static Set<String> parseCsv(String value) {

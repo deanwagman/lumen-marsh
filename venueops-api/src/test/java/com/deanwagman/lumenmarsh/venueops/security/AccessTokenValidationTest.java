@@ -45,6 +45,20 @@ class AccessTokenValidationTest {
     }
 
     @Test
+    void tokenFromAnotherIssuerIsRejected() throws Exception {
+        String token = tokens.token(
+                "operator-sub-1",
+                "Operator One",
+                List.of("operators"),
+                VenueOpsScopes.OPERATOR_READ + " " + VenueOpsScopes.ATTRACTIONS_COMMAND,
+                TestAuth.CONSOLE_CLIENT_ID,
+                "access",
+                "https://attacker.example"
+        );
+        mockMvc.perform(command(token)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void idTokenUseIsRejected() throws Exception {
         String token = tokens.token(
                 "operator-sub-1",

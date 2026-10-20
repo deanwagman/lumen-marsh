@@ -55,6 +55,8 @@ for (const service of [
   const block = demoCompose.match(new RegExp(`  ${service}:[\\s\\S]*?(?=\\n  [a-z]|$)`))?.[0] ?? "";
   assert.match(block, /ports: !reset \[\]/);
 }
+const demoVenueOps = demoCompose.match(/  venueops-api:[\s\S]*?(?=\n  [a-z]|$)/)?.[0] ?? "";
+assert.match(demoVenueOps, /VENUEOPS_ISSUER_URI: \$\{DEMO_ORIGIN:\?set DEMO_ORIGIN\}/);
 assert.match(caddy, /\{\$DEMO_HOST\} \{/);
 assert.doesNotMatch(caddy, /tls\s+internal/);
 assert.match(caddy, /auto_https disable_redirects/);

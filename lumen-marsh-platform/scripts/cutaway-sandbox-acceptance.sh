@@ -105,7 +105,9 @@ for name in ("environmental-monitor", "park-flow-intelligence", "reliability-int
     assert env["DEMO_SANDBOX_ENABLED"] == "true"
     assert "demo-gateway" not in services[name].get("networks", {})
 
-assert services["venueops-api"]["environment"]["VENUEOPS_DEMO_SANDBOX_ENABLED"] == "true"
+venueops_env = services["venueops-api"]["environment"]
+assert venueops_env["VENUEOPS_DEMO_SANDBOX_ENABLED"] == "true"
+assert venueops_env["VENUEOPS_ISSUER_URI"] == services["gateway"]["environment"]["DEMO_ORIGIN"]
 assert "@" in services["environmental-monitor"]["environment"]["NWS_USER_AGENT"]
 assert services["gateway"]["environment"]["DEMO_ORIGIN"] == config["services"]["cutaway"]["environment"]["DEMO_ORIGIN"]
 assert config["networks"]["demo-gateway"]["internal"] is True

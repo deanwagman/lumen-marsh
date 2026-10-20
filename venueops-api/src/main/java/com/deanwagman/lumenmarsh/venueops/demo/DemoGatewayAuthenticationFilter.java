@@ -1,6 +1,7 @@
 package com.deanwagman.lumenmarsh.venueops.demo;
 
 import com.deanwagman.lumenmarsh.venueops.security.VenueOpsScopes;
+import com.deanwagman.lumenmarsh.venueops.security.VenueOpsSecurityProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +15,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -28,9 +30,20 @@ import java.util.List;
 public final class DemoGatewayAuthenticationFilter extends OncePerRequestFilter {
     public static final String SECRET_HEADER = "X-Demo-Gateway-Secret";
     private final DemoSandboxProperties properties;
+    private final String issuer;
 
-    DemoGatewayAuthenticationFilter(DemoSandboxProperties properties) {
+    DemoGatewayAuthenticationFilter(
+            DemoSandboxProperties properties,
+            VenueOpsSecurityProperties securityProperties
+    ) {
         this.properties = properties;
+        URI configuredIssuer = URI.create(securityProperties.issuerUri());
+        if (!"https".equalsIgnoreCase(configuredIssuer.getScheme())) {
+            throw new IllegalStateException(
+                    "venueops.security.issuer-uri must use HTTPS when the demo sandbox is enabled"
+            );
+        }
+        this.issuer = configuredIssuer.toString();
     }
 
     @Override
@@ -52,7 +65,7 @@ public final class DemoGatewayAuthenticationFilter extends OncePerRequestFilter 
             Instant now = Instant.now();
             Jwt jwt = Jwt.withTokenValue("demo-gateway")
                     .header("alg", "none")
-                    .issuer("lumen-marsh-demo")
+                    .issuer(issuer)
                     .subject("demo-visitor")
                     .issuedAt(now)
                     .expiresAt(now.plusSeconds(60))

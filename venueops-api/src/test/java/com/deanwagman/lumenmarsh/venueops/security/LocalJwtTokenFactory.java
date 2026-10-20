@@ -109,9 +109,21 @@ public class LocalJwtTokenFactory {
             String clientId,
             String tokenUse
     ) {
+        return token(subject, name, groups, scope, clientId, tokenUse, TestAuth.ISSUER);
+    }
+
+    String token(
+            String subject,
+            String name,
+            List<String> groups,
+            String scope,
+            String clientId,
+            String tokenUse,
+            String issuer
+    ) {
         Instant now = Instant.now();
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
-                .issuer(TestAuth.ISSUER)
+                .issuer(issuer)
                 .subject(subject)
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(3600))
