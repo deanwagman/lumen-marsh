@@ -74,6 +74,15 @@ class WeatherSnapshotStore:
         }[attempt.dataset]
         tracker.record(attempt)
 
+    def reset(self, now: datetime) -> None:
+        self.snapshot = WeatherSnapshot(evaluated_at=now)
+        self.location = PollTracker()
+        self.observation = PollTracker()
+        self.forecast = PollTracker()
+        self.alert = PollTracker()
+        self.lightning = PollTracker()
+        self.venueops = PollTracker()
+
     def refresh_health(self, now: datetime) -> WeatherSnapshot:
         current = self.snapshot
         current.evaluated_at = now

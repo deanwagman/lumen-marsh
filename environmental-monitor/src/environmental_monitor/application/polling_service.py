@@ -17,7 +17,13 @@ class PollingService:
         self._stop = asyncio.Event()
         self._task: asyncio.Task[None] | None = None
 
+    @property
+    def running(self) -> bool:
+        return self._task is not None and not self._task.done()
+
     async def start(self) -> None:
+        if self.running:
+            return
         self._stop.clear()
         self._task = asyncio.create_task(self._run(), name="weather-polling")
 

@@ -5,13 +5,14 @@ import os
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from functools import partial
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from environmental_monitor.api import health, simulation, weather
+from environmental_monitor.api import demo_reset, health, simulation, weather
 from environmental_monitor.application.polling_service import PollingService
 from environmental_monitor.application.recommendation_engine import RecommendationEngine
 from environmental_monitor.application.weather_monitor import LightningSimulator, WeatherMonitor
@@ -104,6 +105,7 @@ def create_app(
     recommendations = InMemoryRecommendationRepository()
     polls = InMemoryPollAttemptRepository()
     postgres_engine: AsyncEngine | None = None
+    persistence_reset: Callable[[], Awaitable[None]] | None = None
 
     if resolved_settings.persistence_enabled:
         from environmental_monitor.infrastructure.persistence.postgres.repositories import (
@@ -113,6 +115,7 @@ def create_app(
             PostgresPollAttemptRepository,
             PostgresRecommendationRepository,
             create_session_factory,
+            reset_demo_state,
         )
 
         db_engine, sessions = create_session_factory(resolved_settings.database_url)
@@ -122,6 +125,7 @@ def create_app(
         recommendations = PostgresRecommendationRepository(sessions)  # type: ignore[assignment]
         polls = PostgresPollAttemptRepository(sessions)  # type: ignore[assignment]
         postgres_engine = db_engine
+        persistence_reset = partial(reset_demo_state, sessions)
 
     provider = weather_provider or NwsWeatherProvider(resolved_settings, resolved_clock)
     sink = recommendation_sink or VenueOpsRecommendationSink(resolved_settings)
@@ -150,6 +154,8 @@ def create_app(
         simulator=simulator,
         metrics=metrics,
         polling=polling,
+        demo_resets=demo_reset.DemoResetRegistry(),
+        persistence_reset=persistence_reset,
         initialized=True,
     )
 
@@ -200,6 +206,7 @@ def create_app(
     app.include_router(health.router)
     app.include_router(weather.router)
     app.include_router(simulation.router)
+    app.include_router(demo_reset.router)
 
     @app.middleware("http")
     async def request_id_middleware(

@@ -48,7 +48,7 @@ describe('Mangrove Run command workspace', () => {
 
     server.use(
       http.post('/api/v1/operator/attractions/mangrove-run/commands', async ({ request }) => {
-        expect(request.headers.get('Authorization')).toBe('Bearer local-development-token');
+        expect(request.headers.get('Authorization')).toBeNull();
         expect(request.headers.has('X-Actor')).toBe(false);
         const body = (await request.json()) as {
           commandId: string;

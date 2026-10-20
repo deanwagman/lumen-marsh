@@ -16,7 +16,7 @@ const envSchema = z.object({
         return false;
       }
     }, 'VITE_API_BASE_URL must be an http(s) URL or empty for same-origin development'),
-  VITE_AUTH_MODE: z.enum(['oidc', 'local']),
+  VITE_AUTH_MODE: z.enum(['oidc', 'local', 'demo']),
   VITE_OIDC_AUTHORITY: z.string().trim(),
   VITE_OIDC_CLIENT_ID: z.string().trim(),
   VITE_OIDC_REDIRECT_URI: z.string().url().or(z.literal('')),
@@ -27,7 +27,7 @@ const envSchema = z.object({
 export type AppEnvironment = {
   apiBaseUrl: string;
   usesSameOrigin: boolean;
-  authMode: 'oidc' | 'local';
+  authMode: 'oidc' | 'local' | 'demo';
   oidc: {
     authority: string;
     clientId: string;

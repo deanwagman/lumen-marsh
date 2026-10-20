@@ -35,6 +35,20 @@ def create_session_factory(
     return engine, async_sessionmaker(engine, expire_on_commit=False)
 
 
+async def reset_demo_state(sessions: async_sessionmaker[AsyncSession]) -> None:
+    """Atomically remove all persisted monitor state used by the demo."""
+
+    async with sessions.begin() as session:
+        for row_type in (
+            RecommendationRow,
+            PollAttemptRow,
+            AlertRow,
+            ForecastPeriodRow,
+            ObservationRow,
+        ):
+            await session.execute(delete(row_type))
+
+
 class PostgresObservationRepository:
     def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
         self._sessions = sessions
@@ -63,6 +77,11 @@ class PostgresObservationRepository:
             )
             return _observation_from_row(row) if row else None
 
+    async def reset(self) -> None:
+        async with self._sessions() as session:
+            await session.execute(delete(ObservationRow))
+            await session.commit()
+
 
 class PostgresAlertRepository:
     def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
@@ -90,6 +109,11 @@ class PostgresAlertRepository:
         async with self._sessions() as session:
             rows = await session.scalars(select(AlertRow))
             return [_alert_from_row(row) for row in rows]
+
+    async def reset(self) -> None:
+        async with self._sessions() as session:
+            await session.execute(delete(AlertRow))
+            await session.commit()
 
 
 class PostgresForecastRepository:
@@ -130,6 +154,11 @@ class PostgresForecastRepository:
                 )
                 for row in rows
             ]
+
+    async def reset(self) -> None:
+        async with self._sessions() as session:
+            await session.execute(delete(ForecastPeriodRow))
+            await session.commit()
 
 
 class PostgresRecommendationRepository:
@@ -178,6 +207,11 @@ class PostgresRecommendationRepository:
         items = await self.list_all()
         return [item for item in items if item.needs_delivery]
 
+    async def reset(self) -> None:
+        async with self._sessions() as session:
+            await session.execute(delete(RecommendationRow))
+            await session.commit()
+
 
 class PostgresPollAttemptRepository:
     def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
@@ -213,6 +247,11 @@ class PostgresPollAttemptRepository:
                 )
                 for row in rows
             ]
+
+    async def reset(self) -> None:
+        async with self._sessions() as session:
+            await session.execute(delete(PollAttemptRow))
+            await session.commit()
 
 
 def _observation_to_row(observation: WeatherObservation) -> ObservationRow:

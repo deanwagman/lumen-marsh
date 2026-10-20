@@ -82,6 +82,13 @@ class FlowSimulator:
     def stop(self) -> None:
         self.running = False
 
+    def reset(self) -> None:
+        self.scenario = Scenario.NORMAL
+        self.running = False
+        self.cycle = 0
+        self.history.clear()
+        self.last_recommendation_id = None
+
     def apply_scenario(self, scenario: Scenario) -> None:
         self.scenario = scenario
         if scenario is Scenario.CLEAR:

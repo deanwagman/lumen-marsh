@@ -1,19 +1,12 @@
-const venueOpsUrl = "http://localhost:8080";
-const operatorToken = "local-development-token";
-const guestTodayUrl = "http://localhost:3000/today";
-const towerDashboardUrl = "http://localhost:3001/dashboard";
+const guestTodayUrl = "/guest/today";
+const towerDashboardUrl = "/tower/dashboard";
 const pollMs = 2000;
 const spentWaitMs = 8000;
+const heartbeatMs = 15000;
 const weatherIntentKey = "cutaway.weather-intent.v1";
 const weatherPhases = new Set(["PLACE_WEATHER_HOLD", "RETURN_TO_SERVICE"]);
 const safeAttractionId = /^[a-z0-9][a-z0-9-]{0,63}$/;
-const resetNote =
-  "Mangrove disruption is spent. Park Flow reuses one recommendation id, so this database will not open a new pending review. From lumen-marsh-platform, run ./scripts/reset-demo.sh --confirm and start the stack again.";
-
-const operatorHeaders = {
-  Accept: "application/json",
-  Authorization: `Bearer ${operatorToken}`,
-};
+const resetNote = "This scenario has already been used in this run. Choose Start over to return the shared demo to its quiet opening.";
 
 const cueSection = {
   "lightning-hold": "weather-heading",
@@ -99,6 +92,13 @@ let openingTimer = null;
 let openingReading = null;
 let shownRoom = "guest";
 let triggeredWeatherPhase = null;
+let hasLease = false;
+let leaseExpiresAt = 0;
+let leaseTimer = null;
+let heartbeatTimer = null;
+let resetInProgress = false;
+let coreReady = false;
+const scenarioReady = new Map();
 
 const safeAttractionIds = (items) =>
   Array.isArray(items)
@@ -157,39 +157,85 @@ const setResult = (id, state, value) => {
   node.textContent = value;
 };
 
-async function readJson(url, headers) {
+async function requestJson(url, options = {}) {
   try {
-    const response = await fetch(url, { cache: "no-store", headers });
-    if (!response.ok) {
-      return { ok: false, status: response.status, body: null };
+    const response = await fetch(url, {
+      cache: "no-store",
+      credentials: "same-origin",
+      ...options,
+      headers: { Accept: "application/json", ...(options.headers || {}) },
+    });
+    let body = null;
+    if (response.status !== 204) {
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
     }
-    return { ok: true, status: response.status, body: await response.json() };
+    if (!response.ok) {
+      return { ok: false, status: response.status, body };
+    }
+    return { ok: true, status: response.status, body };
   } catch {
     return { ok: false, status: 0, body: null };
   }
 }
 
-async function postScenario(url) {
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: "{}",
-    });
-    let body = null;
-    try {
-      body = await response.json();
-    } catch {
-      body = null;
-    }
-    return { ok: response.ok, status: response.status, body };
-  } catch {
-    return { ok: false, status: 0, body: null };
+const postJson = (url) =>
+  requestJson(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+
+const readyValue = (value, fallback = true) => {
+  if (typeof value === "boolean") return value;
+  if (!value || typeof value !== "object") return fallback;
+  if (typeof value.ready === "boolean") return value.ready;
+  if (typeof value.available === "boolean") return value.available;
+  if (typeof value.healthy === "boolean") return value.healthy;
+  const status = String(value.status || value.state || "").toLowerCase();
+  return status ? ["ready", "healthy", "available", "up", "ok"].includes(status) : fallback;
+};
+
+const readinessPart = (body, ...names) => {
+  for (const name of names) {
+    const value = body?.scenarios?.[name] ?? body?.producers?.[name] ?? body?.dependencies?.[name] ?? body?.[name];
+    if (value !== undefined) return readyValue(value);
+    const component = Array.isArray(body?.components)
+      ? body.components.find((item) =>
+          String(item.scenario || item.name || "").toLowerCase() === name.toLowerCase())
+      : null;
+    if (component) return readyValue(component);
   }
+  return true;
+};
+
+function renderReadiness(body, reachable) {
+  coreReady = reachable && readyValue(body?.core ?? body?.booth ?? body, reachable);
+  const weather = readinessPart(body, "weather", "environmental", "environmental-monitor");
+  scenarioReady.set("lightning-hold", readinessPart(body, "lightning-hold") && weather);
+  scenarioReady.set("clear-storm", readinessPart(body, "clear-storm") && weather);
+  scenarioReady.set("cypress-vibration", readinessPart(body, "cypress-vibration", "reliability", "reliability-intelligence"));
+  scenarioReady.set("mangrove-disruption", readinessPart(body, "mangrove-disruption", "flow", "park-flow", "park-flow-intelligence"));
+  const summary = [
+    ["Core", coreReady],
+    ["Weather", scenarioReady.get("lightning-hold")],
+    ["Reliability", scenarioReady.get("cypress-vibration")],
+    ["Flow", scenarioReady.get("mangrove-disruption")],
+  ];
+  const node = document.getElementById("readiness");
+  node.replaceChildren(
+    ...summary.map(([label, ready]) => {
+      const item = document.createElement("span");
+      item.className = ready ? "is-ready" : "is-down";
+      item.textContent = `${label} ${ready ? "ready" : "unavailable"}`;
+      return item;
+    }),
+  );
+  setBoothOnline(coreReady);
+  syncRail();
 }
 
 const byUpdatedAt = (left, right) => String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""));
@@ -257,8 +303,17 @@ const setProjection = (value) => {
 const syncRail = () => {
   const offline = document.body.classList.contains("is-offline");
   document.querySelectorAll(".trigger button").forEach((button) => {
-    button.disabled = offline || sending.has(button.id);
+    button.disabled =
+      offline ||
+      !hasLease ||
+      resetInProgress ||
+      scenarioReady.get(button.dataset.scenario) === false ||
+      sending.has(button.id);
+    const producerDown = scenarioReady.get(button.dataset.scenario) === false;
+    if (producerDown && !sending.has(button.id)) setResult(button.id, "failed", "Unavailable");
+    else if (!producerDown && resultNode(button.id)?.textContent === "Unavailable") setResult(button.id, "", "Ready");
   });
+  document.getElementById("start-over").disabled = offline || !hasLease || resetInProgress;
 };
 
 const placeTriggers = (beat) => {
@@ -513,7 +568,7 @@ function renderStrip(dashboardResult, advisoryResult, guidanceResult) {
     return null;
   }
 
-  setBoothOnline(true);
+  setBoothOnline(coreReady);
   const dashboard = dashboardResult.body;
   const weather = dashboard.pendingWeatherRecommendations || [];
   const currentWeather = newest(weather);
@@ -672,9 +727,8 @@ async function evaluateMangrove(token, dashboard) {
   if (!watch || watch.resolved || token !== refreshToken) return;
 
   if (watch.id) {
-    const result = await readJson(
-      `${venueOpsUrl}/api/v1/operator/flow/recommendations/${watch.id}`,
-      operatorHeaders,
+    const result = await requestJson(
+      `/venueops/api/v1/operator/flow/recommendations/${encodeURIComponent(watch.id)}`,
     );
     if (token !== refreshToken) return;
     const status = result.body?.recommendation?.status;
@@ -703,9 +757,9 @@ async function evaluateMangrove(token, dashboard) {
 async function refresh() {
   const token = ++refreshToken;
   const [dashboardResult, advisoryResult, guidanceResult] = await Promise.all([
-    readJson(`${venueOpsUrl}/api/v1/operator/dashboard`, operatorHeaders),
-    readJson(`${venueOpsUrl}/api/v1/advisories`),
-    readJson(`${venueOpsUrl}/api/v1/flow/recommendations`),
+    requestJson("/venueops/api/v1/operator/dashboard"),
+    requestJson("/venueops/api/v1/advisories"),
+    requestJson("/venueops/api/v1/flow/recommendations"),
   ]);
   if (token !== refreshToken) return;
   const dashboard = renderStrip(dashboardResult, advisoryResult, guidanceResult);
@@ -714,11 +768,11 @@ async function refresh() {
 }
 
 async function fire(button) {
-  if (button.disabled || sending.has(button.id)) return;
+  if (button.disabled || !hasLease || sending.has(button.id)) return;
   sending.add(button.id);
   syncRail();
   setResult(button.id, "pending", "Sending");
-  const result = await postScenario(button.dataset.url);
+  const result = await postJson(`/api/v1/demo/scenarios/${encodeURIComponent(button.dataset.scenario)}`);
   setResult(button.id, result.ok ? "fired" : "failed", result.ok ? "Fired" : result.status ? `Failed (${result.status})` : "Failed");
   if (result.ok && weatherPhases.has(button.dataset.weatherPhase)) {
     const affectedAttractionIds =
@@ -754,6 +808,192 @@ async function fire(button) {
   await refresh();
 }
 
+const leaseBody = (body) => body?.lease || body || {};
+
+const expiryFrom = (body) => {
+  const lease = leaseBody(body);
+  const raw = lease.expiresAt ?? lease.expires_at ?? lease.expiration;
+  if (typeof raw === "number") return raw < 10_000_000_000 ? raw * 1000 : raw;
+  if (typeof raw === "string" && !Number.isNaN(Date.parse(raw))) return Date.parse(raw);
+  const seconds = lease.remainingSeconds ?? lease.remaining_seconds ??
+    lease.expiresInSeconds ?? lease.expires_in_seconds ?? lease.ttlSeconds ?? lease.ttl_seconds;
+  return typeof seconds === "number" ? Date.now() + seconds * 1000 : Date.now() + 5 * 60 * 1000;
+};
+
+const leaseIsMine = (body) => {
+  const lease = leaseBody(body);
+  return lease.mine === true || lease.owned === true || lease.holder === true || lease.isHolder === true ||
+    lease.ownedByVisitor === true || ["holder", "controller", "active"].includes(String(lease.role || lease.mode || "").toLowerCase());
+};
+
+const leaseIsOccupied = (body) => {
+  const lease = leaseBody(body);
+  return lease.active === true || lease.occupied === true || lease.available === false ||
+    ["active", "occupied", "leased", "spectator", "waiting"].includes(String(lease.status || lease.state || "").toLowerCase());
+};
+
+function paintLease() {
+  const label = document.getElementById("lease-label");
+  const countdown = document.getElementById("lease-countdown");
+  const takeControl = document.getElementById("take-control");
+  const releaseControl = document.getElementById("release-control");
+  if (!hasLease) {
+    label.textContent = "Watching another visitor";
+    countdown.hidden = true;
+    takeControl.hidden = false;
+    releaseControl.hidden = true;
+    takeControl.textContent = "Try when available";
+    syncRail();
+    return;
+  }
+  const seconds = Math.max(0, Math.ceil((leaseExpiresAt - Date.now()) / 1000));
+  label.textContent = "You control the demo";
+  countdown.hidden = false;
+  countdown.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  countdown.setAttribute("aria-label", `${seconds} seconds remaining`);
+  takeControl.hidden = true;
+  releaseControl.hidden = false;
+  if (seconds === 0) {
+    loseLease("Your turn ended. You can keep watching.");
+    return;
+  }
+  syncRail();
+}
+
+function loseLease(message) {
+  hasLease = false;
+  leaseExpiresAt = 0;
+  window.clearInterval(heartbeatTimer);
+  heartbeatTimer = null;
+  document.getElementById("lease-label").textContent = message;
+  paintLease();
+}
+
+function ownLease(body) {
+  hasLease = true;
+  leaseExpiresAt = expiryFrom(body);
+  window.clearInterval(heartbeatTimer);
+  heartbeatTimer = window.setInterval(async () => {
+    const result = await postJson("/api/v1/demo/leases/heartbeat");
+    if (!result.ok) {
+      if (result.status === 401 || result.status === 403 || result.status === 404 || result.status === 409) {
+        loseLease("Your turn ended. You can keep watching.");
+      }
+      return;
+    }
+    leaseExpiresAt = expiryFrom(result.body);
+    paintLease();
+  }, heartbeatMs);
+  paintLease();
+}
+
+async function acquireLease() {
+  document.getElementById("take-control").hidden = true;
+  document.getElementById("lease-label").textContent = "Taking a turn…";
+  const result = await postJson("/api/v1/demo/leases");
+  if (result.ok) ownLease(result.body);
+  else {
+    hasLease = false;
+    document.getElementById("lease-label").textContent =
+      result.status === 409 ? "Another visitor is using the demo" : "Could not start a turn";
+    paintLease();
+  }
+}
+
+async function syncLease({ acquireIfFree = false } = {}) {
+  const result = await requestJson("/api/v1/demo/lease");
+  if (result.ok && leaseIsMine(result.body)) {
+    ownLease(result.body);
+    return;
+  }
+  if (result.ok && leaseIsOccupied(result.body)) {
+    loseLease("Another visitor is using the demo");
+    return;
+  }
+  if (acquireIfFree) await acquireLease();
+  else loseLease("The demo is available");
+}
+
+async function releaseLease() {
+  if (!hasLease) return;
+  const result = await requestJson("/api/v1/demo/leases/current", { method: "DELETE" });
+  if (result.ok) loseLease("Your turn ended. You can keep watching.");
+}
+
+async function syncReadiness() {
+  const result = await requestJson("/api/v1/demo/readiness");
+  renderReadiness(result.body, result.ok);
+}
+
+const quietDashboard = (dashboard) =>
+  dashboard &&
+  [
+    dashboard.pendingWeatherRecommendations,
+    dashboard.attractionsNeedingAttention,
+    dashboard.publishedGuestAdvisories,
+    dashboard.openIncidents,
+    dashboard.needsAttention,
+  ].every((items) => !Array.isArray(items) || items.length === 0) &&
+  !dashboard.activeWeatherWorkflow;
+
+const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+
+async function verifyQuiet() {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const result = await requestJson("/venueops/api/v1/operator/dashboard");
+    if (result.ok && quietDashboard(result.body)) return true;
+    await wait(1000);
+  }
+  return false;
+}
+
+async function startOver() {
+  if (!hasLease || resetInProgress) return;
+  resetInProgress = true;
+  const progress = document.getElementById("reset-progress");
+  const label = document.getElementById("reset-progress-label");
+  const retry = document.getElementById("retry-reset");
+  progress.hidden = false;
+  retry.hidden = true;
+  label.textContent = "Resetting the shared demo…";
+  syncRail();
+  const result = await postJson("/api/v1/demo/reset");
+  if (!result.ok) {
+    resetInProgress = false;
+    label.textContent = result.status ? `Start over failed (${result.status}).` : "Start over could not reach the demo.";
+    retry.hidden = false;
+    syncRail();
+    return;
+  }
+  label.textContent = "Clearing this browser and reloading both rooms…";
+  try {
+    window.sessionStorage.clear();
+  } catch {
+    // Reset still completes when browser storage is unavailable.
+  }
+  weatherIntent = null;
+  triggeredWeatherPhase = null;
+  mangroveWatch = null;
+  cueFollow = null;
+  hideResetNote();
+  remountFrames();
+  await refresh();
+  label.textContent = "Verifying the quiet opening…";
+  const quiet = await verifyQuiet();
+  resetInProgress = false;
+  if (!quiet) {
+    label.textContent = "Reset finished, but the quiet opening could not be verified.";
+    retry.hidden = false;
+  } else {
+    await refresh();
+    label.textContent = "Ready. The park is quiet.";
+    window.setTimeout(() => {
+      progress.hidden = true;
+    }, 2500);
+  }
+  syncRail();
+}
+
 document.querySelectorAll(".trigger button").forEach((button) => {
   button.addEventListener("click", () => {
     void fire(button);
@@ -770,7 +1010,33 @@ document.getElementById("room-switch").addEventListener("keydown", (event) => {
   document.getElementById(next === "guest" ? "tab-guest" : "tab-tower").focus();
 });
 
+document.getElementById("take-control").addEventListener("click", () => void acquireLease());
+document.getElementById("release-control").addEventListener("click", () => void releaseLease());
+document.getElementById("start-over").addEventListener("click", () => {
+  document.getElementById("reset-dialog").showModal();
+});
+document.getElementById("reset-dialog").addEventListener("close", (event) => {
+  if (event.currentTarget.returnValue === "confirm") void startOver();
+});
+document.getElementById("retry-reset").addEventListener("click", () => void startOver());
+
+void syncReadiness();
+void syncLease({ acquireIfFree: true });
 void refresh();
 window.setInterval(() => {
   void refresh();
 }, pollMs);
+window.setInterval(() => {
+  void syncReadiness();
+  if (!hasLease) void syncLease();
+}, 10000);
+leaseTimer = window.setInterval(paintLease, 1000);
+window.addEventListener("pagehide", () => {
+  if (hasLease) {
+    void fetch("/api/v1/demo/leases/current", {
+      method: "DELETE",
+      credentials: "same-origin",
+      keepalive: true,
+    });
+  }
+});

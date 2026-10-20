@@ -28,9 +28,18 @@ export type AuthSession = {
 };
 
 export const localDevelopmentSession: AuthSession = {
-  accessToken: 'local-development-token',
+  accessToken: import.meta.env.VITE_LOCAL_BEARER_TOKEN ?? '',
   operatorId: 'local-operator',
   displayName: 'Local Operator',
+  role: 'supervisor',
+  scopes: Object.values(venueOpsScopes),
+};
+
+/** Demo gateway authenticates server-side; no bearer credential is shipped to the browser. */
+export const demoGatewaySession: AuthSession = {
+  accessToken: '',
+  operatorId: 'demo-visitor',
+  displayName: 'Demo Visitor',
   role: 'supervisor',
   scopes: Object.values(venueOpsScopes),
 };

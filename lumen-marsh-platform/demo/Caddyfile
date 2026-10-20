@@ -1,0 +1,57 @@
+{
+	admin 127.0.0.1:2019
+}
+
+{$DEMO_HOST} {
+	encode zstd gzip
+	request_body {
+		max_size 1MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	respond /gateway-health "ok" 200
+
+	# Control Tower receives a private gateway credential. Caddy replaces any
+	# browser-supplied value, and VenueOps strips it before application code.
+	@operator path /api/v1/operator/*
+	handle @operator {
+		reverse_proxy venueops-api:8080 {
+			header_up X-Demo-Gateway-Secret {$DEMO_RESET_SECRET}
+		}
+	}
+
+	# Public VenueOps and lease/reset APIs remain on the browser origin.
+	handle /api/* {
+		reverse_proxy venueops-api:8080
+	}
+	handle /actuator/health {
+		reverse_proxy venueops-api:8080
+	}
+	handle /media/* {
+		reverse_proxy venueops-api:8080
+	}
+
+	# Flutter understands its /guest base path after prepare-guest.sh updates
+	# the generated base element.
+	handle_path /guest/* {
+		reverse_proxy lumen-marsh-app:8080
+	}
+	redir /guest /guest/today 308
+
+	# React Router currently has no basename support, so preserve its canonical
+	# paths while still serving through this one gateway and TLS origin.
+	@console path /dashboard* /attractions* /incidents* /maintenance* /park-flow* /docs* /login* /auth/* /session-expired /access-denied /not-found /assets/*
+	handle @console {
+		reverse_proxy venueops-console:8080
+	}
+
+	# Root and the remaining static files are the Cutaway exhibit.
+	handle {
+		reverse_proxy cutaway:8080
+	}
+}

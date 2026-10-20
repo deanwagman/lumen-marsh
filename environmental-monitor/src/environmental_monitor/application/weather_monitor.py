@@ -139,6 +139,23 @@ class WeatherMonitor:
     def current_snapshot(self) -> WeatherSnapshot:
         return self.store.refresh_health(self.clock.now())
 
+    async def reset_demo_state(
+        self, persistence_reset: Callable[[], Awaitable[None]] | None = None
+    ) -> None:
+        self.simulator.reset_clear()
+        if persistence_reset is None:
+            await self.recommendations.reset()
+            await self.polls.reset()
+            await self.alerts.reset()
+            await self.forecasts.reset()
+            await self.observations.reset()
+        else:
+            await persistence_reset()
+        self.store.reset(self.clock.now())
+        self.metrics.active_recommendations = 0
+        self.metrics.observation_age_seconds = None
+        self.metrics.last_venueops_success_at = None
+
     async def poll_location(self) -> None:
         await self._run_poll(DatasetType.LOCATION, self._poll_location)
 

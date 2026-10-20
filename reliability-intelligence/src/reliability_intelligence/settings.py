@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     simulation_enabled: bool = True
+    demo_sandbox_enabled: bool = False
+    demo_sandbox_secret: SecretStr | None = None
     simulation_cycle_seconds: float = Field(default=20, gt=0)
     simulation_seed: int = 20260920
 
@@ -82,6 +84,13 @@ class Settings(BaseSettings):
             raise ValueError("OIDC_DISABLED cannot be true in production")
         if self.app_env == "production" and "simulation_enabled" not in self.model_fields_set:
             object.__setattr__(self, "simulation_enabled", False)
+        if self.demo_sandbox_enabled and (
+            self.demo_sandbox_secret is None
+            or not self.demo_sandbox_secret.get_secret_value().strip()
+        ):
+            raise ValueError(
+                "DEMO_SANDBOX_SECRET is required when DEMO_SANDBOX_ENABLED is true"
+            )
         return self
 
     @property

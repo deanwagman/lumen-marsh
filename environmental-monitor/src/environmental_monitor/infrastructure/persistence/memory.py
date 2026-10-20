@@ -26,6 +26,9 @@ class InMemoryObservationRepository:
             return None
         return max(self._by_source.values(), key=lambda item: item.observed_at)
 
+    async def reset(self) -> None:
+        self._by_source.clear()
+
 
 class InMemoryAlertRepository:
     def __init__(self) -> None:
@@ -38,6 +41,9 @@ class InMemoryAlertRepository:
     async def list_active(self) -> list[WeatherAlert]:
         return list(self._items.values())
 
+    async def reset(self) -> None:
+        self._items.clear()
+
 
 class InMemoryForecastRepository:
     def __init__(self) -> None:
@@ -48,6 +54,9 @@ class InMemoryForecastRepository:
 
     async def list_current(self) -> list[WeatherForecastPeriod]:
         return list(self._items)
+
+    async def reset(self) -> None:
+        self._items.clear()
 
 
 class InMemoryRecommendationRepository:
@@ -72,6 +81,9 @@ class InMemoryRecommendationRepository:
     async def pending_delivery(self) -> list[WeatherRecommendation]:
         return [item for item in self._items.values() if item.needs_delivery]
 
+    async def reset(self) -> None:
+        self._items.clear()
+
 
 class InMemoryPollAttemptRepository:
     def __init__(self) -> None:
@@ -82,3 +94,6 @@ class InMemoryPollAttemptRepository:
 
     async def recent(self, limit: int = 50) -> list[PollAttempt]:
         return list(self._items[-limit:])
+
+    async def reset(self) -> None:
+        self._items.clear()
