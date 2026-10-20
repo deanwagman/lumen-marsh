@@ -1,5 +1,12 @@
 {
 	admin 127.0.0.1:2019
+	auto_https disable_redirects
+}
+
+# Keep certificate automation enabled on the HTTPS site below, but own the
+# plaintext redirect so a deployment's externally mapped HTTPS port survives.
+http://{$DEMO_HOST} {
+	redir {$DEMO_ORIGIN}{uri} 308
 }
 
 {$DEMO_HOST} {
@@ -14,7 +21,11 @@
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 
-	respond /gateway-health "ok" 200
+	# All handles in this site are mutually exclusive. Health must precede the
+	# final Cutaway catch-all instead of relying on Caddy directive sorting.
+	handle /gateway-health {
+		respond "ok" 200
+	}
 
 	# Control Tower receives a private gateway credential. Caddy replaces any
 	# browser-supplied value, and VenueOps strips it before application code.

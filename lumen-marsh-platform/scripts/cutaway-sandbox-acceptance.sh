@@ -107,6 +107,7 @@ for name in ("environmental-monitor", "park-flow-intelligence", "reliability-int
 
 assert services["venueops-api"]["environment"]["VENUEOPS_DEMO_SANDBOX_ENABLED"] == "true"
 assert "@" in services["environmental-monitor"]["environment"]["NWS_USER_AGENT"]
+assert services["gateway"]["environment"]["DEMO_ORIGIN"] == config["services"]["cutaway"]["environment"]["DEMO_ORIGIN"]
 assert config["networks"]["demo-gateway"]["internal"] is True
 print("PASS  rendered demo boundary")
 PY
@@ -136,12 +137,15 @@ resolve=(--resolve "${origin_host}:${origin_port}:127.0.0.1")
 curl_tls=(-kfsS "${resolve[@]}")
 
 for _ in $(seq 1 90); do
-  if curl "${curl_tls[@]}" "$DEMO_ORIGIN/gateway-health" >/dev/null 2>&1; then
+  if [[ "$(curl -ksS "${resolve[@]}" -o /dev/null -w '%{http_code}' \
+    "$DEMO_ORIGIN/gateway-health" 2>/dev/null)" == "200" ]]; then
     break
   fi
   sleep 2
 done
-curl "${curl_tls[@]}" "$DEMO_ORIGIN/gateway-health" | grep -qx 'ok'
+gateway_health="$(curl -ksS "${resolve[@]}" -w $'\n%{http_code}' \
+  "$DEMO_ORIGIN/gateway-health")"
+[[ "$gateway_health" == $'ok\n200' ]]
 echo "PASS  TLS gateway health"
 
 curl "${curl_tls[@]}" "$DEMO_ORIGIN/" | grep -qi 'cutaway'
@@ -352,7 +356,10 @@ curl -sS --resolve "${origin_host}:${http_port}:127.0.0.1" \
   -H "Host: $DEMO_HOST" -D "$redirect_headers" -o /dev/null \
   "http://${origin_host}:${http_port}/"
 grep -Eq '^HTTP/[^ ]+ 30[18]' "$redirect_headers"
-grep -Eqi '^location: https://' "$redirect_headers"
+redirect_location="$(
+  sed -n 's/^[Ll]ocation: \(.*\)\r$/\1/p' "$redirect_headers"
+)"
+[[ "$redirect_location" == "${DEMO_ORIGIN}/" ]]
 echo "PASS  plaintext gateway redirects to TLS"
 
 echo "Cutaway sandbox acceptance: all checks passed"

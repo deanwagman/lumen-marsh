@@ -57,7 +57,19 @@ for (const service of [
 }
 assert.match(caddy, /\{\$DEMO_HOST\} \{/);
 assert.doesNotMatch(caddy, /tls\s+internal/);
+assert.match(caddy, /auto_https disable_redirects/);
+assert.match(caddy, /http:\/\/\{\$DEMO_HOST\} \{\s+redir \{\$DEMO_ORIGIN\}\{uri\} 308\s+\}/);
+const healthHandle = caddy.indexOf("handle /gateway-health");
+const cutawayCatchAll = caddy.lastIndexOf("handle {");
+assert.ok(healthHandle >= 0 && healthHandle < cutawayCatchAll);
+assert.match(caddy.slice(healthHandle, cutawayCatchAll), /respond "ok" 200/);
+assert.match(
+  demoCompose.match(/  gateway:[\s\S]*?(?=\nnetworks:)/)?.[0] ?? "",
+  /DEMO_ORIGIN: \$\{DEMO_ORIGIN:\?set DEMO_ORIGIN\}/,
+);
 assert.match(acceptance, /curl_tls=\(-kfsS/);
 assert.match(acceptance, /--resolve/);
+assert.match(acceptance, /\[\[ "\$gateway_health" == \$'ok\\n200' \]\]/);
+assert.match(acceptance, /\[\[ "\$redirect_location" == "\$\{DEMO_ORIGIN\}\/" \]\]/);
 
 console.log("production console and hosted Cutaway headers stay strict");
