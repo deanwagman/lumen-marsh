@@ -5,6 +5,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -55,7 +56,7 @@ final class DemoLeaseStore {
                     SET token_hash=?, issued_at=?, expires_at=NULL, hard_expires_at=?,
                         last_activity_at=?, state='PREPARING', failure_detail=NULL, version=version+1
                     WHERE singleton_id=1
-                    """, tokenHash, now, hardExpiry, now);
+                    """, tokenHash, sql(now), sql(hardExpiry), sql(now));
             return Optional.of(find());
         });
     }
@@ -66,7 +67,7 @@ final class DemoLeaseStore {
                 SET state='ACTIVE', expires_at=LEAST(?, hard_expires_at),
                     last_activity_at=?, failure_detail=NULL, version=version+1
                 WHERE singleton_id=1 AND token_hash=? AND state='PREPARING'
-                """, now.plus(properties.leaseDuration()), now, tokenHash);
+                """, sql(now.plus(properties.leaseDuration())), sql(now), tokenHash);
         if (changed != 1) {
             throw new IllegalStateException("The reserved sandbox lease is no longer current.");
         }
@@ -83,7 +84,7 @@ final class DemoLeaseStore {
             jdbc.update("""
                     UPDATE demo_sandbox_lease SET last_activity_at=?, version=version+1
                     WHERE singleton_id=1 AND token_hash=? AND state='ACTIVE'
-                    """, now, tokenHash);
+                    """, sql(now), tokenHash);
             lease = find();
         }
         return Optional.of(lease);
@@ -102,7 +103,7 @@ final class DemoLeaseStore {
                 UPDATE demo_sandbox_lease
                 SET state='RESETTING', hard_expires_at=?, version=version+1
                 WHERE singleton_id=1 AND token_hash=? AND state IN ('ACTIVE','PREPARING','RESETTING')
-                """, now.plusSeconds(60), tokenHash) == 1;
+                """, sql(now.plusSeconds(60)), tokenHash) == 1;
     }
 
     Lease finishReset(String tokenHash, Instant now, DemoSandboxProperties properties) {
@@ -111,7 +112,7 @@ final class DemoLeaseStore {
                 SET state='ACTIVE', expires_at=LEAST(?, hard_expires_at), last_activity_at=?,
                     failure_detail=NULL, version=version+1
                 WHERE singleton_id=1 AND token_hash=? AND state='RESETTING'
-                """, now.plus(properties.leaseDuration()), now, tokenHash);
+                """, sql(now.plus(properties.leaseDuration())), sql(now), tokenHash);
         if (changed != 1) {
             throw new IllegalStateException("The resetting sandbox lease is no longer current.");
         }
@@ -163,5 +164,9 @@ final class DemoLeaseStore {
 
     private static Instant instant(ResultSet rs, String name) throws SQLException {
         return rs.getTimestamp(name) == null ? null : rs.getTimestamp(name).toInstant();
+    }
+
+    private static Timestamp sql(Instant value) {
+        return Timestamp.from(value);
     }
 }

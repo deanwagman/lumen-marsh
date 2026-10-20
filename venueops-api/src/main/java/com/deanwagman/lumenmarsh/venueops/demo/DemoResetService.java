@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -101,7 +102,7 @@ final class DemoResetService {
         jdbc.update("""
                 UPDATE demo_reset_execution SET status='COMPLETED', completed_at=?
                 WHERE reset_id=? AND component='venueops'
-                """, Instant.now(clock), resetId.toString());
+                """, Timestamp.from(Instant.now(clock)), resetId.toString());
         return Outcome.COMPLETED;
     }
 
