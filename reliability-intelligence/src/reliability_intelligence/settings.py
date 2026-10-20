@@ -88,9 +88,7 @@ class Settings(BaseSettings):
             self.demo_sandbox_secret is None
             or not self.demo_sandbox_secret.get_secret_value().strip()
         ):
-            raise ValueError(
-                "DEMO_SANDBOX_SECRET is required when DEMO_SANDBOX_ENABLED is true"
-            )
+            raise ValueError("DEMO_SANDBOX_SECRET is required when DEMO_SANDBOX_ENABLED is true")
         return self
 
     @property

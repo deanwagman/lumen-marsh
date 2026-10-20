@@ -31,9 +31,7 @@ class DemoResetRegistry:
         self._completed: OrderedDict[UUID, None] = OrderedDict()
         self._lock = asyncio.Lock()
 
-    async def execute(
-        self, reset_id: UUID, operation: Callable[[], Awaitable[None]]
-    ) -> str:
+    async def execute(self, reset_id: UUID, operation: Callable[[], Awaitable[None]]) -> str:
         async with self._lock:
             if reset_id in self._completed:
                 self._completed.move_to_end(reset_id)
@@ -53,8 +51,10 @@ def _authorize(container: AppContainer, supplied_secret: str | None) -> None:
     if not container.settings.demo_sandbox_enabled:
         raise HTTPException(status_code=404, detail="Not found")
     configured = container.settings.demo_sandbox_secret
-    if configured is None or supplied_secret is None or not secrets.compare_digest(
-        supplied_secret, configured.get_secret_value()
+    if (
+        configured is None
+        or supplied_secret is None
+        or not secrets.compare_digest(supplied_secret, configured.get_secret_value())
     ):
         raise HTTPException(status_code=401, detail="Invalid demo sandbox secret")
 

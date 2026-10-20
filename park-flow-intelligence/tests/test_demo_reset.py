@@ -52,9 +52,7 @@ async def test_reset_rejects_missing_and_wrong_secret() -> None:
     body = {"resetId": str(uuid4())}
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         missing = await client.post(PATH, json=body)
-        wrong = await client.post(
-            PATH, json=body, headers={"X-Demo-Reset-Secret": "wrong"}
-        )
+        wrong = await client.post(PATH, json=body, headers={"X-Demo-Reset-Secret": "wrong"})
     assert missing.status_code == 401
     assert wrong.status_code == 401
 
