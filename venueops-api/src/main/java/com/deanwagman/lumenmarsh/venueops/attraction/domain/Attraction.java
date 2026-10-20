@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 public final class Attraction {
 
@@ -21,6 +22,7 @@ public final class Attraction {
     private Instant updatedAt;
     private long version;
     private final List<AttractionActivity> history;
+    private final Supplier<String> activityIdSupplier;
     private int committedCount;
 
     private Attraction(
@@ -34,7 +36,8 @@ public final class Attraction {
             Instant updatedAt,
             long version,
             List<AttractionActivity> history,
-            int committedCount
+            int committedCount,
+            Supplier<String> activityIdSupplier
     ) {
         this.id = Objects.requireNonNull(id, "id is required");
         this.name = requireText(name, "name");
@@ -47,6 +50,7 @@ public final class Attraction {
         this.version = version;
         this.history = new ArrayList<>(history);
         this.committedCount = committedCount;
+        this.activityIdSupplier = Objects.requireNonNull(activityIdSupplier, "activityIdSupplier is required");
         assertInvariants();
     }
 
@@ -66,7 +70,8 @@ public final class Attraction {
                 Instant.now(clock),
                 0L,
                 List.of(),
-                0
+                0,
+                () -> UUID.randomUUID().toString()
         );
     }
 
@@ -82,6 +87,23 @@ public final class Attraction {
             long version,
             List<AttractionActivity> activity
     ) {
+        return rehydrate(id, name, area, type, status, capacityMode, waitMinutes, updatedAt, version, activity,
+                () -> UUID.randomUUID().toString());
+    }
+
+    public static Attraction rehydrate(
+            AttractionId id,
+            String name,
+            String area,
+            AttractionType type,
+            AttractionStatus status,
+            CapacityMode capacityMode,
+            Integer waitMinutes,
+            Instant updatedAt,
+            long version,
+            List<AttractionActivity> activity,
+            Supplier<String> activityIdSupplier
+    ) {
         List<AttractionActivity> history = activity == null ? List.of() : List.copyOf(activity);
         return new Attraction(
                 id,
@@ -94,7 +116,8 @@ public final class Attraction {
                 updatedAt,
                 version,
                 history,
-                history.size()
+                history.size(),
+                activityIdSupplier
         );
     }
 
@@ -349,7 +372,7 @@ public final class Attraction {
         return value == null || value.isBlank();
     }
 
-    private static String newActivityId() {
-        return UUID.randomUUID().toString();
+    private String newActivityId() {
+        return activityIdSupplier.get();
     }
 }

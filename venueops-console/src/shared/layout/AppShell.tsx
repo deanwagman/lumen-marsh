@@ -53,7 +53,9 @@ export function AppShell() {
         <nav className={styles.nav} aria-label="Console">
           <NavLink
             className={({ isActive }) =>
-              isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+              isActive
+                ? `${styles.navLink} ${styles.navLinkActive}`
+                : styles.navLink
             }
             to="/dashboard"
           >
@@ -61,7 +63,9 @@ export function AppShell() {
           </NavLink>
           <NavLink
             className={({ isActive }) =>
-              isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+              isActive
+                ? `${styles.navLink} ${styles.navLinkActive}`
+                : styles.navLink
             }
             to="/attractions"
           >
@@ -69,13 +73,18 @@ export function AppShell() {
           </NavLink>
           <NavLink
             className={({ isActive }) =>
-              isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+              isActive
+                ? `${styles.navLink} ${styles.navLinkActive}`
+                : styles.navLink
             }
             to="/incidents"
           >
             Incidents
             {openCount > 0 ? (
-              <span className={styles.badge} aria-label={`${openCount} open incidents`}>
+              <span
+                className={styles.badge}
+                aria-label={`${openCount} open incidents`}
+              >
                 {openCount}
               </span>
             ) : null}
@@ -83,7 +92,9 @@ export function AppShell() {
           {maintenance.visible ? (
             <NavLink
               className={({ isActive }) =>
-                isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+                isActive
+                  ? `${styles.navLink} ${styles.navLinkActive}`
+                  : styles.navLink
               }
               to="/maintenance"
             >
@@ -101,31 +112,57 @@ export function AppShell() {
           {flow.visible ? (
             <NavLink
               className={({ isActive }) =>
-                isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+                isActive
+                  ? `${styles.navLink} ${styles.navLinkActive}`
+                  : styles.navLink
               }
               to="/park-flow"
             >
               Park Flow
               {flow.count > 0 ? (
-                <span className={styles.badge} aria-label={`${flow.count} pending flow recommendations`}>
+                <span
+                  className={styles.badge}
+                  aria-label={`${flow.count} pending flow recommendations`}
+                >
                   {flow.count}
                 </span>
               ) : null}
             </NavLink>
           ) : null}
-          <NavLink
-            className={({ isActive }) =>
-              isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
-            }
-            to="/docs"
+          <div
+            className={styles.navSection}
+            role="group"
+            aria-labelledby="historical-workspace-label"
           >
-            Docs
-          </NavLink>
+            <p id="historical-workspace-label" className={styles.navGroup}>
+              Historical workspace
+            </p>
+            <NavLink
+              className={({ isActive }) =>
+                isActive
+                  ? `${styles.navLink} ${styles.navLinkActive}`
+                  : styles.navLink
+              }
+              to="/history"
+            >
+              History
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                isActive
+                  ? `${styles.navLink} ${styles.navLinkActive}`
+                  : styles.navLink
+              }
+              to="/docs"
+            >
+              Docs
+            </NavLink>
+          </div>
         </nav>
         <div className={styles.railMeta}>
           <p className={styles.narrowNotice}>
-            Designed for operator workstations. This layout is compacted for a narrower
-            display.
+            Designed for operator workstations. This layout is compacted for a
+            narrower display.
           </p>
         </div>
       </aside>
@@ -137,7 +174,9 @@ export function AppShell() {
               {initials}
             </span>
             <span>
-              <span className={styles.operatorName}>{operator.displayName}</span>
+              <span className={styles.operatorName}>
+                {operator.displayName}
+              </span>
               <span className={styles.operatorId}>
                 {' '}
                 · {operator.role} · {operator.operatorId}

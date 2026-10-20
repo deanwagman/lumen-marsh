@@ -1,0 +1,349 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.header,
+.sectionHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.kicker,
+.zoneLabel {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.lede,
+.meta {
+  color: var(--color-text-muted);
+}
+
+.docsLink {
+  color: var(--color-accent);
+  font-weight: 650;
+}
+
+.syntheticNotice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid rgba(196, 154, 50, 0.55);
+  border-radius: var(--radius-sm);
+  background: var(--color-status-warning-soft);
+}
+
+.controls,
+.panel,
+.questionPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.controlGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.controlGrid label,
+.questionForm {
+  display: flex;
+  min-width: 12rem;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.controlGrid input,
+.controlGrid select,
+.questionForm input {
+  min-height: 2.5rem;
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-low);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.bars,
+.citationLinks,
+.legend,
+.causeList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-sm);
+}
+
+.bar,
+.selectedBar {
+  width: 100%;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-low);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.bar:hover,
+.bar:focus-visible,
+.selectedBar {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.barLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.bar svg,
+.selectedBar svg {
+  width: 100%;
+  height: 0.65rem;
+}
+
+.barTrack {
+  fill: var(--color-surface-highest);
+}
+
+.barFill {
+  fill: var(--color-accent);
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.tableScroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.tableScroll caption {
+  padding: var(--space-xs) 0;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.tableScroll th,
+.tableScroll td {
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--color-outline);
+  text-align: left;
+  vertical-align: top;
+}
+
+.timeline {
+  display: flex;
+  min-height: 3.2rem;
+  overflow: hidden;
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+}
+
+.timelineSegment {
+  display: grid;
+  min-width: 0.4rem;
+  flex-grow: 0;
+  flex-shrink: 1;
+  place-items: center;
+  border-right: 2px solid var(--color-surface);
+  color: #07110f;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.timelineSegment:focus-visible {
+  outline: 3px solid var(--color-text);
+  outline-offset: -3px;
+}
+
+.segment_OPERATING {
+  background: var(--color-status-operating);
+}
+
+.segment_REDUCED_CAPACITY {
+  background: repeating-linear-gradient(
+    45deg,
+    #c49a32,
+    #c49a32 6px,
+    #f0d78b 6px,
+    #f0d78b 12px
+  );
+}
+
+.segment_WEATHER_HOLD {
+  background: repeating-linear-gradient(
+    90deg,
+    #87a8bd,
+    #87a8bd 6px,
+    #cbdde6 6px,
+    #cbdde6 12px
+  );
+}
+
+.segment_TECHNICAL_DELAY {
+  background: repeating-linear-gradient(
+    45deg,
+    #d67765,
+    #d67765 5px,
+    #f2b3a8 5px,
+    #f2b3a8 10px
+  );
+}
+
+.segment_TESTING_RETURN_TO_SERVICE {
+  background: repeating-linear-gradient(
+    135deg,
+    #b08ac4,
+    #b08ac4 6px,
+    #ddc9e7 6px,
+    #ddc9e7 12px
+  );
+}
+
+.segment_COMMANDED_CLOSURE,
+.segment_CLOSED_NOT_OPEN {
+  background: repeating-linear-gradient(
+    90deg,
+    #929c99,
+    #929c99 4px,
+    #ccd1cf 4px,
+    #ccd1cf 8px
+  );
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(8rem, 1fr));
+  gap: var(--space-sm);
+  margin: 0;
+}
+
+.totals div {
+  padding: var(--space-sm);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+}
+
+.totals dt {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.totals dd {
+  margin: var(--space-xxs) 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.causeList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-xs);
+}
+
+.causeList li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-surface-low);
+}
+
+.citationTarget {
+  scroll-margin-top: var(--space-lg);
+}
+
+.citationTarget:target {
+  background: var(--color-accent-soft);
+  outline: 2px solid var(--color-accent);
+}
+
+.plannedClosure {
+  padding: var(--space-md);
+  border: 1px dashed var(--color-outline);
+}
+
+.questionRow {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.questionRow input {
+  flex: 1;
+}
+
+.answer,
+.error {
+  padding: var(--space-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-low);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-color: var(--color-danger);
+}
+
+.citationLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+}
+
+@media (max-width: 52.5rem) {
+  .totals {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .questionRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .timelineSegment {
+    border: 2px solid currentColor;
+  }
+}

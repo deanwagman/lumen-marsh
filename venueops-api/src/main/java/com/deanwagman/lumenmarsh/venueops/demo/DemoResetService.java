@@ -11,10 +11,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,6 +25,50 @@ final class DemoResetService {
 
     record Batch(UUID resetId, Map<String, String> outcomes) {
     }
+
+    /**
+     * Operational tables Start over may clear. Historical dataset tables are not
+     * in this list, and the statement does not use CASCADE, so a foreign key from
+     * history cannot be followed into a delete.
+     */
+    static final List<String> LIVE_TABLES = List.of(
+            "flow_activity",
+            "flow_recommendation_destination",
+            "flow_processed_commands",
+            "flow_recommendation",
+            "queue_forecast",
+            "queue_projection",
+            "flow_observation",
+            "maintenance_work_order_evidence",
+            "maintenance_checklist_items",
+            "maintenance_activity",
+            "maintenance_processed_commands",
+            "maintenance_recommendations",
+            "maintenance_work_orders",
+            "maintenance_work_order_sequence",
+            "maintenance_assets",
+            "weather_recommendation_activity",
+            "weather_recommendation_attraction",
+            "weather_recommendation",
+            "incident_activity",
+            "incident_attraction",
+            "incident_processed_commands",
+            "incident",
+            "attraction_activity",
+            "attraction_processed_commands",
+            "attraction_experience",
+            "attraction"
+    );
+
+    static final List<String> PRESERVED_TABLES = List.of(
+            "historical_dataset",
+            "historical_operating_calendar",
+            "historical_attraction_plan",
+            "historical_attraction_snapshot",
+            "historical_attraction_activity",
+            "historical_processed_command",
+            "demo_reset_execution"
+    );
 
     private final DemoSandboxProperties properties;
     private final RestClient rest;
@@ -89,28 +135,34 @@ final class DemoResetService {
                 """, resetId.toString());
 
         entityManager.clear();
-        jdbc.execute("""
-                TRUNCATE TABLE
-                  flow_activity, flow_recommendation_destination, flow_processed_commands,
-                  flow_recommendation, queue_forecast, queue_projection, flow_observation,
-                  maintenance_work_order_evidence, maintenance_checklist_items, maintenance_activity,
-                  maintenance_processed_commands, maintenance_recommendations, maintenance_work_orders,
-                  maintenance_work_order_sequence, maintenance_assets,
-                  weather_recommendation_activity, weather_recommendation_attraction, weather_recommendation,
-                  incident_activity, incident_attraction, incident_processed_commands, incident,
-                  attraction_activity, attraction_processed_commands, attraction_experience, attraction
-                RESTART IDENTITY CASCADE
-                """);
+        jdbc.execute(truncateLiveTables());
         entityManager.clear();
-        AttractionSeedData.attractions(clock).forEach(attractions::save);
-        AttractionSeedData.experienceProfiles().forEach(experiences::save);
-        MaintenanceAssetSeedData.assets(clock).forEach(assets::save);
-        entityManager.flush();
+        AttractionSeedData.attractions(clock).forEach(attraction -> {
+            attractions.save(attraction);
+            entityManager.flush();
+        });
+        AttractionSeedData.experienceProfiles().forEach(profile -> {
+            experiences.save(profile);
+            entityManager.flush();
+        });
+        MaintenanceAssetSeedData.assets(clock).forEach(asset -> {
+            assets.save(asset);
+            entityManager.flush();
+        });
         jdbc.update("""
                 UPDATE demo_reset_execution SET status='COMPLETED', completed_at=?
                 WHERE reset_id=? AND component='venueops'
-                """, Timestamp.from(Instant.now(clock)), resetId.toString());
+                """, OffsetDateTime.ofInstant(Instant.now(clock), ZoneOffset.UTC), resetId.toString());
         return Outcome.COMPLETED;
+    }
+
+    static String truncateLiveTables() {
+        for (String table : LIVE_TABLES) {
+            if (!table.matches("[a-z_]+") || PRESERVED_TABLES.contains(table)) {
+                throw new IllegalStateException("Live reset allowlist includes a preserved table: " + table);
+            }
+        }
+        return "TRUNCATE TABLE " + String.join(", ", LIVE_TABLES) + " RESTART IDENTITY";
     }
 
     private String resetRemote(String component, String baseUrl, UUID resetId) {
