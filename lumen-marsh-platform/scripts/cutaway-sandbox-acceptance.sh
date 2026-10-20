@@ -342,12 +342,32 @@ curl "${curl_tls[@]}" -b "$cookie_b" -X DELETE \
 echo "PASS  quiet acquisition, spectator, spent scenarios, reset replay, expiry, and reacquisition"
 
 for service in venueops-api environmental-monitor park-flow-intelligence \
-  reliability-intelligence venueops-console lumen-marsh-app venueops-db environmental-db; do
-  if "${COMPOSE[@]}" port "$service" 8080 >/dev/null 2>&1 ||
-     "${COMPOSE[@]}" port "$service" 5432 >/dev/null 2>&1; then
-    echo "FAIL  $service unexpectedly publishes a host port" >&2
+  reliability-intelligence venueops-console lumen-marsh-app cutaway \
+  venueops-db environmental-db; do
+  container_ids="$("${COMPOSE[@]}" ps -q "$service")"
+  if [[ -z "$container_ids" ]]; then
+    echo "FAIL  $service has no running container to inspect" >&2
     exit 1
   fi
+  while IFS= read -r container_id; do
+    port_bindings="$(docker inspect --format '{{json .HostConfig.PortBindings}}' "$container_id")"
+    if ! python3 - "$service" "$container_id" "$port_bindings" <<'PY'
+import json
+import sys
+
+service, container_id, raw = sys.argv[1:]
+bindings = json.loads(raw)
+if bindings not in (None, {}):
+    print(
+        f"FAIL  {service} container {container_id} publishes host ports: {bindings}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+PY
+    then
+      exit 1
+    fi
+  done <<<"$container_ids"
 done
 echo "PASS  service, producer, and database ports are private"
 

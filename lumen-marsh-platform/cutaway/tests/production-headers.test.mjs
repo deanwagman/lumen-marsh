@@ -73,5 +73,8 @@ assert.match(acceptance, /curl_tls=\(-kfsS/);
 assert.match(acceptance, /--resolve/);
 assert.match(acceptance, /\[\[ "\$gateway_health" == \$'ok\\n200' \]\]/);
 assert.match(acceptance, /\[\[ "\$redirect_location" == "\$\{DEMO_ORIGIN\}\/" \]\]/);
+assert.match(acceptance, /docker inspect --format '\{\{json \.HostConfig\.PortBindings\}\}'/);
+assert.match(acceptance, /bindings not in \(None, \{\}\)/);
+assert.doesNotMatch(acceptance, /"\$\{COMPOSE\[@\]\}" port/);
 
 console.log("production console and hosted Cutaway headers stay strict");
