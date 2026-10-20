@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY public/ /usr/share/nginx/html/
+ENV NGINX_ENVSUBST_FILTER=DEMO_GATEWAY_SECRET
 USER root
 RUN printf 'ok\n' > /usr/share/nginx/html/health \
   && chown -R nginx:nginx /usr/share/nginx/html

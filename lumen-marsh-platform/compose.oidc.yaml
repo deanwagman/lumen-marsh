@@ -16,6 +16,7 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:8080}
         VITE_AUTH_MODE: oidc
+        VITE_LOCAL_BEARER_TOKEN: ""
         VITE_OIDC_AUTHORITY: ${VITE_OIDC_AUTHORITY:?VITE_OIDC_AUTHORITY is required}
         VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:?VITE_OIDC_CLIENT_ID is required}
         VITE_OIDC_REDIRECT_URI: ${VITE_OIDC_REDIRECT_URI:-http://127.0.0.1:5173/auth/callback}

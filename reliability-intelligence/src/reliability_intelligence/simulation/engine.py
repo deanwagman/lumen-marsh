@@ -34,6 +34,12 @@ class ReliabilitySimulator:
     def stop(self) -> None:
         self.running = False
 
+    def reset(self) -> None:
+        self.running = False
+        self.scenario = Scenario.NORMAL
+        self.cycle = 0
+        self._end_episode()
+
     def apply_scenario(self, scenario: Scenario) -> None:
         if scenario is not self.scenario:
             if scenario is Scenario.CYPRESS_COIL_VIBRATION:

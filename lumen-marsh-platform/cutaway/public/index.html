@@ -6,7 +6,7 @@
     <title>Cutaway</title>
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' http://localhost:8080 http://127.0.0.1:8080 http://localhost:8000 http://127.0.0.1:8000 http://localhost:8100 http://127.0.0.1:8100 http://localhost:8200 http://127.0.0.1:8200; frame-src http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-src 'self'"
     />
     <link rel="stylesheet" href="cutaway.css" />
   </head>
@@ -19,6 +19,16 @@
         <a href="docs.html">Docs</a>
       </nav>
     </header>
+    <section class="visitor-bar" aria-label="Demo access">
+      <div id="lease-status" class="lease-status" role="status" aria-live="polite">
+        <span id="lease-label">Joining demo…</span>
+        <strong id="lease-countdown" hidden></strong>
+      </div>
+      <div id="readiness" class="readiness" aria-label="Demo readiness"></div>
+      <button type="button" id="take-control" hidden>Try for 5 minutes</button>
+      <button type="button" id="release-control" hidden>End turn</button>
+      <button type="button" id="start-over" disabled>Start over</button>
+    </section>
     <section id="opening" class="now" aria-label="Now" data-beat="waiting">
       <div class="now-copy" id="now-copy">
         <p id="opening-kicker" class="opening-kicker" hidden>Start here</p>
@@ -31,7 +41,7 @@
           <button
             type="button"
             id="lightning-hold"
-            data-url="http://localhost:8000/api/v1/simulation/scenarios/hold-conditions"
+            data-scenario="lightning-hold"
             data-weather-phase="PLACE_WEATHER_HOLD"
             data-affected-attractions="cypress-coil,mangrove-run"
             disabled
@@ -60,11 +70,11 @@
         </div>
         <figure class="room is-shown" id="guest-room" role="tabpanel" aria-labelledby="tab-guest">
           <figcaption>Guest</figcaption>
-          <iframe id="guest-frame" title="Guest app, Today" src="http://localhost:3000/today"></iframe>
+          <iframe id="guest-frame" title="Guest app, Today" src="/guest/today"></iframe>
         </figure>
         <figure class="room" id="tower-room" role="tabpanel" aria-labelledby="tab-tower">
           <figcaption>Control Tower</figcaption>
-          <iframe id="console-frame" title="Control Tower" src="http://localhost:3001/dashboard"></iframe>
+          <iframe id="console-frame" title="Control Tower" src="/tower/dashboard"></iframe>
         </figure>
       </div>
     </div>
@@ -118,7 +128,7 @@
           <button
             type="button"
             id="clear-storm"
-            data-url="http://localhost:8000/api/v1/simulation/scenarios/clearance-period"
+            data-scenario="clear-storm"
             data-weather-phase="RETURN_TO_SERVICE"
             data-affected-attractions="cypress-coil,mangrove-run"
             disabled
@@ -131,7 +141,7 @@
           <button
             type="button"
             id="cypress-vibration"
-            data-url="http://localhost:8200/simulation/scenarios/cypress-coil-vibration"
+            data-scenario="cypress-vibration"
             disabled
           >
             Cypress Coil vibration
@@ -142,7 +152,7 @@
           <button
             type="button"
             id="mangrove-disruption"
-            data-url="http://localhost:8100/simulation/scenarios/mangrove-disruption"
+            data-scenario="mangrove-disruption"
             data-watch="mangrove"
             disabled
           >
@@ -152,6 +162,20 @@
         </div>
       </div>
     </details>
+    <dialog id="reset-dialog" aria-labelledby="reset-title">
+      <form method="dialog">
+        <h2 id="reset-title">Start the demo over?</h2>
+        <p>This clears the shared demo for everyone and returns both rooms to the quiet opening.</p>
+        <div class="dialog-actions">
+          <button value="cancel">Keep going</button>
+          <button value="confirm" id="confirm-reset">Start over</button>
+        </div>
+      </form>
+    </dialog>
+    <div id="reset-progress" class="reset-progress" role="status" aria-live="assertive" hidden>
+      <p id="reset-progress-label">Starting over…</p>
+      <button type="button" id="retry-reset" hidden>Retry</button>
+    </div>
     <script src="cutaway.js"></script>
   </body>
 </html>

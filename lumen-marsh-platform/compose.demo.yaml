@@ -1,0 +1,198 @@
+# Disposable, single-host demo overlay.
+#
+#   docker compose -f compose.yaml -f compose.demo.yaml up --build -d
+#
+# This file is intentionally opt-in. It does not change the developer override
+# or Cognito/OIDC launcher. Every credential and public identity must be
+# supplied by the deployment environment.
+
+x-demo-runtime: &demo-runtime
+  restart: unless-stopped
+  cpus: 1.0
+  mem_limit: 768m
+
+x-demo-producer: &demo-producer
+  <<: *demo-runtime
+  networks: !override
+    - services
+
+services:
+  venueops-db:
+    <<: *demo-runtime
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${DEMO_VENUEOPS_DB_PASSWORD:?set DEMO_VENUEOPS_DB_PASSWORD}
+    volumes: !reset []
+    tmpfs:
+      - /var/lib/postgresql/data:size=512m,mode=0700
+    labels:
+      io.lumen-marsh.demo.disposable: "true"
+      io.lumen-marsh.demo.backup: "disabled"
+
+  environmental-db:
+    <<: *demo-runtime
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${DEMO_ENVIRONMENTAL_DB_PASSWORD:?set DEMO_ENVIRONMENTAL_DB_PASSWORD}
+    volumes: !reset []
+    tmpfs:
+      - /var/lib/postgresql/data:size=512m,mode=0700
+    labels:
+      io.lumen-marsh.demo.disposable: "true"
+      io.lumen-marsh.demo.backup: "disabled"
+
+  environmental-migrate:
+    cpus: 0.5
+    mem_limit: 384m
+    environment:
+      NWS_USER_AGENT: ${NWS_USER_AGENT:?set NWS_USER_AGENT to an application name and contact}
+      DATABASE_URL: postgresql+asyncpg://${ENVIRONMENTAL_DB_USER:-environmental}:${DEMO_ENVIRONMENTAL_DB_PASSWORD:?set DEMO_ENVIRONMENTAL_DB_PASSWORD}@environmental-db:5432/${ENVIRONMENTAL_DB_NAME:-environmental_monitor}
+    networks: !override
+      - environmental-data
+      - services
+
+  venueops-api:
+    <<: *demo-runtime
+    ports: !reset []
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${DEMO_VENUEOPS_DB_PASSWORD:?set DEMO_VENUEOPS_DB_PASSWORD}
+      VENUEOPS_SECURITY_MODE: ${DEMO_SECURITY_MODE:?set DEMO_SECURITY_MODE explicitly}
+      VENUEOPS_ISSUER_URI: ${DEMO_ORIGIN:?set DEMO_ORIGIN}
+      VENUEOPS_CORS_ORIGINS: ${DEMO_ORIGIN:?set DEMO_ORIGIN, for example https://demo.example.com}
+      VENUEOPS_DEMO_SANDBOX_ENABLED: "true"
+      DEMO_RESET_SECRET: ${DEMO_RESET_SECRET:?set DEMO_RESET_SECRET to at least 32 random characters}
+      DEMO_SECURE_COOKIE: "true"
+      DEMO_LEASE_DURATION: ${DEMO_LEASE_DURATION:-PT10M}
+      DEMO_INACTIVITY_TIMEOUT: ${DEMO_INACTIVITY_TIMEOUT:-PT3M}
+      DEMO_HARD_MAXIMUM: ${DEMO_HARD_MAXIMUM:-PT15M}
+      VENUEOPS_DEMO_SANDBOX_EXPIRY_SCAN: ${DEMO_EXPIRY_SCAN:-PT15S}
+    networks: !override
+      - services
+      - venueops-data
+      - demo-gateway
+
+  environmental-monitor:
+    <<: *demo-producer
+    ports: !reset []
+    environment:
+      APP_ENV: development
+      SIMULATION_ENABLED: "true"
+      DEMO_SANDBOX_ENABLED: "true"
+      DEMO_SANDBOX_SECRET: ${DEMO_RESET_SECRET:?set DEMO_RESET_SECRET}
+      NWS_USER_AGENT: ${NWS_USER_AGENT:?set NWS_USER_AGENT to an application name and contact}
+      DATABASE_URL: postgresql+asyncpg://${ENVIRONMENTAL_DB_USER:-environmental}:${DEMO_ENVIRONMENTAL_DB_PASSWORD:?set DEMO_ENVIRONMENTAL_DB_PASSWORD}@environmental-db:5432/${ENVIRONMENTAL_DB_NAME:-environmental_monitor}
+      OIDC_DISABLED: ${DEMO_OIDC_DISABLED:-true}
+      VENUEOPS_BEARER_TOKEN: ${DEMO_WEATHER_TOKEN:?set DEMO_WEATHER_TOKEN}
+    networks:
+      - environmental-data
+      - services
+
+  park-flow-intelligence:
+    <<: *demo-producer
+    ports: !reset []
+    environment:
+      APP_ENV: development
+      SIMULATION_ENABLED: "true"
+      DEMO_SANDBOX_ENABLED: "true"
+      DEMO_SANDBOX_SECRET: ${DEMO_RESET_SECRET:?set DEMO_RESET_SECRET}
+      OIDC_DISABLED: ${DEMO_OIDC_DISABLED:-true}
+      VENUEOPS_BEARER_TOKEN: ${DEMO_FLOW_TOKEN:?set DEMO_FLOW_TOKEN}
+
+  reliability-intelligence:
+    <<: *demo-producer
+    ports: !reset []
+    environment:
+      APP_ENV: development
+      SIMULATION_ENABLED: "true"
+      DEMO_SANDBOX_ENABLED: "true"
+      DEMO_SANDBOX_SECRET: ${DEMO_RESET_SECRET:?set DEMO_RESET_SECRET}
+      OIDC_DISABLED: ${DEMO_OIDC_DISABLED:-true}
+      VENUEOPS_BEARER_TOKEN: ${DEMO_RELIABILITY_TOKEN:?set DEMO_RELIABILITY_TOKEN}
+
+  venueops-console:
+    <<: *demo-runtime
+    ports: !reset []
+    build:
+      args:
+        VITE_API_BASE_URL: ${DEMO_ORIGIN:?set DEMO_ORIGIN}
+        VITE_AUTH_MODE: demo
+        VITE_LOCAL_BEARER_TOKEN: ""
+        CONSOLE_FRAME_ANCESTORS: ${DEMO_ORIGIN:?set DEMO_ORIGIN}
+    networks: !override
+      - demo-gateway
+
+  lumen-marsh-app:
+    <<: *demo-runtime
+    ports: !reset []
+    build:
+      args:
+        VENUEOPS_API_BASE_URL: ${DEMO_ORIGIN:?set DEMO_ORIGIN}
+    volumes:
+      - ./demo/prepare-guest.sh:/demo/prepare-guest.sh:ro
+    command: ["/bin/sh", "/demo/prepare-guest.sh"]
+    networks: !override
+      - demo-gateway
+
+  cutaway:
+    <<: *demo-runtime
+    build:
+      context: ./cutaway
+    image: ${CUTAWAY_IMAGE:-cutaway:local}
+    environment:
+      DEMO_ORIGIN: ${DEMO_ORIGIN:?set DEMO_ORIGIN}
+      DEMO_GATEWAY_SECRET: ${DEMO_RESET_SECRET:?set DEMO_RESET_SECRET}
+    volumes:
+      - ./demo/prepare-cutaway.sh:/demo/prepare-cutaway.sh:ro
+    command: ["/bin/sh", "/demo/prepare-cutaway.sh"]
+    networks:
+      - demo-gateway
+    depends_on:
+      venueops-console:
+        condition: service_healthy
+      lumen-marsh-app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
+  gateway:
+    image: caddy:2.10.2-alpine
+    <<: *demo-runtime
+    mem_limit: 256m
+    environment:
+      DEMO_HOST: ${DEMO_HOST:?set DEMO_HOST}
+      DEMO_ORIGIN: ${DEMO_ORIGIN:?set DEMO_ORIGIN}
+      DEMO_RESET_SECRET: ${DEMO_RESET_SECRET:?set DEMO_RESET_SECRET}
+    ports:
+      - "${DEMO_HTTP_PORT:-80}:80"
+      - "${DEMO_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./demo/Caddyfile:/etc/caddy/Caddyfile:ro
+      - demo-caddy-data:/data
+      - demo-caddy-config:/config
+    networks:
+      - demo-gateway
+      - demo-edge
+    depends_on:
+      cutaway:
+        condition: service_healthy
+      venueops-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+networks:
+  demo-gateway:
+    internal: true
+  demo-edge:
+
+volumes:
+  demo-caddy-data:
+  demo-caddy-config:

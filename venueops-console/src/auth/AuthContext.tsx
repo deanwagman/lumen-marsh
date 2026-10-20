@@ -15,6 +15,7 @@ import { environment } from '@/config/environment';
 import { readAccessTokenClaims } from './jwtClaims';
 import { getOidcUserManager } from './oidc';
 import {
+  demoGatewaySession,
   localDevelopmentSession,
   resolveOperatorRole,
   type AuthSession,
@@ -51,6 +52,8 @@ export function AuthProvider({
       ? initialSession
       : environment.authMode === 'local'
         ? localDevelopmentSession
+        : environment.authMode === 'demo'
+          ? demoGatewaySession
         : null;
   const [session, setSession] = useState<AuthSession | null>(configuredSession);
   const [status, setStatus] = useState<AuthStatus>(
@@ -71,6 +74,7 @@ export function AuthProvider({
     if (
       initialSession !== undefined ||
       environment.authMode === 'local' ||
+      environment.authMode === 'demo' ||
       window.location.pathname === '/auth/callback'
     ) {
       return;
@@ -108,8 +112,12 @@ export function AuthProvider({
 
   const login = useCallback(
     async (returnUrl = defaultAuthenticatedRoute) => {
-      if (environment.authMode === 'local') {
-        setSession(localDevelopmentSession);
+      if (environment.authMode === 'local' || environment.authMode === 'demo') {
+        setSession(
+          environment.authMode === 'demo'
+            ? demoGatewaySession
+            : localDevelopmentSession,
+        );
         setStatus('authenticated');
         return;
       }
@@ -134,7 +142,8 @@ export function AuthProvider({
     setSession(null);
     setStatus('unauthenticated');
     setAccessDenied(false);
-    if (environment.authMode === 'local') return;
+    if (environment.authMode === 'local' || environment.authMode === 'demo')
+      return;
     await resolveManager().signoutRedirect();
   }, [resolveManager]);
 

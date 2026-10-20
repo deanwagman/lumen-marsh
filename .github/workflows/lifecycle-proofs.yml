@@ -16,6 +16,25 @@ jobs:
   compose-lifecycle:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      DEMO_HOST: demo.localhost
+      DEMO_ORIGIN: https://demo.localhost:8443
+      DEMO_HTTP_PORT: "8088"
+      DEMO_HTTPS_PORT: "8443"
+      DEMO_SECURITY_MODE: LOCAL_JWT
+      DEMO_OIDC_DISABLED: "true"
+      DEMO_RESET_SECRET: lifecycle-proof-reset-secret-32-characters
+      DEMO_VENUEOPS_DB_PASSWORD: lifecycle-proof-venueops
+      DEMO_ENVIRONMENTAL_DB_PASSWORD: lifecycle-proof-environmental
+      DEMO_WEATHER_TOKEN: local-weather-token
+      DEMO_FLOW_TOKEN: local-flow-token
+      DEMO_RELIABILITY_TOKEN: local-reliability-token
+      DEMO_LEASE_DURATION: PT8S
+      DEMO_INACTIVITY_TIMEOUT: PT10S
+      DEMO_HARD_MAXIMUM: PT12S
+      DEMO_EXPIRY_SCAN: PT1S
+      DEMO_ACCEPTANCE_EXPIRY_WAIT_SECONDS: "14"
+      NWS_USER_AGENT: LumenMarshLifecycleProof/1.0 (platform@example.com)
     defaults:
       run:
         working-directory: lumen-marsh-platform
@@ -32,9 +51,18 @@ jobs:
         run: ./scripts/maintenance-lifecycle-acceptance.sh
       - name: Flow lifecycle
         run: ./scripts/flow-lifecycle-acceptance.sh
+      - name: Cutaway sandbox deployment
+        run: ./scripts/cutaway-sandbox-acceptance.sh --manage-stack
       - name: Collect Compose logs
         if: failure()
-        run: docker compose -p lumen-marsh logs --no-color --tail=200
+        run: |
+          if docker compose -f compose.yaml -f compose.demo.yaml ps -q gateway | grep -q .; then
+            docker compose -f compose.yaml -f compose.demo.yaml logs --no-color --tail=200
+          else
+            docker compose -p lumen-marsh logs --no-color --tail=200
+          fi
       - name: Stop stack
         if: always()
-        run: ./scripts/dev-down.sh
+        run: |
+          docker compose -f compose.yaml -f compose.demo.yaml down --remove-orphans
+          docker compose -f compose.yaml -f compose.override.yaml down --remove-orphans

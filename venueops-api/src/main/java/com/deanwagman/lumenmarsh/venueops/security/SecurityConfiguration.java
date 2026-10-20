@@ -1,5 +1,8 @@
 package com.deanwagman.lumenmarsh.venueops.security;
 
+import com.deanwagman.lumenmarsh.venueops.demo.DemoLeaseAuthorityFilter;
+import com.deanwagman.lumenmarsh.venueops.demo.DemoGatewayAuthenticationFilter;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -49,7 +52,9 @@ public class SecurityConfiguration {
     @Bean
     SecurityFilterChain venueOpsSecurityFilterChain(
             HttpSecurity http,
-            WeatherIngestRateLimitFilter weatherIngestRateLimitFilter
+            WeatherIngestRateLimitFilter weatherIngestRateLimitFilter,
+            ObjectProvider<DemoLeaseAuthorityFilter> demoLeaseAuthorityFilter,
+            ObjectProvider<DemoGatewayAuthenticationFilter> demoGatewayAuthenticationFilter
     ) throws Exception {
         // CSRF disabled: the API uses bearer tokens and stateless sessions, not cookie auth.
         http
@@ -61,6 +66,7 @@ public class SecurityConfiguration {
                         auth.requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**").permitAll();
                     }
                     auth.requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/api/v1/demo/**", "/internal/demo/reset").permitAll()
                         .requestMatchers(HttpMethod.GET, "/media/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/attractions", "/api/v1/attractions/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/advisories", "/api/v1/advisories/**").permitAll()
@@ -89,6 +95,14 @@ public class SecurityConfiguration {
                         weatherIngestRateLimitFilter,
                         org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class
                 );
+        demoLeaseAuthorityFilter.ifAvailable(filter -> http.addFilterBefore(
+                filter,
+                org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class
+        ));
+        demoGatewayAuthenticationFilter.ifAvailable(filter -> http.addFilterBefore(
+                filter,
+                org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class
+        ));
         if ("LOCAL_JWT".equalsIgnoreCase(properties.mode().name())) {
             http.addFilterBefore(
                     new LocalDevBearerAuthenticationFilter(properties),

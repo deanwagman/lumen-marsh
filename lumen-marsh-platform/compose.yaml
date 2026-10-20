@@ -205,6 +205,7 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
         VITE_AUTH_MODE: ${VITE_AUTH_MODE:-local}
+        VITE_LOCAL_BEARER_TOKEN: ${VITE_LOCAL_BEARER_TOKEN:-local-development-token}
         VITE_OIDC_AUTHORITY: ${VITE_OIDC_AUTHORITY:-}
         VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:-}
         VITE_OIDC_REDIRECT_URI: ${VITE_OIDC_REDIRECT_URI:-http://localhost:3001/auth/callback}

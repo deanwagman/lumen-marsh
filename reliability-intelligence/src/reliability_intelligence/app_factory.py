@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from reliability_intelligence.api import health, simulation
+from reliability_intelligence.api import demo_reset, health, simulation
 from reliability_intelligence.api import metrics as metrics_api
 from reliability_intelligence.clients.venueops import HttpVenueOpsClient, VenueOpsClient
 from reliability_intelligence.clock import Clock, SystemClock
@@ -51,6 +51,7 @@ def create_app(
         simulator=simulator,
         loop=loop,
         metrics=metrics,
+        demo_resets=demo_reset.DemoResetRegistry(),
         initialized=True,
     )
 
@@ -86,6 +87,7 @@ def create_app(
     app.include_router(health.router)
     app.include_router(metrics_api.router)
     app.include_router(simulation.router)
+    app.include_router(demo_reset.router)
 
     @app.middleware("http")
     async def request_id_middleware(

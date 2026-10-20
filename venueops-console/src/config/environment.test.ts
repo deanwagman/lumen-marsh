@@ -11,6 +11,14 @@ describe('parseEnvironment', () => {
     });
   });
 
+  it('accepts credential-free same-origin demo mode', () => {
+    expect(parseEnvironment({ VITE_API_BASE_URL: '', VITE_AUTH_MODE: 'demo' })).toMatchObject({
+      apiBaseUrl: '',
+      usesSameOrigin: true,
+      authMode: 'demo',
+    });
+  });
+
   it('accepts a Spring Boot origin', () => {
     expect(
       parseEnvironment({
