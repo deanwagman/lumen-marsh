@@ -11,6 +11,7 @@ export const operatingHistoryArticle: DocArticle = {
       id: 'scope',
       title: 'Scope and isolation',
       body: [
+        'The persistent label is Synthetic October story. This is the synthetic October story, separate from the live board.',
         'History uses dataset-scoped replay records. The synthetic historical dataset label means the records are demonstration fixtures, not observed production events.',
         'Changing a dataset, date range, attraction, or question never changes the live attraction workspace, live activity, or guest experience.',
         'Hosted Start over clears live demonstration activity and returns attractions to the quiet opening. It keeps historical datasets, calendars, plans, snapshots, activity, and processed commands.',
@@ -23,6 +24,7 @@ export const operatingHistoryArticle: DocArticle = {
       body: [
         'Scheduled minutes come from each attraction’s expected-service interval in America/New_York. The API constructs all time boundaries; Control Tower does not infer them from the browser timezone.',
         'Operating and reduced-capacity segments count as uptime. Reduced capacity is also reported separately as degraded time.',
+        'A reduced-capacity hour stays in uptime and is also reported as degraded time, so a slow hour does not become downtime.',
         'Weather hold, technical delay, testing or return to service, and commanded closure inside expected service count as downtime. An attraction that never opens receives Closed · did not open for its entire expected interval.',
         'A planned closure has no availability denominator and is excluded from rankings. Uptime rankings and percentages are rendered exactly as returned by the server.',
       ],
@@ -39,7 +41,8 @@ export const operatingHistoryArticle: DocArticle = {
       id: 'citations',
       title: 'Stable citations',
       body: [
-        'Every timeline segment has a stable segment identifier. A citation link selects its dataset, attraction, and park date, then scrolls to the matching segment row.',
+        'Every timeline segment has a stable segment identifier. Choosing a citation opens that park date and highlights the segment.',
+        'A citation link selects its dataset, attraction, and park date, then scrolls to the matching segment row. Evidence rows cite the same segment when they explain that part of the day.',
         'Segment rows include exact start and end instants rendered in the server-provided park timezone, duration, classification, reason, and citation identifier. Use that identifier when reviewing or sharing a claim.',
       ],
     },
@@ -48,7 +51,8 @@ export const operatingHistoryArticle: DocArticle = {
       title: 'Deterministic questions',
       body: [
         'Ask the curated history submits the selected dataset and inclusive date range with the question. The current provider reads only the availability summary; it cannot query raw SQL or invent a new calculation.',
-        'The first deterministic question identifies the attraction with the worst uptime. Claims include stable citations that open the supporting timeline segments. No external model, vendor, or secret is used.',
+        'The availability summary answers three questions without taking a turn: which attraction had the worst uptime, what caused it, and which day. Claims cite the segment and, where relevant, the evidence row.',
+        'The same three wordings can be submitted to the curated history. The provider reads only this availability projection. No external model, vendor, or secret is used.',
       ],
     },
   ],

@@ -3,6 +3,7 @@ package com.deanwagman.lumenmarsh.venueops.historical;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Activity;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.AttractionPlan;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Dataset;
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Evidence;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.OperatingDay;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.ReplayBundle;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Snapshot;
@@ -26,4 +27,6 @@ public interface HistoricalStore {
     List<Snapshot> snapshots(String datasetId);
 
     List<Activity> activities(String datasetId, String attractionId);
+
+    List<Evidence> evidence(String datasetId);
 }

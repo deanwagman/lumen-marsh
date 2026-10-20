@@ -93,13 +93,39 @@ public final class HistoricalModels {
     ) {
     }
 
+    public enum EvidenceClassification {
+        LIGHTNING_DETECTED,
+        WEATHER_HOLD,
+        WEATHER_ALL_CLEAR,
+        VIBRATION_RECOMMENDATION,
+        ACCEPTED_WORK,
+        TECHNICAL_DELAY,
+        REPAIR,
+        TESTING,
+        RETURN_TO_SERVICE
+    }
+
+    public record Evidence(
+            String id,
+            String datasetId,
+            String episodeId,
+            String attractionId,
+            LocalDate parkDate,
+            EvidenceClassification classification,
+            String summary,
+            Instant occurredAt,
+            List<String> segmentActivityIds
+    ) {
+    }
+
     public record ReplayBundle(
             Dataset dataset,
             List<OperatingDay> days,
             List<AttractionPlan> plans,
             List<Snapshot> snapshots,
             List<Activity> activities,
-            List<ProcessedCommand> commands
+            List<ProcessedCommand> commands,
+            List<Evidence> evidence
     ) {
     }
 
@@ -120,7 +146,22 @@ public final class HistoricalModels {
             LocalDate parkDate,
             String activityId,
             String commandId,
-            String controlTowerUrl
+            String controlTowerUrl,
+            String evidenceId
+    ) {
+    }
+
+    public record OperatingCause(
+            String id,
+            String datasetId,
+            String episodeId,
+            String attractionId,
+            LocalDate parkDate,
+            EvidenceClassification classification,
+            String summary,
+            Instant occurredAt,
+            List<String> segmentActivityIds,
+            List<Citation> citations
     ) {
     }
 
@@ -157,7 +198,8 @@ public final class HistoricalModels {
             LocalDate from,
             LocalDate to,
             String zoneId,
-            List<AttractionAvailability> attractions
+            List<AttractionAvailability> attractions,
+            List<AnalyticsAnswer> answers
     ) {
     }
 
@@ -177,7 +219,8 @@ public final class HistoricalModels {
             long degradedMinutes,
             Map<AvailabilityClassification, Long> downtimeMinutes,
             long longestOutageMinutes,
-            List<AvailabilitySegment> segments
+            List<AvailabilitySegment> segments,
+            List<OperatingCause> causes
     ) {
     }
 
@@ -194,6 +237,7 @@ public final class HistoricalModels {
 
     public record AnalyticsAnswer(
             String datasetId,
+            String question,
             String answer,
             List<AnswerClaim> claims,
             String provider

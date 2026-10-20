@@ -9,6 +9,8 @@ import com.deanwagman.lumenmarsh.venueops.attraction.domain.AttractionCommand;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.AttractionId;
 import com.deanwagman.lumenmarsh.venueops.attraction.domain.AttractionType;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Activity;
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Evidence;
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.EvidenceClassification;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.AttractionPlan;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Dataset;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.DatasetState;
@@ -43,18 +45,25 @@ public class HistoricalReplayService {
 
     static final long FIXTURE_SEED = 20261020L;
     static final LocalDate FIXTURE_START = LocalDate.of(2026, 10, 13);
+    static final String WEATHER_EPISODE_ID = "episode-stormglass-weather-2026-10-14";
+    static final String MAINTENANCE_EPISODE_ID = "episode-cypress-maintenance-2026-10-15";
     static final String MANIFEST = """
             fixture=historical-operations-intelligence
-            version=1
+            version=2
             timezone=America/New_York
             dates=2026-10-13..2026-10-15
             scenarios=normal,reduced-capacity,weather-recovery,cypress-technical-recovery
+            evidence=stormglass-weather-2026-10-14,cypress-maintenance-2026-10-15
             """;
 
     private final HistoricalStore store;
 
     public HistoricalReplayService(HistoricalStore store) {
         this.store = store;
+    }
+
+    public ReplayResult replayBundledFixture() {
+        return replayFixture(FIXTURE_DATASET_ID, true);
     }
 
     public ReplayResult replayFixture(String selectedDatasetId, boolean replaceSelectedDataset) {
@@ -146,10 +155,87 @@ public class HistoricalReplayService {
         Instant completed = ZonedDateTime.of(FIXTURE_START.plusDays(2), LocalTime.of(17, 1), zone).toInstant();
         Dataset dataset = new Dataset(FIXTURE_DATASET_ID, FIXTURE_VERSION, FIXTURE_SEED, checksum,
                 FIXTURE_START, FIXTURE_START.plusDays(2), DatasetState.COMPLETED, created, completed);
-        return new ReplayBundle(dataset, days, plans, attractions.snapshots(), attractions.storedActivities(),
+        List<Activity> storedActivities = attractions.storedActivities();
+        return new ReplayBundle(dataset, days, plans, attractions.snapshots(), storedActivities,
                 commands.values().stream().map(value -> new HistoricalModels.ProcessedCommand(FIXTURE_DATASET_ID,
                         value.commandId().toString(), value.attractionId().value(), value.eventType().name(),
-                        value.resultingVersion(), value.occurredAt(), value.resultJson())).toList());
+                        value.resultingVersion(), value.occurredAt(), value.resultJson())).toList(),
+                evidence(storedActivities));
+    }
+
+    private static List<Evidence> evidence(List<Activity> activities) {
+        LocalDate weatherDay = LocalDate.of(2026, 10, 14);
+        LocalDate maintenanceDay = LocalDate.of(2026, 10, 15);
+        Activity lightningHold = at(activities, "stormglass-station", weatherDay, LocalTime.of(11, 0));
+        Activity allClear = at(activities, "stormglass-station", weatherDay, LocalTime.of(12, 0));
+        Activity weatherTesting = at(activities, "stormglass-station", weatherDay, LocalTime.of(12, 15));
+        Activity weatherReturn = at(activities, "stormglass-station", weatherDay, LocalTime.of(12, 20));
+        Activity technicalDelay = at(activities, "cypress-coil", maintenanceDay, LocalTime.of(10, 0));
+        Activity repair = at(activities, "cypress-coil", maintenanceDay, LocalTime.of(12, 30));
+        Activity maintenanceTesting = at(activities, "cypress-coil", maintenanceDay, LocalTime.of(13, 0));
+        Activity maintenanceReturn = at(activities, "cypress-coil", maintenanceDay, LocalTime.of(13, 10));
+        return List.of(
+                evidence("evidence-stormglass-01-lightning", WEATHER_EPISODE_ID, "stormglass-station", weatherDay,
+                        EvidenceClassification.LIGHTNING_DETECTED,
+                        "Lightning detected within the operating radius of Stormglass Station.",
+                        lightningHold),
+                evidence("evidence-stormglass-02-hold", WEATHER_EPISODE_ID, "stormglass-station", weatherDay,
+                        EvidenceClassification.WEATHER_HOLD,
+                        "Stormglass Station was placed on weather hold.",
+                        lightningHold),
+                evidence("evidence-stormglass-03-all-clear", WEATHER_EPISODE_ID, "stormglass-station", weatherDay,
+                        EvidenceClassification.WEATHER_ALL_CLEAR,
+                        "Weather all-clear. The hold was cleared.",
+                        allClear),
+                evidence("evidence-stormglass-04-testing", WEATHER_EPISODE_ID, "stormglass-station", weatherDay,
+                        EvidenceClassification.TESTING,
+                        "Safety cycle completed during return-to-service testing.",
+                        weatherTesting),
+                evidence("evidence-stormglass-05-return", WEATHER_EPISODE_ID, "stormglass-station", weatherDay,
+                        EvidenceClassification.RETURN_TO_SERVICE,
+                        "Operations approved return to service.",
+                        weatherReturn),
+                evidence("evidence-cypress-01-vibration", MAINTENANCE_EPISODE_ID, "cypress-coil", maintenanceDay,
+                        EvidenceClassification.VIBRATION_RECOMMENDATION,
+                        "A vibration recommendation was recorded for Cypress Coil.",
+                        technicalDelay),
+                evidence("evidence-cypress-02-accepted", MAINTENANCE_EPISODE_ID, "cypress-coil", maintenanceDay,
+                        EvidenceClassification.ACCEPTED_WORK,
+                        "Maintenance accepted the vibration recommendation.",
+                        technicalDelay),
+                evidence("evidence-cypress-03-technical-delay", MAINTENANCE_EPISODE_ID, "cypress-coil", maintenanceDay,
+                        EvidenceClassification.TECHNICAL_DELAY,
+                        "Launch control feedback fault placed Cypress Coil in a technical delay.",
+                        technicalDelay),
+                evidence("evidence-cypress-04-repair", MAINTENANCE_EPISODE_ID, "cypress-coil", maintenanceDay,
+                        EvidenceClassification.REPAIR,
+                        "The sensor was replaced and the repair was completed.",
+                        repair),
+                evidence("evidence-cypress-05-testing", MAINTENANCE_EPISODE_ID, "cypress-coil", maintenanceDay,
+                        EvidenceClassification.TESTING,
+                        "Verification cycles passed.",
+                        maintenanceTesting),
+                evidence("evidence-cypress-06-return", MAINTENANCE_EPISODE_ID, "cypress-coil", maintenanceDay,
+                        EvidenceClassification.RETURN_TO_SERVICE,
+                        "Operations approved return to service.",
+                        maintenanceReturn)
+        );
+    }
+
+    private static Evidence evidence(String id, String episodeId, String attractionId, LocalDate date,
+                                     EvidenceClassification classification, String summary, Activity segment) {
+        return new Evidence(id, FIXTURE_DATASET_ID, episodeId, attractionId, date, classification, summary,
+                segment.value().occurredAt(), List.of(segment.value().id()));
+    }
+
+    private static Activity at(List<Activity> activities, String attractionId, LocalDate date, LocalTime time) {
+        Instant expected = ZonedDateTime.of(date, time, ZoneId.of(PARK_ZONE)).toInstant();
+        return activities.stream()
+                .filter(activity -> activity.value().attractionId().value().equals(attractionId))
+                .filter(activity -> activity.value().occurredAt().equals(expected))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Missing historical activity for " + attractionId + " at " + date + " " + time));
     }
 
     private static int open(AttractionService service, DeterministicAttractionRepository repository,

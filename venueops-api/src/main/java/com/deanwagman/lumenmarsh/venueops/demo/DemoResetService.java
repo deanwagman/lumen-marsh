@@ -67,6 +67,7 @@ final class DemoResetService {
             "historical_attraction_snapshot",
             "historical_attraction_activity",
             "historical_processed_command",
+            "historical_operating_evidence",
             "demo_reset_execution"
     );
 

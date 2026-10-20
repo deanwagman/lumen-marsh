@@ -1,5 +1,6 @@
 const guestTodayUrl = "/guest/today";
 const towerDashboardUrl = "/tower/dashboard";
+const towerHistoryUrl = "/tower/history";
 const pollMs = 2000;
 const spentWaitMs = 8000;
 const heartbeatMs = 15000;
@@ -1010,6 +1011,10 @@ document.getElementById("room-switch").addEventListener("keydown", (event) => {
   document.getElementById(next === "guest" ? "tab-guest" : "tab-tower").focus();
 });
 
+document.getElementById("operating-story").addEventListener("click", () => {
+  selectRoom("tower");
+  document.getElementById("console-frame").src = towerHistoryUrl;
+});
 document.getElementById("take-control").addEventListener("click", () => void acquireLease());
 document.getElementById("release-control").addEventListener("click", () => void releaseLease());
 document.getElementById("start-over").addEventListener("click", () => {

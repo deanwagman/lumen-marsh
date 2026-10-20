@@ -31,6 +31,20 @@ export type Citation = {
   activityId: string | null;
   commandId: string | null;
   controlTowerUrl: string;
+  evidenceId: string | null;
+};
+
+export type OperatingCause = {
+  id: string;
+  datasetId: string;
+  episodeId: string;
+  attractionId: string;
+  parkDate: string;
+  classification: string;
+  summary: string;
+  occurredAt: string;
+  segmentActivityIds: string[];
+  citations: Citation[];
 };
 
 export type AttractionAvailability = {
@@ -51,6 +65,7 @@ export type AvailabilitySummary = {
   to: string;
   zoneId: string;
   attractions: AttractionAvailability[];
+  answers: AnalyticsAnswer[];
 };
 
 export type AvailabilitySegment = {
@@ -84,14 +99,38 @@ export type AvailabilityDetail = {
   downtimeMinutes: Record<AvailabilityClassification, number>;
   longestOutageMinutes: number;
   segments: AvailabilitySegment[];
+  causes: OperatingCause[];
 };
 
 export type AnalyticsAnswer = {
   datasetId: string;
+  question: string;
   answer: string;
   claims: Array<{ text: string; citations: Citation[] }>;
   provider: string;
 };
+
+export const evidenceLabels: Record<string, string> = {
+  LIGHTNING_DETECTED: 'Lightning detected',
+  WEATHER_HOLD: 'Weather hold',
+  WEATHER_ALL_CLEAR: 'Weather all-clear',
+  VIBRATION_RECOMMENDATION: 'Vibration recommendation',
+  ACCEPTED_WORK: 'Accepted work',
+  TECHNICAL_DELAY: 'Technical delay',
+  REPAIR: 'Repair',
+  TESTING: 'Testing',
+  RETURN_TO_SERVICE: 'Return to service',
+};
+
+export const reducedCapacityRule =
+  'A reduced-capacity hour stays in uptime and is also reported as degraded time, so a slow hour does not become downtime.';
+
+export const bundledHistoryDatasetId = 'lumen-marsh-availability-demo-v1';
+
+export const syntheticOctoberLabel = 'Synthetic October story';
+
+export const syntheticOctoberNote =
+  'This is the synthetic October story, separate from the live board.';
 
 export type HistorySelection = {
   datasetId: string;

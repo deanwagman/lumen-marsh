@@ -6,12 +6,19 @@ import {
   classificationLabels,
   classificationSymbols,
   downtimeTotal,
+  evidenceLabels,
   formatHistoryTime,
   formatMinutes,
+  bundledHistoryDatasetId,
+  reducedCapacityRule,
+  syntheticOctoberLabel,
+  syntheticOctoberNote,
+  type AnalyticsAnswer,
   type AttractionAvailability,
   type AvailabilityDetail,
   type AvailabilitySegment,
   type HistoricalDataset,
+  type OperatingCause,
 } from '@/features/history/domain/history';
 import {
   useAvailabilityDetail,
@@ -51,12 +58,20 @@ export default function HistoryPage() {
   );
   const question = useHistoryQuestion();
   const [questionText, setQuestionText] = useState(defaultQuestion);
+  const highlightedCitation = params.get('citation');
+  const bundledDataset = datasets.data?.find(
+    (item) => item.id === bundledHistoryDatasetId,
+  );
+  const bundledReady = bundledDataset?.state === 'COMPLETED';
 
   useEffect(() => {
     if (params.get('datasetId') || !datasets.data?.length) return;
+    const bundled = datasets.data.find(
+      (item) => item.id === bundledHistoryDatasetId && item.state === 'COMPLETED',
+    );
     const first =
-      datasets.data.find((item) => item.state === 'COMPLETED') ??
-      datasets.data[0];
+      bundled ?? datasets.data.find((item) => item.state === 'COMPLETED');
+    if (!first) return;
     setParams(
       {
         datasetId: first.id,
@@ -71,7 +86,7 @@ export default function HistoryPage() {
   useEffect(() => {
     const citation = params.get('citation');
     if (!citation || !detail.data) return;
-    document.getElementById(citation)?.scrollIntoView({ block: 'center' });
+    document.getElementById(citation)?.scrollIntoView?.({ block: 'center' });
   }, [detail.data, params]);
 
   function updateParams(updates: Record<string, string>) {
@@ -118,11 +133,8 @@ export default function HistoryPage() {
       </header>
 
       <div className={styles.syntheticNotice} role="note">
-        <strong>Synthetic historical dataset</strong>
-        <span>
-          Replay data for demonstration and inspection. It is never activated as
-          live.
-        </span>
+        <strong>{syntheticOctoberLabel}</strong>
+        <span>{syntheticOctoberNote}</span>
       </div>
 
       {datasets.isPending ? (
@@ -134,8 +146,11 @@ export default function HistoryPage() {
           retry={() => datasets.refetch()}
         />
       ) : null}
+      {datasets.isSuccess && !dataset && !bundledReady ? (
+        <p role="status">The October operating story is not ready yet.</p>
+      ) : null}
 
-      {dataset && selection ? (
+      {dataset && selection && dataset.state === 'COMPLETED' ? (
         <>
           <section
             className={styles.controls}
@@ -200,13 +215,17 @@ export default function HistoryPage() {
               retry={() => summary.refetch()}
             />
           ) : null}
-          {summary.data ? (
+          {summary.data && summary.data.attractions.length === 0 ? (
+            <p role="status">The October operating story is not ready yet.</p>
+          ) : null}
+          {summary.data && summary.data.attractions.length > 0 ? (
             <>
               <Comparison
                 attractions={summary.data.attractions}
                 selectedId={attractionId}
                 onSelect={(id) => updateParams({ attractionId: id })}
               />
+              <StoryAnswers answers={summary.data.answers} />
               <DetailControls
                 attractions={summary.data.attractions}
                 attractionId={attractionId}
@@ -226,7 +245,12 @@ export default function HistoryPage() {
               retry={() => detail.refetch()}
             />
           ) : null}
-          {detail.data ? <DailyDetail detail={detail.data} /> : null}
+          {detail.data ? (
+            <DailyDetail
+              detail={detail.data}
+              highlightedCitation={highlightedCitation}
+            />
+          ) : null}
 
           <section
             className={styles.questionPanel}
@@ -305,7 +329,9 @@ function Comparison({
       <div className={styles.sectionHeading}>
         <div>
           <h2 id="comparison-heading">Ranked uptime</h2>
-          <p className={styles.meta}>Lowest uptime is ranked first.</p>
+          <p className={styles.meta}>
+            Lowest uptime is ranked first. {reducedCapacityRule}
+          </p>
         </div>
         <span className={styles.zoneLabel}>Server calculated</span>
       </div>
@@ -439,7 +465,43 @@ function DetailControls({
   );
 }
 
-function DailyDetail({ detail }: { detail: AvailabilityDetail }) {
+function StoryAnswers({ answers }: { answers: AnalyticsAnswer[] }) {
+  if (answers.length === 0) return null;
+  return (
+    <section className={styles.storyAnswers} aria-labelledby="story-answers-heading">
+      <h2 id="story-answers-heading">Operating story answers</h2>
+      <div className={styles.answerStack}>
+        {answers.map((answer) => (
+          <article key={answer.question} className={styles.answer}>
+            <h3>{answer.question}</h3>
+            <p>{answer.answer}</p>
+            {answer.claims.map((claim) => (
+              <div key={claim.text}>
+                <ul className={styles.citationLinks}>
+                  {claim.citations.map((citation) => (
+                    <li key={`${answer.question}-${citation.id}`}>
+                      <Link to={citation.controlTowerUrl}>
+                        {citation.parkDate} · {citation.id}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DailyDetail({
+  detail,
+  highlightedCitation,
+}: {
+  detail: AvailabilityDetail;
+  highlightedCitation: string | null;
+}) {
   const total = Math.max(detail.scheduledMinutes, 1);
   const downtime = availabilityClassifications.filter(
     (classification) =>
@@ -530,6 +592,17 @@ function DailyDetail({ detail }: { detail: AvailabilityDetail }) {
         </div>
       </dl>
 
+      {detail.causes.length > 0 ? (
+        <section aria-labelledby="episode-causes-heading">
+          <h3 id="episode-causes-heading">Cause for this day</h3>
+          <ol className={styles.episodeCauses}>
+            {detail.causes.map((cause) => (
+              <CauseItem key={cause.id} cause={cause} />
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
       {downtime.length > 0 ? (
         <section aria-labelledby="downtime-causes-heading">
           <h3 id="downtime-causes-heading">Downtime by cause</h3>
@@ -565,6 +638,7 @@ function DailyDetail({ detail }: { detail: AvailabilityDetail }) {
                 key={segment.citationId}
                 segment={segment}
                 zoneId={detail.zoneId}
+                highlighted={segment.citationId === highlightedCitation}
               />
             ))}
           </tbody>
@@ -574,15 +648,39 @@ function DailyDetail({ detail }: { detail: AvailabilityDetail }) {
   );
 }
 
+function CauseItem({ cause }: { cause: OperatingCause }) {
+  return (
+    <li className={styles.episodeCause}>
+      <span>{evidenceLabels[cause.classification] ?? cause.classification}</span>
+      <p>{cause.summary}</p>
+      <ul className={styles.citationLinks}>
+        {cause.citations.map((citation) => (
+          <li key={citation.id}>
+            <Link to={citation.controlTowerUrl}>
+              {citation.parkDate} · {citation.id}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </li>
+  );
+}
+
 function SegmentRow({
   segment,
   zoneId,
+  highlighted,
 }: {
   segment: AvailabilitySegment;
   zoneId: string;
+  highlighted: boolean;
 }) {
   return (
-    <tr id={segment.citationId} className={styles.citationTarget}>
+    <tr
+      id={segment.citationId}
+      className={highlighted ? styles.citationSelected : styles.citationTarget}
+      data-highlighted={highlighted ? 'true' : 'false'}
+    >
       <th scope="row">
         <span aria-hidden="true">
           {classificationSymbols[segment.classification]}

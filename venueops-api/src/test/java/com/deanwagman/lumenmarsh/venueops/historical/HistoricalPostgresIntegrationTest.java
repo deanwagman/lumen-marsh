@@ -38,8 +38,28 @@ class HistoricalPostgresIntegrationTest {
 
     @Test
     void flywayStorageSeedsIdempotentlyWithoutChangingLiveOperations() {
-        Integer liveAttractions = jdbc.queryForObject("select count(*) from attraction", Integer.class);
-        Integer liveActivity = jdbc.queryForObject("select count(*) from attraction_activity", Integer.class);
+        List<String> liveTables = List.of(
+                "attraction",
+                "attraction_activity",
+                "attraction_processed_commands",
+                "attraction_experience",
+                "weather_recommendation",
+                "weather_recommendation_activity",
+                "weather_recommendation_attraction",
+                "maintenance_recommendations",
+                "maintenance_work_orders",
+                "maintenance_activity",
+                "maintenance_assets",
+                "incident",
+                "incident_activity",
+                "flow_observation",
+                "flow_recommendation",
+                "flow_activity");
+        List<Integer> liveCounts = liveTables.stream()
+                .map(table -> jdbc.queryForObject("select count(*) from " + table, Integer.class))
+                .toList();
+        Integer liveAttractions = liveCounts.getFirst();
+        Integer liveActivity = liveCounts.get(1);
         Integer historicalActivity = jdbc.queryForObject(
                 "select count(*) from historical_attraction_activity where dataset_id = ?",
                 Integer.class, FIXTURE_DATASET_ID);
@@ -51,10 +71,25 @@ class HistoricalPostgresIntegrationTest {
         HistoricalReplayService.ReplayResult result = replay.replayFixture(FIXTURE_DATASET_ID, false);
 
         assertThat(result.changed()).isFalse();
+        assertThat(liveTables.stream()
+                .map(table -> jdbc.queryForObject("select count(*) from " + table, Integer.class))
+                .toList()).containsExactlyElementsOf(liveCounts);
         assertThat(jdbc.queryForObject("select count(*) from attraction", Integer.class))
                 .isEqualTo(liveAttractions);
         assertThat(jdbc.queryForObject("select count(*) from attraction_activity", Integer.class))
                 .isEqualTo(liveActivity);
+        assertThat(jdbc.queryForObject("""
+                select count(distinct episode_id) from historical_operating_evidence
+                where dataset_id = ?
+                """, Integer.class, FIXTURE_DATASET_ID)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("""
+                select count(*) from historical_operating_evidence
+                where dataset_id = ? and episode_id = 'episode-stormglass-weather-2026-10-14'
+                """, Integer.class, FIXTURE_DATASET_ID)).isEqualTo(5);
+        assertThat(jdbc.queryForObject("""
+                select count(*) from historical_operating_evidence
+                where dataset_id = ? and episode_id = 'episode-cypress-maintenance-2026-10-15'
+                """, Integer.class, FIXTURE_DATASET_ID)).isEqualTo(6);
         assertThat(jdbc.queryForObject(
                 "select count(*) from historical_attraction_activity where dataset_id = ?",
                 Integer.class, FIXTURE_DATASET_ID)).isEqualTo(historicalActivity);

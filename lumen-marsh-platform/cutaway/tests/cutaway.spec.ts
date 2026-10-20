@@ -120,6 +120,33 @@ test("acquires a timed visitor turn and uses only same-origin hosted routes", as
   expect(state.calls).toContainEqual({ method: "DELETE", path: "/api/v1/demo/leases/current" });
 });
 
+test("spectators can open the operating story without taking the turn", async ({ page }) => {
+  const state = newState();
+  state.occupied = true;
+  const calls: string[] = [];
+  await page.route("**/guest/**", (route) => route.fulfill({ body: "<h1>Today</h1>", contentType: "text/html" }));
+  await page.route("**/tower/**", (route) => route.fulfill({ body: "<h1>Tower</h1>", contentType: "text/html" }));
+  await page.route("**/history*", (route) => route.fulfill({ body: "<h1>Operating history</h1>", contentType: "text/html" }));
+  await page.route("**/api/v1/demo/**", (route) => {
+    calls.push(`${route.request().method()} ${new URL(route.request().url()).pathname}`);
+    if (route.request().method() === "POST") return json(route, 409, { detail: "busy" });
+    return json(route, 200, { active: true, available: false });
+  });
+  await page.route("**/venueops/api/v1/operator/dashboard", (route) => json(route, 200, emptyDashboard()));
+  await page.route("**/venueops/api/v1/advisories", (route) => json(route, 200, []));
+  await page.route("**/venueops/api/v1/flow/recommendations", (route) => json(route, 200, []));
+  await page.goto("/");
+
+  await expect(page.locator("#lease-label")).toContainText(/another visitor/i);
+  const story = page.getByRole("button", { name: "Operating story" });
+  await expect(story).toBeEnabled();
+  await story.click();
+  await expect(page.locator("#console-frame")).toHaveAttribute("src", "/tower/history");
+  await expect(page.locator("#tower-room")).toHaveClass(/is-shown/);
+  expect(calls.filter((call) => call.startsWith("POST"))).toEqual([]);
+  await expect(page.getByRole("button", { name: "Lightning hold" })).toBeDisabled();
+});
+
 test("spectators can watch but cannot mutate the shared demo", async ({ page }) => {
   const state = newState();
   state.occupied = true;
@@ -243,6 +270,10 @@ test("in-app docs explain hosted turns, readiness, and reset recovery", async ({
   await expect(guide).toContainText("spectator");
   await expect(guide).toContainText("compact readiness");
   await expect(guide).toContainText("use Retry");
+  await expect(guide).toContainText("Synthetic October story");
+  await expect(guide).toContainText("separate from the live board");
+  await expect(guide).toContainText("reduced-capacity hour stays in uptime");
+  await expect(guide).toContainText("Choosing a citation opens that park date and highlights the segment");
   await expect(guide).not.toContainText("localhost");
   await expect(guide).not.toContainText("local-development-token");
 });

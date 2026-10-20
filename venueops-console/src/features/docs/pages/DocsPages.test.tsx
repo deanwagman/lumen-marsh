@@ -152,6 +152,15 @@ describe('docs pages', () => {
       screen.getByText(/no external model, vendor, or secret is used/i),
     ).toBeInTheDocument();
     expect(
+      screen.getByText(/synthetic october story, separate from the live board/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/reduced-capacity hour stays in uptime/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/choosing a citation opens that park date and highlights the segment/i),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(/keeps historical datasets, calendars, plans, snapshots, activity, and processed commands/i),
     ).toBeInTheDocument();
   });

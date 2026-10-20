@@ -138,6 +138,17 @@ db_json_snapshot() {
         'historicalCommandIds', (
           select coalesce(jsonb_agg(command_id order by command_id), '[]'::jsonb)
           from historical_processed_command where dataset_id = '$DATASET_ID'
+        ),
+        'historicalEvidenceRows', (
+          select count(*) from historical_operating_evidence where dataset_id = '$DATASET_ID'
+        ),
+        'historicalEvidenceIds', (
+          select coalesce(jsonb_agg(evidence_id order by evidence_id), '[]'::jsonb)
+          from historical_operating_evidence where dataset_id = '$DATASET_ID'
+        ),
+        'historicalEpisodeIds', (
+          select coalesce(jsonb_agg(distinct episode_id order by episode_id), '[]'::jsonb)
+          from historical_operating_evidence where dataset_id = '$DATASET_ID'
         )
       );
     "
@@ -259,6 +270,12 @@ assert data['historicalDatasetRows'] == 1, data
 assert data['historicalActivityRows'] > 0, data
 assert len(data['historicalActivityIds']) == data['historicalActivityRows'], data
 assert len(data['historicalCommandIds']) == data['historicalCommandRows'], data
+assert data['historicalEvidenceRows'] == 11, data
+assert len(data['historicalEvidenceIds']) == data['historicalEvidenceRows'], data
+assert data['historicalEpisodeIds'] == [
+    'episode-cypress-maintenance-2026-10-15',
+    'episode-stormglass-weather-2026-10-14',
+], data
 print('ok')
 PY
 "
@@ -303,6 +320,16 @@ assert all(
     float(item['uptimePercentage']) >= float(worst['uptimePercentage'])
     for item in data['attractions'][1:]
 ), data['attractions']
+questions = [item['question'] for item in data['answers']]
+assert questions == [
+    'Which attraction had the worst uptime?',
+    'What caused it?',
+    'Which day?',
+], data['answers']
+assert 'maintenance episode' in data['answers'][1]['answer'], data['answers'][1]
+assert '2026-10-15' in data['answers'][2]['answer'], data['answers'][2]
+assert any(citation['id'].startswith('segment-') for citation in data['answers'][1]['claims'][0]['citations'])
+assert any(citation.get('evidenceId') for citation in data['answers'][1]['claims'][0]['citations'])
 print('ok')
 PY
 "

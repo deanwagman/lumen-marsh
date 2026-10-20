@@ -22,6 +22,7 @@ find "$root" -type f \( -name '*.html' -o -name '*.js' \) -exec sed -i \
   -e "s|http://localhost:3001|$origin|g" \
   -e "s|http://127.0.0.1:3001|$origin|g" \
   -e 's|/tower/dashboard|/dashboard|g' \
+  -e 's|/tower/history|/history|g' \
   {} +
 
 exec nginx -g 'daemon off;'

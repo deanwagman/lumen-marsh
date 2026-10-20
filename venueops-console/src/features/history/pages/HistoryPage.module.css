@@ -291,9 +291,41 @@
   scroll-margin-top: var(--space-lg);
 }
 
-.citationTarget:target {
+.citationTarget:target,
+.citationSelected {
   background: var(--color-accent-soft);
   outline: 2px solid var(--color-accent);
+}
+
+.storyAnswers,
+.answerStack,
+.episodeCauses,
+.episodeCause,
+.answer {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.answerStack,
+.episodeCauses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.episodeCause {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  padding: var(--space-sm);
+  background: var(--color-surface-low);
+}
+
+.episodeCause p {
+  margin: 0;
 }
 
 .plannedClosure {
@@ -339,6 +371,25 @@
   .questionRow {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 30rem) {
+  .storyAnswers,
+  .answerStack,
+  .episodeCauses,
+  .episodeCause,
+  .answer,
+  .syntheticNotice {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .citationLinks {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

@@ -170,6 +170,11 @@ class LiveDemoResetPreservesHistoryTest {
                 "SELECT count(*) FROM historical_processed_command WHERE dataset_id = 'lumen-marsh-availability-demo-v1'",
                 Integer.class)).isPositive();
         assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM historical_operating_evidence WHERE dataset_id = 'lumen-marsh-availability-demo-v1'",
+                Integer.class)).isPositive();
+        assertThat(DemoResetService.PRESERVED_TABLES).contains("historical_operating_evidence");
+        assertThat(DemoResetService.LIVE_TABLES).doesNotContain("historical_operating_evidence");
+        assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM historical_dataset WHERE id = ?", Integer.class, MARKER_DATASET))
                 .isEqualTo(markerDatasets);
         assertThat(playableAttractionRows()).containsExactlyElementsOf(playable);
@@ -239,6 +244,10 @@ class LiveDemoResetPreservesHistoryTest {
                 "command|" + joined("""
                         SELECT dataset_id || '|' || command_id || '|' || resulting_version
                         FROM historical_processed_command ORDER BY dataset_id, command_id
+                        """),
+                "evidence|" + joined("""
+                        SELECT dataset_id || '|' || evidence_id || '|' || episode_id || '|' || segment_activity_ids::text
+                        FROM historical_operating_evidence ORDER BY dataset_id, evidence_id
                         """)
         );
     }

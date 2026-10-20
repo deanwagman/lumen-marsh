@@ -1,5 +1,6 @@
 package com.deanwagman.lumenmarsh.venueops.demo;
 
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels;
 import com.deanwagman.lumenmarsh.venueops.maintenance.application.MaintenanceRecommendationRepository;
 import com.deanwagman.lumenmarsh.venueops.maintenance.domain.recommendation.MaintenanceRecommendationId;
 import com.deanwagman.lumenmarsh.venueops.security.TestAuth;
@@ -152,6 +153,28 @@ class DemoSandboxPostgresIntegrationTest {
                                 {"commandId":"8ad6ff18-dbbc-4c55-a190-a8f4fdd24cde",
                                  "command":{"type":"UPDATE_WAIT_TIME","waitMinutes":12,"expectedVersion":0}}
                                 """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.title").value("Active sandbox lease required"));
+    }
+
+    @Test
+    void spectatorCanReadTheOperatingStoryWhileReplayStaysLeaseGated() throws Exception {
+        mockMvc.perform(get("/api/v1/operator/analytics/availability")
+                        .header(DemoGatewayAuthenticationFilter.SECRET_HEADER, SECRET)
+                        .param("datasetId", HistoricalModels.FIXTURE_DATASET_ID)
+                        .param("from", "2026-10-13")
+                        .param("to", "2026-10-15"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.answers.length()").value(3))
+                .andExpect(jsonPath("$.answers[0].question").value("Which attraction had the worst uptime?"))
+                .andExpect(jsonPath("$.answers[1].answer").value(
+                        org.hamcrest.Matchers.containsString("maintenance episode")))
+                .andExpect(jsonPath("$.answers[2].answer").value(
+                        org.hamcrest.Matchers.containsString("2026-10-15")));
+
+        mockMvc.perform(post("/api/v1/operator/analytics/datasets/"
+                        + HistoricalModels.FIXTURE_DATASET_ID + "/replay")
+                        .header(DemoGatewayAuthenticationFilter.SECRET_HEADER, SECRET))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.title").value("Active sandbox lease required"));
     }
