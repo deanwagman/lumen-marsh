@@ -63,8 +63,10 @@ public class AvailabilityProjectionService {
             Map<AvailabilityClassification, Long> downtime = emptyDowntime();
             entry.getValue().forEach(detail -> detail.downtimeMinutes()
                     .forEach((key, value) -> downtime.merge(key, value, Long::sum)));
-            List<Citation> citations = entry.getValue().stream().flatMap(detail -> detail.segments().stream())
-                    .map(this::citation).toList();
+            List<Citation> citations = entry.getValue().stream()
+                    .flatMap(detail -> detail.segments().stream()
+                            .map(segment -> citation(segment, entry.getKey(), detail.parkDate())))
+                    .toList();
             Snapshot snapshot = snapshotById.get(entry.getKey());
             return new AttractionAvailability(entry.getKey(),
                     snapshot == null ? entry.getKey() : snapshot.name(), scheduled, operating,
@@ -187,11 +189,8 @@ public class AvailabilityProjectionService {
                 Duration.between(start, end).toMinutes(), reason, commandId, activityId, datasetId, url);
     }
 
-    private Citation citation(AvailabilitySegment segment) {
-        String[] parts = segment.controlTowerUrl().split("date=");
-        LocalDate date = LocalDate.parse(parts[1].substring(0, 10));
-        return new Citation(segment.citationId(), segment.datasetId(),
-                segment.controlTowerUrl().replaceAll(".*attractionId=([^&]+).*", "$1"), date,
+    private Citation citation(AvailabilitySegment segment, String attractionId, LocalDate date) {
+        return new Citation(segment.citationId(), segment.datasetId(), attractionId, date,
                 segment.activityId(), segment.commandId(), segment.controlTowerUrl());
     }
 

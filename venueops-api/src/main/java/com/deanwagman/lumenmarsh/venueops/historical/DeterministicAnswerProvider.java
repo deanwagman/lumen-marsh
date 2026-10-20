@@ -8,14 +8,22 @@ import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Availabili
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
 
 @Component
 public class DeterministicAnswerProvider implements AnswerProvider {
+
+    static final String WORST_UPTIME_QUESTION = "which attraction had the worst uptime?";
 
     @Override
     public AnalyticsAnswer answer(AnalyticsQuestion question, AvailabilitySummary summary) {
         if (question == null || question.question() == null || question.question().isBlank()) {
             throw new IllegalArgumentException("question is required");
+        }
+        String normalized = question.question().trim().toLowerCase(Locale.ROOT);
+        if (!WORST_UPTIME_QUESTION.equals(normalized)) {
+            throw new IllegalArgumentException(
+                    "Unsupported historical question. Supported question: Which attraction had the worst uptime?");
         }
         AttractionAvailability worst = summary.attractions().stream().findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("No scheduled attraction service in the selected range"));

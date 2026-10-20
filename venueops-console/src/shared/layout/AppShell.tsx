@@ -129,27 +129,35 @@ export function AppShell() {
               ) : null}
             </NavLink>
           ) : null}
-          <span className={styles.navGroup}>Historical workspace</span>
-          <NavLink
-            className={({ isActive }) =>
-              isActive
-                ? `${styles.navLink} ${styles.navLinkActive}`
-                : styles.navLink
-            }
-            to="/history"
+          <div
+            className={styles.navSection}
+            role="group"
+            aria-labelledby="historical-workspace-label"
           >
-            History
-          </NavLink>
-          <NavLink
-            className={({ isActive }) =>
-              isActive
-                ? `${styles.navLink} ${styles.navLinkActive}`
-                : styles.navLink
-            }
-            to="/docs"
-          >
-            Docs
-          </NavLink>
+            <p id="historical-workspace-label" className={styles.navGroup}>
+              Historical workspace
+            </p>
+            <NavLink
+              className={({ isActive }) =>
+                isActive
+                  ? `${styles.navLink} ${styles.navLinkActive}`
+                  : styles.navLink
+              }
+              to="/history"
+            >
+              History
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                isActive
+                  ? `${styles.navLink} ${styles.navLinkActive}`
+                  : styles.navLink
+              }
+              to="/docs"
+            >
+              Docs
+            </NavLink>
+          </div>
         </nav>
         <div className={styles.railMeta}>
           <p className={styles.narrowNotice}>

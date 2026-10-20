@@ -62,7 +62,9 @@ public class InMemoryHistoricalStore implements HistoricalStore {
     public synchronized List<Activity> activities(String datasetId, String attractionId) {
         return bundle(datasetId).activities().stream()
                 .filter(activity -> activity.value().attractionId().value().equals(attractionId))
-                .sorted(Comparator.comparing(activity -> activity.value().occurredAt())).toList();
+                .sorted(Comparator.comparing((Activity activity) -> activity.value().occurredAt())
+                        .thenComparing(activity -> activity.value().resultingVersion()))
+                .toList();
     }
 
     private ReplayBundle bundle(String datasetId) {

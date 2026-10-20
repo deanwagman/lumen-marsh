@@ -290,9 +290,14 @@ assert len(data['attractions']) == 3, data
 worst = data['attractions'][0]
 assert worst['attractionId'] == 'cypress-coil', data['attractions']
 assert worst['scheduledMinutes'] == 1440, worst
-assert worst['operatingMinutes'] == 1110, worst
-assert float(worst['uptimePercentage']) == 77.08, worst
+assert worst['operatingMinutes'] == 1250, worst
+assert float(worst['uptimePercentage']) == 86.81, worst
 assert worst['longestOutageMinutes'] == 190, worst
+by_id = {item['attractionId']: item for item in data['attractions']}
+assert by_id['mangrove-run']['operatingMinutes'] == 1440, by_id['mangrove-run']
+assert by_id['mangrove-run']['degradedMinutes'] == 60, by_id['mangrove-run']
+assert by_id['stormglass-station']['downtimeMinutes']['WEATHER_HOLD'] == 60, by_id
+assert by_id['stormglass-station']['downtimeMinutes']['TESTING_RETURN_TO_SERVICE'] == 20, by_id
 assert all(
     float(item['uptimePercentage']) >= float(worst['uptimePercentage'])
     for item in data['attractions'][1:]
@@ -336,7 +341,7 @@ import json, sys
 answer = json.load(open(sys.argv[1]))
 summary = json.load(open(sys.argv[2]))
 assert answer['provider'] == 'deterministic-curated-availability', answer
-assert 'Cypress Coil had the worst uptime at 77.08%' in answer['answer'], answer
+assert 'Cypress Coil had the worst uptime at 86.81%' in answer['answer'], answer
 citations = answer['claims'][0]['citations']
 assert citations, answer
 expected = summary['attractions'][0]['citations']

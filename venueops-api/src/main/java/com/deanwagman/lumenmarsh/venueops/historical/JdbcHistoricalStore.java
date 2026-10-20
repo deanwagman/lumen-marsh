@@ -24,8 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -61,8 +63,8 @@ public class JdbcHistoricalStore implements HistoricalStore {
                 (id, dataset_version, seed, manifest_checksum, from_date, to_date, state, created_at, completed_at)
                 values (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, id, dataset.version(), dataset.seed(), dataset.manifestChecksum(), dataset.fromDate(),
-                dataset.toDate(), dataset.state().name(), Timestamp.from(dataset.createdAt()),
-                Timestamp.from(dataset.completedAt()));
+                dataset.toDate(), dataset.state().name(), timestamptz(dataset.createdAt()),
+                timestamptz(dataset.completedAt()));
         for (OperatingDay day : bundle.days()) {
             jdbc.update("""
                     insert into historical_operating_calendar
@@ -87,7 +89,7 @@ public class JdbcHistoricalStore implements HistoricalStore {
                     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, id, snapshot.attractionId(), snapshot.name(), snapshot.area(), snapshot.type().name(),
                     snapshot.status().name(), snapshot.capacityMode().name(), snapshot.waitMinutes(),
-                    Timestamp.from(snapshot.updatedAt()), snapshot.version());
+                    timestamptz(snapshot.updatedAt()), snapshot.version());
         }
         for (Activity activity : bundle.activities()) {
             insertActivity(activity);
@@ -98,7 +100,7 @@ public class JdbcHistoricalStore implements HistoricalStore {
                     (dataset_id, command_id, attraction_id, event_type, resulting_version, occurred_at, result_json)
                     values (?, ?, ?, ?, ?, ?, cast(? as jsonb))
                     """, id, command.commandId(), command.attractionId(), command.eventType(),
-                    command.resultingVersion(), Timestamp.from(command.occurredAt()), command.resultJson());
+                    command.resultingVersion(), timestamptz(command.occurredAt()), command.resultJson());
         }
     }
 
@@ -136,7 +138,7 @@ public class JdbcHistoricalStore implements HistoricalStore {
                 rs.getString("name"), rs.getString("area"), AttractionType.valueOf(rs.getString("attraction_type")),
                 AttractionStatus.valueOf(rs.getString("status")),
                 CapacityMode.valueOf(rs.getString("capacity_mode")), (Integer) rs.getObject("wait_minutes"),
-                rs.getTimestamp("updated_at").toInstant(), rs.getLong("aggregate_version")), datasetId);
+                instant(rs, "updated_at"), rs.getLong("aggregate_version")), datasetId);
     }
 
     @Override
@@ -148,11 +150,10 @@ public class JdbcHistoricalStore implements HistoricalStore {
     }
 
     private Dataset dataset(ResultSet rs, int row) throws SQLException {
-        Timestamp completed = rs.getTimestamp("completed_at");
         return new Dataset(rs.getString("id"), rs.getString("dataset_version"), rs.getLong("seed"),
                 rs.getString("manifest_checksum"), rs.getObject("from_date", LocalDate.class),
                 rs.getObject("to_date", LocalDate.class), DatasetState.valueOf(rs.getString("state")),
-                rs.getTimestamp("created_at").toInstant(), completed == null ? null : completed.toInstant());
+                instant(rs, "created_at"), instant(rs, "completed_at"));
     }
 
     private void insertActivity(Activity stored) {
@@ -181,7 +182,7 @@ public class JdbcHistoricalStore implements HistoricalStore {
                 values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, stored.datasetId(), value.id(), stored.sourceId(), stored.commandId(),
                 value.attractionId().value(), value.type().name(), value.actor(), value.reason(),
-                Timestamp.from(value.occurredAt()), value.previousVersion(), value.resultingVersion(),
+                timestamptz(value.occurredAt()), value.previousVersion(), value.resultingVersion(),
                 previousStatus, newStatus, previousMode, newMode, previousMinutes, newMinutes);
     }
 
@@ -192,23 +193,32 @@ public class JdbcHistoricalStore implements HistoricalStore {
         AttractionActivity value;
         if (rs.getString("new_status") != null) {
             value = new AttractionStatusChanged(activityId, id, type, rs.getString("actor"),
-                    rs.getString("reason"), rs.getTimestamp("occurred_at").toInstant(),
+                    rs.getString("reason"), instant(rs, "occurred_at"),
                     rs.getLong("previous_version"), rs.getLong("resulting_version"),
                     AttractionStatus.valueOf(rs.getString("previous_status")),
                     AttractionStatus.valueOf(rs.getString("new_status")));
         } else if (rs.getString("new_capacity_mode") != null) {
             value = new AttractionCapacityChanged(activityId, id, type, rs.getString("actor"),
-                    rs.getString("reason"), rs.getTimestamp("occurred_at").toInstant(),
+                    rs.getString("reason"), instant(rs, "occurred_at"),
                     rs.getLong("previous_version"), rs.getLong("resulting_version"),
                     CapacityMode.valueOf(rs.getString("previous_capacity_mode")),
                     CapacityMode.valueOf(rs.getString("new_capacity_mode")));
         } else {
             value = new AttractionWaitTimeChanged(activityId, id, type, rs.getString("actor"),
-                    rs.getString("reason"), rs.getTimestamp("occurred_at").toInstant(),
+                    rs.getString("reason"), instant(rs, "occurred_at"),
                     rs.getLong("previous_version"), rs.getLong("resulting_version"),
                     (Integer) rs.getObject("previous_wait_minutes"), (Integer) rs.getObject("new_wait_minutes"));
         }
         return new Activity(rs.getString("dataset_id"), rs.getString("source_id"),
                 rs.getString("command_id"), value);
+    }
+
+    private static OffsetDateTime timestamptz(Instant instant) {
+        return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
+    }
+
+    private static Instant instant(ResultSet rs, String column) throws SQLException {
+        OffsetDateTime value = rs.getObject(column, OffsetDateTime.class);
+        return value == null ? null : value.toInstant();
     }
 }

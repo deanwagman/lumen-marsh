@@ -70,7 +70,8 @@ public class HistoricalAnalyticsController {
     }
 
     @PostMapping("/datasets/{datasetId}/replay")
-    @PreAuthorize("hasAuthority('" + VenueOpsScopes.ROLE_SUPERVISOR + "')")
+    @PreAuthorize("hasAuthority('" + VenueOpsScopes.SCOPE_OPERATOR_READ + "') and hasAuthority('"
+            + VenueOpsScopes.ROLE_SUPERVISOR + "')")
     public HistoricalReplayService.ReplayResult replay(
             @PathVariable String datasetId,
             @RequestParam(defaultValue = "false") boolean replace

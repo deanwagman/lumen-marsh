@@ -99,6 +99,17 @@ export type HistorySelection = {
   to: string;
 };
 
+export const classificationSymbols: Record<AvailabilityClassification, string> =
+  {
+    OPERATING: '●',
+    REDUCED_CAPACITY: '◐',
+    WEATHER_HOLD: '≋',
+    TECHNICAL_DELAY: '×',
+    TESTING_RETURN_TO_SERVICE: '◆',
+    COMMANDED_CLOSURE: '■',
+    CLOSED_NOT_OPEN: '○',
+  };
+
 export const classificationLabels: Record<AvailabilityClassification, string> =
   {
     OPERATING: 'Operating',

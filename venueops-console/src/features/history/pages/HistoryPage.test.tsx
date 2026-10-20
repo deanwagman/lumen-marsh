@@ -24,7 +24,7 @@ describe('operating history', () => {
 
     expect(
       await screen.findByRole('button', {
-        name: /rank 1, cypress coil, 77\.08 percent uptime/i,
+        name: /rank 1, cypress coil, 86\.81 percent uptime/i,
       }),
     ).toBeInTheDocument();
     expect(
@@ -85,5 +85,13 @@ describe('operating history', () => {
     expect(within(key).getByText('●')).toBeInTheDocument();
     expect(within(key).getByText('×')).toBeInTheDocument();
     expect(within(key).getByText('◆')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', {
+        name: /technical delay, 2 hr 30 min, citation segment-cypress-technical/i,
+      }),
+    ).toHaveAttribute('href', '#segment-cypress-technical');
+    expect(
+      screen.queryByRole('img', { name: /status timeline/i }),
+    ).not.toBeInTheDocument();
   });
 });

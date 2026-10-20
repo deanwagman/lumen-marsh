@@ -4,11 +4,11 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   availabilityClassifications,
   classificationLabels,
+  classificationSymbols,
   downtimeTotal,
   formatHistoryTime,
   formatMinutes,
   type AttractionAvailability,
-  type AvailabilityClassification,
   type AvailabilityDetail,
   type AvailabilitySegment,
   type HistoricalDataset,
@@ -475,8 +475,8 @@ function DailyDetail({ detail }: { detail: AvailabilityDetail }) {
         <>
           <div
             className={styles.timeline}
-            role="img"
-            aria-label={`Status timeline for ${detail.attractionName}. See the segment table for exact values.`}
+            role="group"
+            aria-label={`Status timeline for ${detail.attractionName}. Each segment links to its citation row. Exact values are in the segment table.`}
           >
             {detail.segments.map((segment) => (
               <a
@@ -486,10 +486,10 @@ function DailyDetail({ detail }: { detail: AvailabilityDetail }) {
                 style={{
                   flexBasis: `${(segment.durationMinutes / total) * 100}%`,
                 }}
-                title={`${classificationLabels[segment.classification]}: ${formatMinutes(segment.durationMinutes)}`}
+                aria-label={`${classificationLabels[segment.classification]}, ${formatMinutes(segment.durationMinutes)}, citation ${segment.citationId}`}
               >
                 <span aria-hidden="true">
-                  {statusSymbol(segment.classification)}
+                  {classificationSymbols[segment.classification]}
                 </span>
               </a>
             ))}
@@ -501,7 +501,9 @@ function DailyDetail({ detail }: { detail: AvailabilityDetail }) {
               ),
             ].map((classification) => (
               <li key={classification}>
-                <span aria-hidden="true">{statusSymbol(classification)}</span>{' '}
+                <span aria-hidden="true">
+                  {classificationSymbols[classification]}
+                </span>{' '}
                 {classificationLabels[classification]}
               </li>
             ))}
@@ -582,7 +584,9 @@ function SegmentRow({
   return (
     <tr id={segment.citationId} className={styles.citationTarget}>
       <th scope="row">
-        <span aria-hidden="true">{statusSymbol(segment.classification)}</span>{' '}
+        <span aria-hidden="true">
+          {classificationSymbols[segment.classification]}
+        </span>{' '}
         {classificationLabels[segment.classification]}
       </th>
       <td>{formatHistoryTime(segment.start, zoneId)}</td>
@@ -594,13 +598,6 @@ function SegmentRow({
       </td>
     </tr>
   );
-}
-
-function statusSymbol(classification: AvailabilityClassification): string {
-  if (classification === 'OPERATING') return '●';
-  if (classification === 'REDUCED_CAPACITY') return '◐';
-  if (classification === 'TESTING_RETURN_TO_SERVICE') return '◆';
-  return '×';
 }
 
 function ErrorState({ label, retry }: { label: string; retry: () => unknown }) {
