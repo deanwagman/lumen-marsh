@@ -13,8 +13,11 @@ import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Availabili
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.AvailabilitySegment;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.AvailabilitySummary;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Citation;
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Evidence;
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.OperatingCause;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.OperatingDay;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Snapshot;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -37,9 +40,16 @@ import java.util.Map;
 public class AvailabilityProjectionService {
 
     private final HistoricalStore store;
+    private final AnswerProvider answers;
 
     public AvailabilityProjectionService(HistoricalStore store) {
+        this(store, new DeterministicAnswerProvider());
+    }
+
+    @Autowired
+    public AvailabilityProjectionService(HistoricalStore store, AnswerProvider answers) {
         this.store = store;
+        this.answers = answers;
     }
 
     public AvailabilitySummary summary(String datasetId, LocalDate from, LocalDate to) {
@@ -73,9 +83,17 @@ public class AvailabilityProjectionService {
                     percentage(operating, scheduled), degraded, Map.copyOf(downtime), longest, citations);
         }).sorted(Comparator.comparing(AttractionAvailability::uptimePercentage)
                 .thenComparing(AttractionAvailability::attractionId)).toList();
-        return new AvailabilitySummary(datasetId, from, to,
-                store.days(datasetId, from, to).stream().findFirst().map(OperatingDay::zoneId)
-                        .orElse(HistoricalModels.PARK_ZONE), totals);
+        String zoneId = store.days(datasetId, from, to).stream().findFirst().map(OperatingDay::zoneId)
+                .orElse(HistoricalModels.PARK_ZONE);
+        List<AvailabilityDetail> ranged = details.values().stream().flatMap(List::stream).toList();
+        List<Evidence> evidence = store.evidence(datasetId).stream()
+                .filter(item -> !item.parkDate().isBefore(from) && !item.parkDate().isAfter(to))
+                .toList();
+        AvailabilitySummary draft = new AvailabilitySummary(datasetId, from, to, zoneId, totals, List.of());
+        List<HistoricalModels.AnalyticsAnswer> curated = totals.isEmpty()
+                ? List.of()
+                : answers.curated(draft, ranged, evidence);
+        return new AvailabilitySummary(datasetId, from, to, zoneId, totals, curated);
     }
 
     public AvailabilityDetail detail(String datasetId, String attractionId, LocalDate date) {
@@ -98,7 +116,7 @@ public class AvailabilityProjectionService {
         if (plan.plannedClosure()) {
             return new AvailabilityDetail(datasetId, attractionId, name, date, day.zoneId(), start, end,
                     true, plan.closureReason(), 0, 0, BigDecimal.ZERO.setScale(2), 0,
-                    Map.copyOf(emptyDowntime()), 0, List.of());
+                    Map.copyOf(emptyDowntime()), 0, List.of(), List.of());
         }
         List<Activity> all = store.activities(datasetId, attractionId);
         State state = stateAt(all, start);
@@ -127,7 +145,24 @@ public class AvailabilityProjectionService {
                 .forEach(value -> downtime.merge(value.classification(), value.durationMinutes(), Long::sum));
         return new AvailabilityDetail(datasetId, attractionId, name, date, day.zoneId(), start, end,
                 false, null, scheduled, operating, percentage(operating, scheduled), degraded,
-                Map.copyOf(downtime), longestOutage(segments), segments);
+                Map.copyOf(downtime), longestOutage(segments), segments,
+                causes(datasetId, attractionId, date, segments));
+    }
+
+    private List<OperatingCause> causes(String datasetId, String attractionId, LocalDate date,
+                                        List<AvailabilitySegment> segments) {
+        return store.evidence(datasetId).stream()
+                .filter(evidence -> evidence.attractionId().equals(attractionId)
+                        && evidence.parkDate().equals(date))
+                .map(evidence -> new OperatingCause(evidence.id(), evidence.datasetId(), evidence.episodeId(),
+                        evidence.attractionId(), evidence.parkDate(), evidence.classification(), evidence.summary(),
+                        evidence.occurredAt(), evidence.segmentActivityIds(),
+                        segments.stream()
+                                .filter(segment -> segment.activityId() != null
+                                        && evidence.segmentActivityIds().contains(segment.activityId()))
+                                .map(segment -> citation(segment, attractionId, date))
+                                .toList()))
+                .toList();
     }
 
     private List<AvailabilitySegment> fold(String datasetId, String attractionId, LocalDate date,
@@ -191,7 +226,7 @@ public class AvailabilityProjectionService {
 
     private Citation citation(AvailabilitySegment segment, String attractionId, LocalDate date) {
         return new Citation(segment.citationId(), segment.datasetId(), attractionId, date,
-                segment.activityId(), segment.commandId(), segment.controlTowerUrl());
+                segment.activityId(), segment.commandId(), segment.controlTowerUrl(), null);
     }
 
     private static AvailabilityClassification classification(AttractionStatus status, CapacityMode mode) {

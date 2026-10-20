@@ -33,11 +33,13 @@ const citationSchema = z
     activityId: nullableString,
     commandId: nullableString,
     controlTowerUrl: z.string(),
+    evidenceId: nullableString,
   })
   .transform((value) => ({
     ...value,
     activityId: value.activityId ?? null,
     commandId: value.commandId ?? null,
+    evidenceId: value.evidenceId ?? null,
   }));
 
 export const historicalDatasetSchema = z
@@ -71,6 +73,34 @@ const attractionAvailabilitySchema = z.object({
   citations: z.array(citationSchema),
 });
 
+export const analyticsAnswerSchema = z
+  .object({
+    datasetId: z.string(),
+    question: z.string().optional().default(''),
+    answer: z.string(),
+    claims: z.array(
+      z.object({
+        text: z.string(),
+        citations: z.array(citationSchema),
+      }),
+    ),
+    provider: z.string(),
+  })
+  .transform((value): AnalyticsAnswer => value);
+
+const operatingCauseSchema = z.object({
+  id: z.string(),
+  datasetId: z.string(),
+  episodeId: z.string(),
+  attractionId: z.string(),
+  parkDate: z.string(),
+  classification: z.string(),
+  summary: z.string(),
+  occurredAt: z.string(),
+  segmentActivityIds: z.array(z.string()),
+  citations: z.array(citationSchema),
+});
+
 export const availabilitySummarySchema = z
   .object({
     datasetId: z.string(),
@@ -78,6 +108,7 @@ export const availabilitySummarySchema = z
     to: z.string(),
     zoneId: z.string(),
     attractions: z.array(attractionAvailabilitySchema),
+    answers: z.array(analyticsAnswerSchema).optional().default([]),
   })
   .transform((value): AvailabilitySummary => value);
 
@@ -120,22 +151,9 @@ export const availabilityDetailSchema = z
     downtimeMinutes: downtimeSchema,
     longestOutageMinutes: z.number(),
     segments: z.array(availabilitySegmentSchema),
+    causes: z.array(operatingCauseSchema).optional().default([]),
   })
   .transform((value): AvailabilityDetail => ({
     ...value,
     plannedClosureReason: value.plannedClosureReason ?? null,
   }));
-
-export const analyticsAnswerSchema = z
-  .object({
-    datasetId: z.string(),
-    answer: z.string(),
-    claims: z.array(
-      z.object({
-        text: z.string(),
-        citations: z.array(citationSchema),
-      }),
-    ),
-    provider: z.string(),
-  })
-  .transform((value): AnalyticsAnswer => value);

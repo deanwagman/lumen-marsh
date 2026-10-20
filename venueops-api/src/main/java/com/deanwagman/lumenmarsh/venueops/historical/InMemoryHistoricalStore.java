@@ -3,6 +3,7 @@ package com.deanwagman.lumenmarsh.venueops.historical;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Activity;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.AttractionPlan;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Dataset;
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Evidence;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.OperatingDay;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.ReplayBundle;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Snapshot;
@@ -67,6 +68,13 @@ public class InMemoryHistoricalStore implements HistoricalStore {
                 .toList();
     }
 
+    @Override
+    public synchronized List<Evidence> evidence(String datasetId) {
+        return bundle(datasetId).evidence().stream()
+                .sorted(Comparator.comparing(Evidence::occurredAt).thenComparing(Evidence::id))
+                .toList();
+    }
+
     private ReplayBundle bundle(String datasetId) {
         ReplayBundle bundle = datasets.get(datasetId);
         if (bundle == null) {
@@ -77,6 +85,7 @@ public class InMemoryHistoricalStore implements HistoricalStore {
 
     private static ReplayBundle copy(ReplayBundle source) {
         return new ReplayBundle(source.dataset(), List.copyOf(source.days()), List.copyOf(source.plans()),
-                List.copyOf(source.snapshots()), List.copyOf(source.activities()), List.copyOf(source.commands()));
+                List.copyOf(source.snapshots()), List.copyOf(source.activities()), List.copyOf(source.commands()),
+                List.copyOf(source.evidence()));
     }
 }

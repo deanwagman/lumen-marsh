@@ -13,6 +13,8 @@ import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Activity;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.AttractionPlan;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Dataset;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.DatasetState;
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Evidence;
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.EvidenceClassification;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.OperatingDay;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.ProcessedCommand;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.ReplayBundle;
@@ -28,6 +30,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -102,6 +105,16 @@ public class JdbcHistoricalStore implements HistoricalStore {
                     """, id, command.commandId(), command.attractionId(), command.eventType(),
                     command.resultingVersion(), timestamptz(command.occurredAt()), command.resultJson());
         }
+        for (Evidence evidence : bundle.evidence()) {
+            jdbc.update("""
+                    insert into historical_operating_evidence
+                    (dataset_id, evidence_id, episode_id, attraction_id, park_date, classification,
+                     summary, occurred_at, segment_activity_ids)
+                    values (?, ?, ?, ?, ?, ?, ?, ?, cast(? as jsonb))
+                    """, id, evidence.id(), evidence.episodeId(), evidence.attractionId(), evidence.parkDate(),
+                    evidence.classification().name(), evidence.summary(), timestamptz(evidence.occurredAt()),
+                    jsonIds(evidence.segmentActivityIds()));
+        }
     }
 
     @Override
@@ -139,6 +152,20 @@ public class JdbcHistoricalStore implements HistoricalStore {
                 AttractionStatus.valueOf(rs.getString("status")),
                 CapacityMode.valueOf(rs.getString("capacity_mode")), (Integer) rs.getObject("wait_minutes"),
                 instant(rs, "updated_at"), rs.getLong("aggregate_version")), datasetId);
+    }
+
+    @Override
+    public List<Evidence> evidence(String datasetId) {
+        return jdbc.query("""
+                select * from historical_operating_evidence
+                where dataset_id = ?
+                order by occurred_at, evidence_id
+                """, (rs, row) -> new Evidence(rs.getString("evidence_id"), rs.getString("dataset_id"),
+                rs.getString("episode_id"), rs.getString("attraction_id"),
+                rs.getObject("park_date", LocalDate.class),
+                EvidenceClassification.valueOf(rs.getString("classification")),
+                rs.getString("summary"), instant(rs, "occurred_at"),
+                readIds(rs.getString("segment_activity_ids"))), datasetId);
     }
 
     @Override
@@ -211,6 +238,45 @@ public class JdbcHistoricalStore implements HistoricalStore {
         }
         return new Activity(rs.getString("dataset_id"), rs.getString("source_id"),
                 rs.getString("command_id"), value);
+    }
+
+    private static String jsonIds(List<String> ids) {
+        StringBuilder json = new StringBuilder("[");
+        for (int index = 0; index < ids.size(); index++) {
+            if (index > 0) {
+                json.append(',');
+            }
+            json.append('"').append(ids.get(index).replace("\\", "\\\\").replace("\"", "\\\"")).append('"');
+        }
+        return json.append(']').toString();
+    }
+
+    private static List<String> readIds(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        String body = json.trim();
+        if (body.startsWith("[")) {
+            body = body.substring(1);
+        }
+        if (body.endsWith("]")) {
+            body = body.substring(0, body.length() - 1);
+        }
+        if (body.isBlank()) {
+            return List.of();
+        }
+        List<String> ids = new ArrayList<>();
+        for (String part : body.split(",")) {
+            String value = part.trim();
+            if (value.startsWith("\"")) {
+                value = value.substring(1);
+            }
+            if (value.endsWith("\"")) {
+                value = value.substring(0, value.length() - 1);
+            }
+            ids.add(value);
+        }
+        return List.copyOf(ids);
     }
 
     private static OffsetDateTime timestamptz(Instant instant) {

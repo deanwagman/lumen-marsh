@@ -9,6 +9,8 @@ import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Activity;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.AttractionPlan;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.AvailabilityClassification;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Dataset;
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.Evidence;
+import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.EvidenceClassification;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.DatasetState;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.OperatingDay;
 import com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.ReplayBundle;
@@ -80,21 +82,92 @@ class HistoricalOperationsIntelligenceTest {
         LocalDate date = LocalDate.of(2026, 10, 13);
         store.replace(new ReplayBundle(new Dataset(FIXTURE_DATASET_ID, "old", 1, "old-checksum", date, date,
                 DatasetState.COMPLETED, Instant.EPOCH, Instant.EPOCH),
-                List.of(), List.of(), List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of()));
         store.replace(new ReplayBundle(new Dataset("other-dataset", "1", 2, "other", date, date,
                 DatasetState.COMPLETED, Instant.EPOCH, Instant.EPOCH),
                 List.of(new OperatingDay("other-dataset", date, "America/New_York",
                         LocalTime.of(9, 0), LocalTime.of(17, 0), 1)),
-                List.of(), List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of(), List.of()));
         HistoricalReplayService replay = new HistoricalReplayService(store);
 
         assertThatThrownBy(() -> replay.replayFixture(FIXTURE_DATASET_ID, false))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("explicit replacement");
 
-        assertThat(replay.replayFixture(FIXTURE_DATASET_ID, true).changed()).isTrue();
+        assertThat(replay.replayBundledFixture().changed()).isTrue();
         assertThat(store.findDataset(FIXTURE_DATASET_ID).orElseThrow().version()).isEqualTo("1");
+        assertThat(store.findDataset(FIXTURE_DATASET_ID).orElseThrow().manifestChecksum())
+                .isNotEqualTo("old-checksum");
+        assertThat(replay.replayBundledFixture().changed()).isFalse();
         assertThat(store.days("other-dataset", date, date)).hasSize(1);
+        assertThat(store.listDatasets()).extracting(Dataset::id)
+                .containsExactlyInAnyOrder(FIXTURE_DATASET_ID, "other-dataset");
+    }
+
+    @Test
+    void fixtureEvidenceExplainsBothEpisodesAndTheThreeAnswers() {
+        InMemoryHistoricalStore store = new InMemoryHistoricalStore();
+        new HistoricalReplayService(store).replayFixture(FIXTURE_DATASET_ID, false);
+        AvailabilityProjectionService projection = new AvailabilityProjectionService(store);
+        LocalDate weatherDay = LocalDate.of(2026, 10, 14);
+        LocalDate maintenanceDay = LocalDate.of(2026, 10, 15);
+
+        List<Evidence> evidence = store.evidence(FIXTURE_DATASET_ID);
+        assertThat(evidence).filteredOn(item -> item.parkDate().equals(LocalDate.of(2026, 10, 13))).isEmpty();
+        assertThat(evidence).filteredOn(item -> item.episodeId().equals(HistoricalReplayService.WEATHER_EPISODE_ID))
+                .extracting(Evidence::classification)
+                .containsExactly(
+                        EvidenceClassification.LIGHTNING_DETECTED,
+                        EvidenceClassification.WEATHER_HOLD,
+                        EvidenceClassification.WEATHER_ALL_CLEAR,
+                        EvidenceClassification.TESTING,
+                        EvidenceClassification.RETURN_TO_SERVICE);
+        assertThat(evidence).filteredOn(item -> item.episodeId().equals(HistoricalReplayService.MAINTENANCE_EPISODE_ID))
+                .extracting(Evidence::classification)
+                .containsExactly(
+                        EvidenceClassification.VIBRATION_RECOMMENDATION,
+                        EvidenceClassification.ACCEPTED_WORK,
+                        EvidenceClassification.TECHNICAL_DELAY,
+                        EvidenceClassification.REPAIR,
+                        EvidenceClassification.TESTING,
+                        EvidenceClassification.RETURN_TO_SERVICE);
+        assertThat(evidence).allSatisfy(item -> {
+            assertThat(item.id()).startsWith("evidence-");
+            assertThat(item.datasetId()).isEqualTo(FIXTURE_DATASET_ID);
+            assertThat(item.segmentActivityIds()).isNotEmpty();
+        });
+
+        HistoricalModels.AvailabilityDetail stormglass =
+                projection.detail(FIXTURE_DATASET_ID, "stormglass-station", weatherDay);
+        assertLinkedEpisode(stormglass, HistoricalReplayService.WEATHER_EPISODE_ID);
+        HistoricalModels.AvailabilityDetail cypress =
+                projection.detail(FIXTURE_DATASET_ID, "cypress-coil", maintenanceDay);
+        assertLinkedEpisode(cypress, HistoricalReplayService.MAINTENANCE_EPISODE_ID);
+
+        HistoricalModels.AvailabilitySummary summary = projection.summary(
+                FIXTURE_DATASET_ID, LocalDate.of(2026, 10, 13), maintenanceDay);
+        assertThat(summary.answers()).extracting(HistoricalModels.AnalyticsAnswer::question)
+                .containsExactly(
+                        DeterministicAnswerProvider.WORST_UPTIME_QUESTION,
+                        DeterministicAnswerProvider.CAUSE_QUESTION,
+                        DeterministicAnswerProvider.DAY_QUESTION);
+        assertThat(summary.answers().get(1).answer()).contains("maintenance episode").contains("vibration");
+        assertThat(summary.answers().get(1).claims().getFirst().citations())
+                .anySatisfy(citation -> assertThat(citation.id()).startsWith("segment-"))
+                .anySatisfy(citation -> {
+                    assertThat(citation.evidenceId()).startsWith("evidence-cypress");
+                    assertThat(citation.controlTowerUrl()).contains("date=2026-10-15")
+                            .contains("citation=segment-");
+                });
+        assertThat(summary.answers().get(2).answer()).contains("2026-10-15");
+        assertThat(summary.answers().get(2).claims().getFirst().citations())
+                .anySatisfy(citation -> assertThat(citation.parkDate()).isEqualTo(maintenanceDay));
+        assertThat(summary.attractions()).filteredOn(value -> value.attractionId().equals("mangrove-run"))
+                .singleElement().satisfies(value -> {
+                    assertThat(value.operatingMinutes()).isEqualTo(value.scheduledMinutes());
+                    assertThat(value.degradedMinutes()).isEqualTo(60L);
+                    assertThat(value.downtimeMinutes().values()).allMatch(minutes -> minutes == 0L);
+                });
     }
 
     @Test
@@ -108,7 +181,7 @@ class HistoricalOperationsIntelligenceTest {
                         LocalTime.of(1, 30), LocalTime.of(3, 30), 1)),
                 List.of(new AttractionPlan("planned", date, "cypress-coil",
                         LocalTime.of(1, 30), LocalTime.of(3, 30), true, "Annual inspection", 1)),
-                List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of()));
 
         HistoricalModels.AvailabilityDetail detail =
                 new AvailabilityProjectionService(store).detail("planned", "cypress-coil", date);
@@ -131,7 +204,7 @@ class HistoricalOperationsIntelligenceTest {
                         LocalTime.of(9, 0), LocalTime.of(17, 0), 1)),
                 List.of(new AttractionPlan("never-opened", date, "cypress-coil",
                         LocalTime.of(9, 0), LocalTime.of(17, 0), false, null, 1)),
-                List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of()));
 
         HistoricalModels.AvailabilityDetail detail =
                 new AvailabilityProjectionService(store).detail("never-opened", "cypress-coil", date);
@@ -268,7 +341,7 @@ class HistoricalOperationsIntelligenceTest {
                                 LocalTime.of(9, 0), LocalTime.of(17, 0), true, "Inspection", 1),
                         new AttractionPlan("mixed", open, "cypress-coil",
                                 LocalTime.of(9, 0), LocalTime.of(17, 0), false, null, 1)),
-                List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of()));
 
         HistoricalModels.AvailabilitySummary summary =
                 new AvailabilityProjectionService(store).summary("mixed", closed, open);
@@ -280,7 +353,7 @@ class HistoricalOperationsIntelligenceTest {
     }
 
     @Test
-    void deterministicProviderAnswersOnlyTheWorstUptimeQuestion() {
+    void deterministicProviderAnswersTheThreeCuratedQuestions() {
         InMemoryHistoricalStore store = new InMemoryHistoricalStore();
         new HistoricalReplayService(store).replayFixture(FIXTURE_DATASET_ID, false);
         HistoricalModels.AvailabilitySummary summary = new AvailabilityProjectionService(store).summary(
@@ -295,11 +368,36 @@ class HistoricalOperationsIntelligenceTest {
         assertThat(answer.answer()).contains("Cypress Coil had the worst uptime at 86.81%");
         assertThat(answer.claims().getFirst().citations())
                 .containsExactlyElementsOf(summary.attractions().getFirst().citations());
+        assertThat(new DeterministicAnswerProvider().answer(
+                new HistoricalModels.AnalyticsQuestion(FIXTURE_DATASET_ID,
+                        LocalDate.of(2026, 10, 13), LocalDate.of(2026, 10, 15),
+                        "What caused it?"),
+                summary).answer()).contains("maintenance episode");
+        assertThat(new DeterministicAnswerProvider().answer(
+                new HistoricalModels.AnalyticsQuestion(FIXTURE_DATASET_ID,
+                        LocalDate.of(2026, 10, 13), LocalDate.of(2026, 10, 15),
+                        "Which day?"),
+                summary).answer()).contains("2026-10-15");
         assertThatThrownBy(() -> new DeterministicAnswerProvider().answer(
                 new HistoricalModels.AnalyticsQuestion(FIXTURE_DATASET_ID,
                         LocalDate.of(2026, 10, 13), LocalDate.of(2026, 10, 15),
                         "What was the longest queue?"),
                 summary)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private static void assertLinkedEpisode(HistoricalModels.AvailabilityDetail detail, String episodeId) {
+        assertThat(detail.causes()).isNotEmpty().allSatisfy(cause -> {
+            assertThat(cause.episodeId()).isEqualTo(episodeId);
+            assertThat(cause.segmentActivityIds()).isNotEmpty();
+            assertThat(detail.segments().stream().map(HistoricalModels.AvailabilitySegment::activityId).toList())
+                    .containsAll(cause.segmentActivityIds());
+            assertThat(cause.citations()).isNotEmpty().allSatisfy(citation -> {
+                assertThat(citation.id()).startsWith("segment-");
+                assertThat(citation.controlTowerUrl()).contains(citation.id());
+            });
+        });
+        assertThat(detail.causes()).extracting(HistoricalModels.OperatingCause::episodeId)
+                .containsOnly(episodeId);
     }
 
     private static HistoricalModels.AvailabilityDetail detailFor(LocalDate date, String zone, LocalTime open,
@@ -309,7 +407,7 @@ class HistoricalOperationsIntelligenceTest {
                 DatasetState.COMPLETED, Instant.EPOCH, Instant.EPOCH),
                 List.of(new OperatingDay("calendar", date, zone, open, close, 1)),
                 List.of(new AttractionPlan("calendar", date, "cypress-coil", open, close, planned, reason, 1)),
-                List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of()));
         return new AvailabilityProjectionService(store).detail("calendar", "cypress-coil", date);
     }
 
@@ -321,7 +419,7 @@ class HistoricalOperationsIntelligenceTest {
                         LocalTime.of(9, 0), LocalTime.of(17, 0), 1)),
                 List.of(new AttractionPlan(datasetId, date, "cypress-coil",
                         LocalTime.of(9, 0), LocalTime.of(17, 0), false, null, 1)),
-                List.of(), activities, List.of()));
+                List.of(), activities, List.of(), List.of()));
         return store;
     }
 

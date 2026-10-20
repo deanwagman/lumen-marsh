@@ -6,8 +6,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 
-import static com.deanwagman.lumenmarsh.venueops.historical.HistoricalModels.FIXTURE_DATASET_ID;
-
 @Configuration
 public class HistoricalConfiguration {
 
@@ -15,6 +13,6 @@ public class HistoricalConfiguration {
     @Order(20)
     @ConditionalOnProperty(name = "venueops.historical.seed", havingValue = "true", matchIfMissing = true)
     ApplicationRunner historicalFixtureSeedRunner(HistoricalReplayService replayService) {
-        return args -> replayService.replayFixture(FIXTURE_DATASET_ID, false);
+        return args -> replayService.replayBundledFixture();
     }
 }
