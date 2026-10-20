@@ -7,7 +7,8 @@ export type DocCategory =
   | 'incidents'
   | 'weather'
   | 'maintenance'
-  | 'flow';
+  | 'flow'
+  | 'history';
 
 export type DocSection = {
   id: string;

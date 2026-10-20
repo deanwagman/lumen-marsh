@@ -26,10 +26,9 @@ describe('docs pages', () => {
     expect(
       await screen.findByRole('heading', { name: 'Operator guides' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /getting started/i })).toHaveAttribute(
-      'href',
-      '/docs/getting-started',
-    );
+    expect(
+      screen.getByRole('link', { name: /getting started/i }),
+    ).toHaveAttribute('href', '/docs/getting-started');
     expect(
       screen.getByRole('link', {
         name: /operations dashboard.*park-wide conditions/i,
@@ -50,9 +49,9 @@ describe('docs pages', () => {
         name: /shift guide.*pending weather, pending reliability, or unpublished flow/i,
       }),
     ).toHaveAttribute('href', '/docs/shift');
-    expect(screen.getByRole('navigation', { name: 'Console' })).toContainElement(
-      screen.getByRole('link', { name: 'Docs' }),
-    );
+    expect(
+      screen.getByRole('navigation', { name: 'Console' }),
+    ).toContainElement(screen.getByRole('link', { name: 'Docs' }));
   });
 
   it('renders article sections with stable anchors', async () => {
@@ -71,27 +70,59 @@ describe('docs pages', () => {
   it('renders shift-guide steps without performing hold, accept, or publish', async () => {
     renderApp({ initialEntries: ['/docs/shift'], session: operatorSession });
 
-    expect(await screen.findByRole('heading', { name: 'Shift guide', level: 1 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Shift guide', level: 1 }),
+    ).toBeInTheDocument();
 
     const weather = document.getElementById('pending-weather') as HTMLElement;
-    const reliability = document.getElementById('pending-reliability') as HTMLElement;
+    const reliability = document.getElementById(
+      'pending-reliability',
+    ) as HTMLElement;
     const flow = document.getElementById('unpublished-flow') as HTMLElement;
 
-    expect(within(weather).getByText(/next click in control tower: open attractions/i)).toBeInTheDocument();
-    expect(within(weather).getByText(/place weather hold/i)).toBeInTheDocument();
-    expect(within(weather).getByText(/guests must not see the weather recommendation/i)).toBeInTheDocument();
+    expect(
+      within(weather).getByText(
+        /next click in control tower: open attractions/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(weather).getByText(/place weather hold/i),
+    ).toBeInTheDocument();
+    expect(
+      within(weather).getByText(
+        /guests must not see the weather recommendation/i,
+      ),
+    ).toBeInTheDocument();
 
-    expect(within(reliability).getByText(/next click in control tower: open maintenance/i)).toBeInTheDocument();
-    expect(within(reliability).getByText(/accept recommendation/i)).toBeInTheDocument();
-    expect(within(reliability).getByText(/guests must not see the asset code/i)).toBeInTheDocument();
+    expect(
+      within(reliability).getByText(
+        /next click in control tower: open maintenance/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(reliability).getByText(/accept recommendation/i),
+    ).toBeInTheDocument();
+    expect(
+      within(reliability).getByText(/guests must not see the asset code/i),
+    ).toBeInTheDocument();
 
-    expect(within(flow).getByText(/next click in control tower: open park flow/i)).toBeInTheDocument();
+    expect(
+      within(flow).getByText(/next click in control tower: open park flow/i),
+    ).toBeInTheDocument();
     expect(within(flow).getByText(/confirms publish/i)).toBeInTheDocument();
-    expect(within(flow).getByText(/guests must not see the operator explanation/i)).toBeInTheDocument();
+    expect(
+      within(flow).getByText(/guests must not see the operator explanation/i),
+    ).toBeInTheDocument();
 
-    expect(screen.queryByRole('button', { name: 'Place weather hold' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Accept recommendation' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Place weather hold' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Accept recommendation' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Publish' }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders the maintenance guide', async () => {
@@ -105,8 +136,28 @@ describe('docs pages', () => {
     expect(document.getElementById('scopes')).toBeTruthy();
   });
 
+  it('explains operating-history definitions and deterministic citations in-app', async () => {
+    renderApp({ initialEntries: ['/docs/operating-history'] });
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Operating history',
+        level: 1,
+      }),
+    ).toBeInTheDocument();
+    expect(document.getElementById('availability-definitions')).toBeTruthy();
+    expect(document.getElementById('citations')).toBeTruthy();
+    expect(document.getElementById('questions')).toBeTruthy();
+    expect(
+      screen.getByText(/no external model, vendor, or secret is used/i),
+    ).toBeInTheDocument();
+  });
+
   it('filters role-specific sections on the article page', async () => {
-    renderApp({ initialEntries: ['/docs/incidents'], session: operatorSession });
+    renderApp({
+      initialEntries: ['/docs/incidents'],
+      session: operatorSession,
+    });
 
     expect(
       await screen.findByRole('heading', { name: 'Incidents', level: 1 }),
@@ -134,7 +185,10 @@ describe('docs pages', () => {
     renderApp({ initialEntries: ['/docs/weather#review'] });
 
     expect(
-      await screen.findByRole('heading', { name: 'Weather recommendations', level: 1 }),
+      await screen.findByRole('heading', {
+        name: 'Weather recommendations',
+        level: 1,
+      }),
     ).toBeInTheDocument();
     expect(scrollIntoView).toHaveBeenCalled();
   });
@@ -160,7 +214,10 @@ describe('HelpLink', () => {
     );
 
     render(
-      <AppProviders queryClient={queryClient} initialSession={localDevelopmentSession}>
+      <AppProviders
+        queryClient={queryClient}
+        initialSession={localDevelopmentSession}
+      >
         <RouterProvider router={router} />
       </AppProviders>,
     );

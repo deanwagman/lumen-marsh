@@ -13,6 +13,7 @@ const categoryLabels: Record<string, string> = {
   weather: 'Weather',
   maintenance: 'Maintenance',
   flow: 'Park Flow',
+  history: 'Historical intelligence',
 };
 
 export default function DocsIndexPage() {
@@ -25,8 +26,8 @@ export default function DocsIndexPage() {
         <p className={styles.kicker}>Documentation</p>
         <h1>Operator guides</h1>
         <p className={styles.muted}>
-          Procedures for shift work in Lumen Marsh Control. Open a guide, or use the help
-          links next to controls in the console.
+          Procedures for shift work in Lumen Marsh Control. Open a guide, or use
+          the help links next to controls in the console.
         </p>
       </header>
       <ul className={styles.list}>

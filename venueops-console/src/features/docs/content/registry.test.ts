@@ -17,6 +17,7 @@ describe('docs registry', () => {
       'weather',
       'maintenance',
       'park-flow',
+      'operating-history',
     ]);
   });
 
@@ -55,12 +56,12 @@ describe('docs registry', () => {
   });
 
   it('includes all articles for both roles in the starter set', () => {
-    expect(listArticles({ role: 'operator' })).toHaveLength(8);
-    expect(listArticles({ role: 'supervisor' })).toHaveLength(8);
-    expect(getArticle('shift', { role: 'operator' })?.sections.map((section) => section.id)).toEqual([
-      'pending-weather',
-      'pending-reliability',
-      'unpublished-flow',
-    ]);
+    expect(listArticles({ role: 'operator' })).toHaveLength(9);
+    expect(listArticles({ role: 'supervisor' })).toHaveLength(9);
+    expect(
+      getArticle('shift', { role: 'operator' })?.sections.map(
+        (section) => section.id,
+      ),
+    ).toEqual(['pending-weather', 'pending-reliability', 'unpublished-flow']);
   });
 });

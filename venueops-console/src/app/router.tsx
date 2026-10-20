@@ -1,5 +1,9 @@
 import { lazy, Suspense, type ReactNode } from 'react';
-import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
+import {
+  createBrowserRouter,
+  Navigate,
+  type RouteObject,
+} from 'react-router-dom';
 
 import { defaultAuthenticatedRoute } from '@/app/consoleRoutes';
 import {
@@ -22,15 +26,26 @@ import { AppShell } from '@/shared/layout/AppShell';
 import NotFoundPage from './NotFoundPage';
 
 const FlowPage = lazy(() => import('@/features/flow/pages/FlowPage'));
-const FlowAttractionPage = lazy(() => import('@/features/flow/pages/FlowAttractionPage'));
-const MaintenancePage = lazy(() => import('@/features/maintenance/pages/MaintenancePage'));
+const FlowAttractionPage = lazy(
+  () => import('@/features/flow/pages/FlowAttractionPage'),
+);
+const MaintenancePage = lazy(
+  () => import('@/features/maintenance/pages/MaintenancePage'),
+);
 const MaintenanceWorkOrderPage = lazy(
   () => import('@/features/maintenance/pages/MaintenanceWorkOrderPage'),
 );
-const MaintenanceAssetPage = lazy(() => import('@/features/maintenance/pages/MaintenanceAssetPage'));
+const MaintenanceAssetPage = lazy(
+  () => import('@/features/maintenance/pages/MaintenanceAssetPage'),
+);
+const HistoryPage = lazy(() => import('@/features/history/pages/HistoryPage'));
 
 function Suspended({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<p role="status">Loading workspace</p>}>{children}</Suspense>;
+  return (
+    <Suspense fallback={<p role="status">Loading workspace</p>}>
+      {children}
+    </Suspense>
+  );
 }
 
 export const appRoutes: RouteObject[] = [
@@ -46,17 +61,63 @@ export const appRoutes: RouteObject[] = [
         path: '/',
         element: <AppShell />,
         children: [
-          { index: true, element: <Navigate to={defaultAuthenticatedRoute} replace /> },
+          {
+            index: true,
+            element: <Navigate to={defaultAuthenticatedRoute} replace />,
+          },
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'attractions', element: <AttractionsPage /> },
           { path: 'attractions/:id', element: <AttractionDetailPage /> },
           { path: 'incidents', element: <IncidentsPage /> },
           { path: 'incidents/:incidentId', element: <IncidentDetailPage /> },
-          { path: 'maintenance', element: <Suspended><MaintenancePage /></Suspended> },
-          { path: 'maintenance/work-orders/:workOrderId', element: <Suspended><MaintenanceWorkOrderPage /></Suspended> },
-          { path: 'maintenance/assets/:assetId', element: <Suspended><MaintenanceAssetPage /></Suspended> },
-          { path: 'park-flow', element: <Suspended><FlowPage /></Suspended> },
-          { path: 'park-flow/:attractionId', element: <Suspended><FlowAttractionPage /></Suspended> },
+          {
+            path: 'maintenance',
+            element: (
+              <Suspended>
+                <MaintenancePage />
+              </Suspended>
+            ),
+          },
+          {
+            path: 'maintenance/work-orders/:workOrderId',
+            element: (
+              <Suspended>
+                <MaintenanceWorkOrderPage />
+              </Suspended>
+            ),
+          },
+          {
+            path: 'maintenance/assets/:assetId',
+            element: (
+              <Suspended>
+                <MaintenanceAssetPage />
+              </Suspended>
+            ),
+          },
+          {
+            path: 'park-flow',
+            element: (
+              <Suspended>
+                <FlowPage />
+              </Suspended>
+            ),
+          },
+          {
+            path: 'park-flow/:attractionId',
+            element: (
+              <Suspended>
+                <FlowAttractionPage />
+              </Suspended>
+            ),
+          },
+          {
+            path: 'history',
+            element: (
+              <Suspended>
+                <HistoryPage />
+              </Suspended>
+            ),
+          },
           { path: 'docs', element: <DocsIndexPage /> },
           { path: 'docs/:slug', element: <DocArticlePage /> },
           { path: 'not-found', element: <NotFoundPage /> },

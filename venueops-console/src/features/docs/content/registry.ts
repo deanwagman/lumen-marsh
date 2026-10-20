@@ -4,6 +4,7 @@ import { dashboardArticle } from '@/features/docs/content/dashboard';
 import { parkFlowArticle } from '@/features/docs/content/flow';
 import { gettingStartedArticle } from '@/features/docs/content/getting-started';
 import { incidentsArticle } from '@/features/docs/content/incidents';
+import { operatingHistoryArticle } from '@/features/docs/content/history';
 import { maintenanceArticle } from '@/features/docs/content/maintenance';
 import { shiftGuideArticle } from '@/features/docs/content/shift';
 import { weatherArticle } from '@/features/docs/content/weather';
@@ -18,6 +19,7 @@ const articles: DocArticle[] = [
   weatherArticle,
   maintenanceArticle,
   parkFlowArticle,
+  operatingHistoryArticle,
 ];
 
 function isVisibleToRole(
@@ -63,7 +65,10 @@ export function getSectionHref(slug: string, sectionId: string): string {
   return `/docs/${slug}#${sectionId}`;
 }
 
-function filterArticleForRole(article: DocArticle, role: OperatorRole): DocArticle {
+function filterArticleForRole(
+  article: DocArticle,
+  role: OperatorRole,
+): DocArticle {
   return {
     ...article,
     sections: article.sections.filter((section) =>
