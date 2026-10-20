@@ -6,6 +6,7 @@ CREATE TABLE demo_sandbox_lease (
     hard_expires_at TIMESTAMPTZ,
     last_activity_at TIMESTAMPTZ,
     state VARCHAR(16) NOT NULL,
+    reset_id VARCHAR(36),
     failure_detail VARCHAR(255),
     version BIGINT NOT NULL DEFAULT 0
 );

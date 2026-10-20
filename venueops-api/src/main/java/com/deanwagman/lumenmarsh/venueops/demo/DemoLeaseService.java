@@ -16,6 +16,9 @@ final class DemoLeaseService {
     record Issued(String token, DemoLeaseStore.Lease lease, Map<String, String> reset) {
     }
 
+    record ResetResult(UUID resetId, Map<String, String> reset) {
+    }
+
     private record RateWindow(long minute, AtomicInteger count) {
     }
 
@@ -45,10 +48,10 @@ final class DemoLeaseService {
             throw new LeaseUnavailableException();
         }
         try {
-            Map<String, String> reset = resets.resetAll(UUID.randomUUID());
-            return new Issued(token, leases.activate(hash, Instant.now(clock), properties), reset);
+            DemoResetService.Batch reset = resets.resetAll(UUID.randomUUID());
+            return new Issued(token, leases.activate(hash, Instant.now(clock), properties), reset.outcomes());
         } catch (RuntimeException failure) {
-            leases.fail(hash, "Sandbox preparation failed.");
+            leases.expire(hash);
             throw failure;
         }
     }
@@ -57,7 +60,10 @@ final class DemoLeaseService {
         if (token == null || token.isBlank()) {
             return Optional.empty();
         }
-        return leases.authenticate(DemoTokens.hash(token), Instant.now(clock), properties, touch);
+        String hash = DemoTokens.hash(token);
+        return touch
+                ? leases.authenticate(hash, Instant.now(clock), properties, true)
+                : leases.owner(hash, Instant.now(clock), properties);
     }
 
     DemoLeaseStore.Lease require(String token, boolean mutation) {
@@ -70,18 +76,20 @@ final class DemoLeaseService {
         return lease;
     }
 
-    Map<String, String> reset(String token) {
+    ResetResult reset(String token) {
         String hash = token == null || token.isBlank() ? "" : DemoTokens.hash(token);
-        require(token, true);
-        if (!leases.beginReset(hash, Instant.now(clock), properties)) {
-            throw new InvalidLeaseException();
-        }
+        leases.owner(hash, Instant.now(clock), properties).orElseThrow(InvalidLeaseException::new);
+        enforceRate(hash);
+        DemoLeaseStore.Lease resetting = leases.beginReset(
+                hash, UUID.randomUUID().toString(), Instant.now(clock), properties
+        ).orElseThrow(InvalidLeaseException::new);
+        UUID resetId = UUID.fromString(resetting.resetId());
         try {
-            Map<String, String> outcome = resets.resetAll(UUID.randomUUID());
+            DemoResetService.Batch outcome = resets.resetAll(resetId);
             leases.finishReset(hash, Instant.now(clock), properties);
-            return outcome;
+            return new ResetResult(resetId, outcome.outcomes());
         } catch (RuntimeException failure) {
-            leases.fail(hash, "Reset failed. Retry by acquiring the sandbox again.");
+            leases.fail(hash, "Reset failed. Retry Start over.");
             throw failure;
         }
     }
@@ -89,11 +97,11 @@ final class DemoLeaseService {
     void release(String token) {
         String hash = token == null || token.isBlank() ? "" : DemoTokens.hash(token);
         require(token, true);
-        if (!leases.beginReset(hash, Instant.now(clock), properties)) {
-            throw new InvalidLeaseException();
-        }
+        DemoLeaseStore.Lease resetting = leases.beginReset(
+                hash, UUID.randomUUID().toString(), Instant.now(clock), properties
+        ).orElseThrow(InvalidLeaseException::new);
         try {
-            resets.resetAll(UUID.randomUUID());
+            resets.resetAll(UUID.fromString(resetting.resetId()));
         } finally {
             leases.expire(hash);
             rates.remove(hash);
@@ -110,14 +118,18 @@ final class DemoLeaseService {
         Instant now = Instant.now(clock);
         if ((lease.state() == DemoLeaseStore.State.ACTIVE
                 || lease.state() == DemoLeaseStore.State.PREPARING
-                || lease.state() == DemoLeaseStore.State.RESETTING)
+                || lease.state() == DemoLeaseStore.State.RESETTING
+                || lease.state() == DemoLeaseStore.State.FAILED)
                 && !lease.liveAt(now, properties)
                 && lease.tokenHash() != null) {
             if (!leases.beginExpiryReset(lease.tokenHash(), now)) {
                 return;
             }
             try {
-                resets.resetAll(UUID.randomUUID());
+                UUID resetId = lease.resetId() == null
+                        ? UUID.randomUUID()
+                        : UUID.fromString(lease.resetId());
+                resets.resetAll(resetId);
             } catch (RuntimeException ignored) {
                 // Expiry must revoke authority even when a best-effort cleanup component is unavailable.
             } finally {

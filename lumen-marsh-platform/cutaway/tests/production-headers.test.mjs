@@ -13,6 +13,12 @@ const override = readFileSync(join(platform, "compose.override.yaml"), "utf8");
 const cutawayNginx = readFileSync(join(platform, "cutaway", "nginx.conf"), "utf8");
 const cutawayIndex = readFileSync(join(platform, "cutaway", "public", "index.html"), "utf8");
 const cutawayScript = readFileSync(join(platform, "cutaway", "public", "cutaway.js"), "utf8");
+const demoCompose = readFileSync(join(platform, "compose.demo.yaml"), "utf8");
+const caddy = readFileSync(join(platform, "demo", "Caddyfile"), "utf8");
+const acceptance = readFileSync(
+  join(platform, "scripts", "cutaway-sandbox-acceptance.sh"),
+  "utf8",
+);
 
 assert.match(productionNginx, /add_header X-Frame-Options "DENY" always;/);
 assert.match(productionNginx, /frame-ancestors 'none'/);
@@ -40,5 +46,18 @@ assert.match(cutawayNginx, /Permissions-Policy/);
 assert.doesNotMatch(cutawayNginx, /localhost|127\.0\.0\.1/);
 assert.doesNotMatch(cutawayIndex, /localhost|127\.0\.0\.1/);
 assert.doesNotMatch(cutawayScript, /localhost|127\.0\.0\.1|local-development-token|Authorization/);
+
+for (const service of [
+  "environmental-monitor",
+  "park-flow-intelligence",
+  "reliability-intelligence",
+]) {
+  const block = demoCompose.match(new RegExp(`  ${service}:[\\s\\S]*?(?=\\n  [a-z]|$)`))?.[0] ?? "";
+  assert.match(block, /ports: !reset \[\]/);
+}
+assert.match(caddy, /\{\$DEMO_HOST\} \{/);
+assert.doesNotMatch(caddy, /tls\s+internal/);
+assert.match(acceptance, /curl_tls=\(-kfsS/);
+assert.match(acceptance, /--resolve/);
 
 console.log("production console and hosted Cutaway headers stay strict");

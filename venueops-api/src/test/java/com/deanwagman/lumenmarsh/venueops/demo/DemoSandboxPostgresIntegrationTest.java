@@ -104,6 +104,33 @@ class DemoSandboxPostgresIntegrationTest {
     }
 
     @Test
+    void failedResetKeepsExclusiveLeaseAndReusesResetIdentity() {
+        DemoLeaseStore.Lease existing = store.find();
+        if (existing.tokenHash() != null) {
+            store.expire(existing.tokenHash());
+        }
+        Instant now = Instant.now();
+        String hash = DemoTokens.hash("retry-holder");
+        UUID firstReset = UUID.randomUUID();
+        org.junit.jupiter.api.Assertions.assertTrue(store.reserve(hash, now, properties).isPresent());
+        store.activate(hash, now, properties);
+
+        DemoLeaseStore.Lease first = store.beginReset(
+                hash, firstReset.toString(), now, properties
+        ).orElseThrow();
+        store.fail(hash, "reliability unavailable");
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                store.reserve(DemoTokens.hash("spectator"), now.plusSeconds(1), properties).isEmpty());
+        DemoLeaseStore.Lease retry = store.beginReset(
+                hash, UUID.randomUUID().toString(), now.plusSeconds(1), properties
+        ).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(first.resetId(), retry.resetId());
+        org.junit.jupiter.api.Assertions.assertEquals(firstReset.toString(), retry.resetId());
+        store.expire(hash);
+    }
+
+    @Test
     void operatorMutationNeedsLeaseEvenWithValidOperatorIdentity() throws Exception {
         mockMvc.perform(post("/api/v1/operator/attractions/mangrove-run/commands")
                         .with(TestAuth.supervisor())

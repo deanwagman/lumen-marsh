@@ -170,6 +170,24 @@ assert not d.get("activeWeatherWorkflow"), d.get("activeWeatherWorkflow")
 '
 }
 
+non_quiet_dashboard() {
+  local cookie="$1"
+  for _ in $(seq 1 30); do
+    if curl "${curl_tls[@]}" -b "$cookie" "$DEMO_ORIGIN/api/v1/operator/dashboard" |
+      python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+keys = ("pendingWeatherRecommendations", "attractionsNeedingAttention",
+        "publishedGuestAdvisories", "openIncidents", "needsAttention")
+assert any(d.get(key) for key in keys) or d.get("activeWeatherWorkflow")
+'; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 pending_subject() {
   local cookie="$1"
   local kind="$2"
@@ -207,6 +225,61 @@ occupied_code="$(curl -ksS "${resolve[@]}" -c "$cookie_b" -o /dev/null -w '%{htt
 [[ "$occupied_code" == "409" ]]
 curl "${curl_tls[@]}" -b "$cookie_a" -X POST \
   "$DEMO_ORIGIN/api/v1/demo/leases/heartbeat" >/dev/null
+
+if [[ "$MANAGE_STACK" -eq 1 ]]; then
+  # A partial producer failure must retain the non-quiet VenueOps state and
+  # failed lease for an idempotent retry with the server-owned reset identity.
+  reset_failure="$(mktemp "${TMPDIR:-/tmp}/lm-demo-reset-failure.XXXXXX")"
+  reset_retry="$(mktemp "${TMPDIR:-/tmp}/lm-demo-reset-retry.XXXXXX")"
+  trap 'rm -f "$CONFIG_JSON" "$cookie_a" "$cookie_b" "$reset_failure" "$reset_retry"' EXIT
+
+  curl "${curl_tls[@]}" -b "$cookie_a" -X POST \
+    "$DEMO_ORIGIN/api/v1/demo/scenarios/lightning-hold" >/dev/null
+  non_quiet_dashboard "$cookie_a"
+  "${COMPOSE[@]}" stop reliability-intelligence
+
+  failure_code="$(curl -ksS "${resolve[@]}" -b "$cookie_a" -o "$reset_failure" \
+    -w '%{http_code}' -X POST "$DEMO_ORIGIN/api/v1/demo/reset")"
+  [[ "$failure_code" == "503" ]]
+  failed_reset_id="$(
+    python3 - "$reset_failure" <<'PY'
+import json, sys
+body = json.load(open(sys.argv[1]))
+assert body["component"] == "reliability", body
+assert body["status"] == 503, body
+print(body["resetId"])
+PY
+  )"
+  curl "${curl_tls[@]}" -b "$cookie_a" "$DEMO_ORIGIN/api/v1/demo/lease" |
+    python3 -c 'import json,sys; body=json.load(sys.stdin); assert body["state"] == "FAILED" and body["holder"] is True and body["available"] is False, body'
+  non_quiet_dashboard "$cookie_a"
+
+  "${COMPOSE[@]}" start reliability-intelligence
+  for _ in $(seq 1 60); do
+    if curl "${curl_tls[@]}" "$DEMO_ORIGIN/api/v1/demo/readiness" |
+      python3 -c 'import json,sys; body=json.load(sys.stdin); assert any(c["name"] == "Reliability" and c["state"] == "READY" for c in body["components"])' \
+      >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+  curl "${curl_tls[@]}" "$DEMO_ORIGIN/api/v1/demo/readiness" |
+    python3 -c 'import json,sys; body=json.load(sys.stdin); assert any(c["name"] == "Reliability" and c["state"] == "READY" for c in body["components"])'
+
+  curl "${curl_tls[@]}" -b "$cookie_a" -X POST \
+    "$DEMO_ORIGIN/api/v1/demo/reset" -o "$reset_retry"
+  python3 - "$reset_retry" "$failed_reset_id" <<'PY'
+import json, sys
+body = json.load(open(sys.argv[1]))
+assert body["resetId"] == sys.argv[2], body
+assert body["reset"]["environmental"] == "REPLAY", body
+assert body["reset"]["flow"] == "REPLAY", body
+assert body["reset"]["reliability"] == "COMPLETED", body
+assert body["reset"]["venueops"] == "COMPLETED", body
+PY
+  quiet_dashboard "$cookie_a"
+  echo "PASS  partial reset preserves state and retries the same reset identity"
+fi
 
 # Mid-weather state must reset without shell or volume deletion.
 curl "${curl_tls[@]}" -b "$cookie_a" -X POST \

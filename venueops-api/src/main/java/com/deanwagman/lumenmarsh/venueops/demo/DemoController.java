@@ -98,7 +98,12 @@ final class DemoController {
 
     @PostMapping("/reset")
     Map<String, Object> reset(@CookieValue(name = DemoLeaseService.COOKIE, required = false) String token) {
-        return Map.of("state", "ACTIVE", "reset", leases.reset(token));
+        DemoLeaseService.ResetResult result = leases.reset(token);
+        return Map.of(
+                "state", "ACTIVE",
+                "resetId", result.resetId(),
+                "reset", result.reset()
+        );
     }
 
     @PostMapping("/scenarios/{name}")
@@ -132,6 +137,16 @@ final class DemoController {
     ResponseEntity<Map<String, Object>> unknownScenario() {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("title", "Unknown demo scenario", "status", 404));
+    }
+
+    @ExceptionHandler(DemoResetService.ResetFailedException.class)
+    ResponseEntity<Map<String, Object>> resetFailed(DemoResetService.ResetFailedException failure) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
+                "title", "Sandbox reset failed",
+                "status", 503,
+                "component", failure.component(),
+                "resetId", failure.resetId()
+        ));
     }
 
     private ResponseCookie cookie(String value, Duration maxAge) {

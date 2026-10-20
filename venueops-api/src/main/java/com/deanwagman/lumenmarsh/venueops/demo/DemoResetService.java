@@ -21,6 +21,9 @@ import java.util.UUID;
 final class DemoResetService {
     enum Outcome { COMPLETED, REPLAY }
 
+    record Batch(UUID resetId, Map<String, String> outcomes) {
+    }
+
     private final DemoSandboxProperties properties;
     private final RestClient rest;
     private final JdbcTemplate jdbc;
@@ -53,13 +56,17 @@ final class DemoResetService {
         this.clock = clock;
     }
 
-    Map<String, String> resetAll(UUID resetId) {
+    Batch resetAll(UUID resetId) {
         Map<String, String> outcomes = new LinkedHashMap<>();
-        outcomes.put("environmental", resetRemote(properties.environmentalUrl(), resetId));
-        outcomes.put("flow", resetRemote(properties.flowUrl(), resetId));
-        outcomes.put("reliability", resetRemote(properties.reliabilityUrl(), resetId));
-        outcomes.put("venueops", resetVenueOps(resetId).name());
-        return outcomes;
+        outcomes.put("environmental", resetRemote("environmental", properties.environmentalUrl(), resetId));
+        outcomes.put("flow", resetRemote("flow", properties.flowUrl(), resetId));
+        outcomes.put("reliability", resetRemote("reliability", properties.reliabilityUrl(), resetId));
+        try {
+            outcomes.put("venueops", resetVenueOps(resetId).name());
+        } catch (RuntimeException failure) {
+            throw new ResetFailedException("venueops", resetId, failure);
+        }
+        return new Batch(resetId, Map.copyOf(outcomes));
     }
 
     Outcome resetVenueOps(UUID resetId) {
@@ -106,19 +113,42 @@ final class DemoResetService {
         return Outcome.COMPLETED;
     }
 
-    private String resetRemote(String baseUrl, UUID resetId) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> body = rest.post()
-                .uri(baseUrl + "/internal/demo/reset")
-                .header("X-Demo-Reset-Secret", properties.internalSecret())
-                .header(HttpHeaders.ACCEPT, "application/json")
-                .body(Map.of("resetId", resetId.toString()))
-                .retrieve()
-                .body(Map.class);
-        String status = body == null ? null : String.valueOf(body.get("status"));
-        if (!"COMPLETED".equals(status) && !"REPLAY".equals(status)) {
-            throw new IllegalStateException("Reset returned an invalid status.");
+    private String resetRemote(String component, String baseUrl, UUID resetId) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> body = rest.post()
+                    .uri(baseUrl + "/internal/demo/reset")
+                    .header("X-Demo-Reset-Secret", properties.internalSecret())
+                    .header(HttpHeaders.ACCEPT, "application/json")
+                    .body(Map.of("resetId", resetId.toString()))
+                    .retrieve()
+                    .body(Map.class);
+            String status = body == null ? null : String.valueOf(body.get("status"));
+            if (!"COMPLETED".equals(status) && !"REPLAY".equals(status)) {
+                throw new IllegalStateException("Reset returned an invalid status.");
+            }
+            return status;
+        } catch (RuntimeException failure) {
+            throw new ResetFailedException(component, resetId, failure);
         }
-        return status;
+    }
+
+    static final class ResetFailedException extends RuntimeException {
+        private final String component;
+        private final UUID resetId;
+
+        ResetFailedException(String component, UUID resetId, Throwable cause) {
+            super("Demo reset failed for " + component, cause);
+            this.component = component;
+            this.resetId = resetId;
+        }
+
+        String component() {
+            return component;
+        }
+
+        UUID resetId() {
+            return resetId;
+        }
     }
 }

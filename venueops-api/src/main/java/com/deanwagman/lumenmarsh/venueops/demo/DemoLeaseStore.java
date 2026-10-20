@@ -22,10 +22,11 @@ final class DemoLeaseStore {
             Instant hardExpiresAt,
             Instant lastActivityAt,
             State state,
+            String resetId,
             String failureDetail
     ) {
         boolean liveAt(Instant now, DemoSandboxProperties properties) {
-            if (state == State.PREPARING || state == State.RESETTING) {
+            if (state == State.PREPARING || state == State.RESETTING || state == State.FAILED) {
                 return issuedAt != null && hardExpiresAt != null && now.isBefore(hardExpiresAt);
             }
             return state == State.ACTIVE
@@ -54,7 +55,8 @@ final class DemoLeaseStore {
             jdbc.update("""
                     UPDATE demo_sandbox_lease
                     SET token_hash=?, issued_at=?, expires_at=NULL, hard_expires_at=?,
-                        last_activity_at=?, state='PREPARING', failure_detail=NULL, version=version+1
+                        last_activity_at=?, state='PREPARING', reset_id=NULL,
+                        failure_detail=NULL, version=version+1
                     WHERE singleton_id=1
                     """, tokenHash, sql(now), sql(hardExpiry), sql(now));
             return Optional.of(find());
@@ -65,7 +67,7 @@ final class DemoLeaseStore {
         int changed = jdbc.update("""
                 UPDATE demo_sandbox_lease
                 SET state='ACTIVE', expires_at=LEAST(?, hard_expires_at),
-                    last_activity_at=?, failure_detail=NULL, version=version+1
+                    last_activity_at=?, reset_id=NULL, failure_detail=NULL, version=version+1
                 WHERE singleton_id=1 AND token_hash=? AND state='PREPARING'
                 """, sql(now.plus(properties.leaseDuration())), sql(now), tokenHash);
         if (changed != 1) {
@@ -90,19 +92,44 @@ final class DemoLeaseStore {
         return Optional.of(lease);
     }
 
-    boolean beginReset(String tokenHash, Instant now, DemoSandboxProperties properties) {
-        Optional<Lease> lease = authenticate(tokenHash, now, properties, true);
-        return lease.isPresent() && jdbc.update("""
-                UPDATE demo_sandbox_lease SET state='RESETTING', version=version+1
-                WHERE singleton_id=1 AND token_hash=? AND state='ACTIVE'
-                """, tokenHash) == 1;
+    Optional<Lease> owner(String tokenHash, Instant now, DemoSandboxProperties properties) {
+        Lease lease = find();
+        return lease.liveAt(now, properties)
+                && DemoTokens.constantTimeEquals(tokenHash, lease.tokenHash())
+                ? Optional.of(lease)
+                : Optional.empty();
+    }
+
+    Optional<Lease> beginReset(
+            String tokenHash,
+            String proposedResetId,
+            Instant now,
+            DemoSandboxProperties properties
+    ) {
+        return transactions.execute(status -> {
+            Lease lease = lock();
+            boolean eligible = lease.liveAt(now, properties)
+                    && (lease.state() == State.ACTIVE || lease.state() == State.FAILED)
+                    && DemoTokens.constantTimeEquals(tokenHash, lease.tokenHash());
+            if (!eligible) {
+                return Optional.empty();
+            }
+            jdbc.update("""
+                    UPDATE demo_sandbox_lease
+                    SET state='RESETTING', reset_id=COALESCE(reset_id, ?),
+                        last_activity_at=?, version=version+1
+                    WHERE singleton_id=1 AND token_hash=? AND state IN ('ACTIVE','FAILED')
+                    """, proposedResetId, sql(now), tokenHash);
+            return Optional.of(find());
+        });
     }
 
     boolean beginExpiryReset(String tokenHash, Instant now) {
         return jdbc.update("""
                 UPDATE demo_sandbox_lease
                 SET state='RESETTING', hard_expires_at=?, version=version+1
-                WHERE singleton_id=1 AND token_hash=? AND state IN ('ACTIVE','PREPARING','RESETTING')
+                WHERE singleton_id=1 AND token_hash=?
+                  AND state IN ('ACTIVE','PREPARING','RESETTING','FAILED')
                 """, sql(now.plusSeconds(60)), tokenHash) == 1;
     }
 
@@ -110,7 +137,7 @@ final class DemoLeaseStore {
         int changed = jdbc.update("""
                 UPDATE demo_sandbox_lease
                 SET state='ACTIVE', expires_at=LEAST(?, hard_expires_at), last_activity_at=?,
-                    failure_detail=NULL, version=version+1
+                    reset_id=NULL, failure_detail=NULL, version=version+1
                 WHERE singleton_id=1 AND token_hash=? AND state='RESETTING'
                 """, sql(now.plus(properties.leaseDuration())), sql(now), tokenHash);
         if (changed != 1) {
@@ -123,7 +150,7 @@ final class DemoLeaseStore {
         jdbc.update("""
                 UPDATE demo_sandbox_lease
                 SET state='EXPIRED', token_hash=NULL, expires_at=NULL, last_activity_at=NULL,
-                    failure_detail=NULL, version=version+1
+                    reset_id=NULL, failure_detail=NULL, version=version+1
                 WHERE singleton_id=1 AND token_hash=?
                 """, tokenHash);
     }
@@ -138,14 +165,16 @@ final class DemoLeaseStore {
 
     Lease find() {
         return jdbc.queryForObject("""
-                SELECT token_hash, issued_at, expires_at, hard_expires_at, last_activity_at, state, failure_detail
+                SELECT token_hash, issued_at, expires_at, hard_expires_at, last_activity_at,
+                       state, reset_id, failure_detail
                 FROM demo_sandbox_lease WHERE singleton_id=1
                 """, DemoLeaseStore::map);
     }
 
     private Lease lock() {
         return jdbc.queryForObject("""
-                SELECT token_hash, issued_at, expires_at, hard_expires_at, last_activity_at, state, failure_detail
+                SELECT token_hash, issued_at, expires_at, hard_expires_at, last_activity_at,
+                       state, reset_id, failure_detail
                 FROM demo_sandbox_lease WHERE singleton_id=1 FOR UPDATE
                 """, DemoLeaseStore::map);
     }
@@ -158,6 +187,7 @@ final class DemoLeaseStore {
                 instant(rs, "hard_expires_at"),
                 instant(rs, "last_activity_at"),
                 State.valueOf(rs.getString("state")),
+                rs.getString("reset_id"),
                 rs.getString("failure_detail")
         );
     }

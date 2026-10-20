@@ -13,7 +13,6 @@ x-demo-runtime: &demo-runtime
 
 x-demo-producer: &demo-producer
   <<: *demo-runtime
-  ports: !reset []
   networks: !override
     - services
 
@@ -73,6 +72,7 @@ services:
 
   environmental-monitor:
     <<: *demo-producer
+    ports: !reset []
     environment:
       APP_ENV: development
       SIMULATION_ENABLED: "true"
@@ -88,6 +88,7 @@ services:
 
   park-flow-intelligence:
     <<: *demo-producer
+    ports: !reset []
     environment:
       APP_ENV: development
       SIMULATION_ENABLED: "true"
@@ -98,6 +99,7 @@ services:
 
   reliability-intelligence:
     <<: *demo-producer
+    ports: !reset []
     environment:
       APP_ENV: development
       SIMULATION_ENABLED: "true"
