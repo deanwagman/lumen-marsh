@@ -74,6 +74,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${VENUEOPS_DB_USER:-venueops}
       SPRING_DATASOURCE_PASSWORD: ${VENUEOPS_DB_PASSWORD:-venueops}
       VENUEOPS_ATTRACTIONS_SEED: ${VENUEOPS_SEED:-true}
+      VENUEOPS_HISTORICAL_SEED: ${VENUEOPS_HISTORICAL_SEED:-true}
       VENUEOPS_SECURITY_MODE: ${VENUEOPS_SECURITY_MODE:-LOCAL_JWT}
       VENUEOPS_ISSUER_URI: ${VENUEOPS_ISSUER_URI:-http://venueops.local/test}
       VENUEOPS_ALLOWED_CLIENT_IDS: ${VENUEOPS_ALLOWED_CLIENT_IDS:-venueops-console-local,environmental-monitor-local,reliability-integration-local,park-flow-intelligence-local}
