@@ -2,7 +2,8 @@
 set -euo pipefail
 # Repeatable Historical Operations Intelligence acceptance: seeded fixture →
 # curated availability and citations → idempotent replay → live-state isolation.
-# The reset guard is exercised without --confirm; this script never resets volumes.
+# When DEMO_RESET_SECRET is set, hosted Start over must keep historical rows and
+# the playable opening. The volume-reset guard is exercised without --confirm.
 # shellcheck source=./_lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_lib.sh"
 
@@ -382,7 +383,69 @@ check "question citations remain unchanged" cmp -s "$WORKDIR/question-1.json" "$
 check "live attraction state and activity APIs are unchanged" \
   cmp -s "$WORKDIR/live-api-before.json" "$WORKDIR/live-api-after.json"
 
-echo "== 5. Destructive reset remains explicitly guarded =="
+echo "== 5. Hosted Start over preserves history when the demo reset secret is set =="
+if [[ -n "${DEMO_RESET_SECRET:-}" ]]; then
+  RESET_ID="$(python3 -c 'import uuid; print(uuid.uuid4())')"
+  START_OVER="$(http_code "$WORKDIR/start-over.json" \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -H "X-Demo-Reset-Secret: ${DEMO_RESET_SECRET}" \
+    -d "{\"resetId\":\"${RESET_ID}\"}" \
+    "$VENUEOPS_URL/internal/demo/reset")"
+  check "hosted Start over completes" bash -c "
+    [[ '$START_OVER' == '200' ]] &&
+    python3 - '$WORKDIR/start-over.json' <<'PY'
+import json, sys
+body = json.load(open(sys.argv[1]))
+assert body['status'] == 'COMPLETED', body
+assert body['component'] == 'venueops', body
+PY
+  "
+  if [[ "$START_OVER" == "200" ]]; then
+    db_json_snapshot > "$WORKDIR/db-after-reset.json"
+    capture_live_api "$WORKDIR/live-api-after-reset.json" reset
+    check "Start over leaves historical rows unchanged" bash -c "
+      python3 - '$WORKDIR/db-before.json' '$WORKDIR/db-after-reset.json' <<'PY'
+import json, sys
+before = json.load(open(sys.argv[1]))
+after = json.load(open(sys.argv[2]))
+keys = [key for key in before if key.startswith('historical')]
+assert keys, before.keys()
+assert {key: before[key] for key in keys} == {key: after[key] for key in keys}
+PY
+    "
+    check "Start over leaves the playable opening intact" bash -c "
+      python3 - '$WORKDIR/live-api-after-reset.json' <<'PY'
+import json, sys
+document = json.load(open(sys.argv[1]))
+expected = {
+    'cypress-coil': ('CLOSED', 'NOT_APPLICABLE', None, 0),
+    'mangrove-run': ('OPERATING', 'NORMAL', 25, 0),
+    'stormglass-station': ('CLOSED', 'NOT_APPLICABLE', None, 0),
+}
+
+def playable(rows):
+    return {
+        item['id']: (item.get('status'), item.get('capacityMode'), item.get('waitMinutes'), item.get('version'))
+        for item in rows
+    }
+
+guest = playable(document['guestAttractions'])
+operator = {
+    attraction_id: (state.get('status'), state.get('capacityMode'), state.get('waitMinutes'), state.get('version'))
+    for attraction_id, state in document['operatorState'].items()
+}
+assert guest == expected, guest
+assert operator == expected, operator
+assert all(activity == [] for activity in document['operatorActivity'].values()), document['operatorActivity']
+PY
+    "
+  fi
+else
+  echo "SKIP  hosted Start over (set DEMO_RESET_SECRET with VENUEOPS_DEMO_SANDBOX_ENABLED=true)"
+fi
+
+echo "== 6. Destructive reset remains explicitly guarded =="
 if ./scripts/reset-demo.sh >"$WORKDIR/reset-stdout.txt" 2>"$WORKDIR/reset-stderr.txt"; then
   check "reset without --confirm is refused" false
 else

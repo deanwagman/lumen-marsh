@@ -151,6 +151,9 @@ describe('docs pages', () => {
     expect(
       screen.getByText(/no external model, vendor, or secret is used/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/keeps historical datasets, calendars, plans, snapshots, activity, and processed commands/i),
+    ).toBeInTheDocument();
   });
 
   it('filters role-specific sections on the article page', async () => {

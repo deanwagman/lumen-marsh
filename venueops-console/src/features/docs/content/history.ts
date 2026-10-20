@@ -13,6 +13,8 @@ export const operatingHistoryArticle: DocArticle = {
       body: [
         'History uses dataset-scoped replay records. The synthetic historical dataset label means the records are demonstration fixtures, not observed production events.',
         'Changing a dataset, date range, attraction, or question never changes the live attraction workspace, live activity, or guest experience.',
+        'Hosted Start over clears live demonstration activity and returns attractions to the quiet opening. It keeps historical datasets, calendars, plans, snapshots, activity, and processed commands.',
+        'A full database volume reset removes that history. The next startup reloads the bundled fixture when its checksum is missing, without changing the live attraction workspace.',
       ],
     },
     {
