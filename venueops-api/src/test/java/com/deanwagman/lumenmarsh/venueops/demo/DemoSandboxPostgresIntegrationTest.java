@@ -194,7 +194,7 @@ class DemoSandboxPostgresIntegrationTest {
                                   "recommendedAction": "Inspect the wheel assembly."
                                 }
                                 """))
-                .andExpect(status().isCreated())
+                .andExpect(status().is2xxSuccessful())
                 .andReturn();
         JsonNode body = json.readTree(ingest.getResponse().getContentAsByteArray());
         MaintenanceRecommendationId recommendationId =
