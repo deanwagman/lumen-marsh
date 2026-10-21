@@ -171,6 +171,11 @@ jobs:
         run: |
           tofu init -backend=false
           tofu validate
+      - name: Validate state bootstrap
+        working-directory: lumen-marsh-platform/infrastructure/bootstrap
+        run: |
+          tofu init -backend=false
+          tofu validate
       - name: Validate development identity infrastructure
         working-directory: lumen-marsh-platform/infrastructure/environments/dev-identity
         run: |
@@ -178,7 +183,7 @@ jobs:
           tofu validate
       - name: Check shell syntax
         run: |
-          for script in scripts/*.sh; do
+          for script in scripts/*.sh infrastructure/modules/compute/visit-host.sh.tftpl; do
             bash -n "$script"
           done
       - name: Validate version manifest

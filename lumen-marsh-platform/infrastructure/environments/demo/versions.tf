@@ -6,9 +6,9 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
   }
-
-  # Local state only during bootstrap (Phase 9).
-  # Move to an encrypted remote backend before shared apply.
-  backend "local" {}
 }

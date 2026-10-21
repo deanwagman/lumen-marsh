@@ -1,0 +1,267 @@
+#!/bin/bash
+# Boot script for the one-host visit. OpenTofu renders this into user data.
+# Settings come from SSM. Secret values are read from Secrets Manager at boot
+# and written to a root-only env file. They are not embedded in this script.
+set -euo pipefail
+exec > >(tee -a /var/log/lumen-marsh-visit.log) 2>&1
+
+AWS_REGION="${aws_region}"
+PARAMETER_PREFIX="${parameter_prefix}"
+CONFIGURATION_GENERATION="${configuration_generation}"
+
+echo "visit host bootstrap starting ($CONFIGURATION_GENERATION)"
+
+export AWS_DEFAULT_REGION="$AWS_REGION"
+export GIT_TERMINAL_PROMPT=0
+
+dnf install -y docker git jq
+if ! command -v aws >/dev/null 2>&1; then
+  dnf install -y awscli
+fi
+systemctl enable --now docker
+
+if ! docker compose version >/dev/null 2>&1; then
+  install -d /usr/local/lib/docker/cli-plugins
+  curl -fsSL \
+    -o /usr/local/lib/docker/cli-plugins/docker-compose \
+    https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64
+  chmod 755 /usr/local/lib/docker/cli-plugins/docker-compose
+  docker compose version
+fi
+
+if ! swapon --show | grep -q /swapfile; then
+  if ! fallocate -l 4G /swapfile; then
+    dd if=/dev/zero of=/swapfile bs=1M count=4096
+  fi
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+fi
+
+param() {
+  aws ssm get-parameter \
+    --region "$AWS_REGION" \
+    --name "$PARAMETER_PREFIX/$1" \
+    --query Parameter.Value \
+    --output text
+}
+
+secret_value() {
+  aws secretsmanager get-secret-value \
+    --region "$AWS_REGION" \
+    --secret-id "$1" \
+    --query SecretString \
+    --output text
+}
+
+reject_newline() {
+  case "$1" in
+    *'
+'*)
+      echo "refusing a setting that contains a newline" >&2
+      exit 1
+      ;;
+  esac
+}
+
+require_value() {
+  if [ -z "$2" ]; then
+    echo "missing $1" >&2
+    exit 1
+  fi
+  reject_newline "$2"
+}
+
+json_field() {
+  printf '%s' "$1" | jq -er "$2"
+}
+
+DEMO_HOST="$(param host)"
+DEMO_ORIGIN="$(param origin)"
+DEMO_SECURITY_MODE="$(param security-mode)"
+VENUEOPS_HISTORICAL_SEED="$(param historical-seed)"
+DEMO_LEASE_DURATION="$(param lease-duration)"
+DEMO_INACTIVITY_TIMEOUT="$(param inactivity-timeout)"
+DEMO_HARD_MAXIMUM="$(param hard-maximum)"
+DEMO_EXPIRY_SCAN="$(param expiry-scan)"
+VENUEOPS_ISSUER_URI="$(param issuer-uri)"
+VENUEOPS_ALLOWED_CLIENT_IDS="$(param allowed-client-ids)"
+NWS_USER_AGENT="$(param nws-user-agent)"
+SOURCE_REPOSITORY_URL="$(param source-repository-url)"
+SOURCE_REVISION="$(param source-revision)"
+ECR_REGISTRY="$(param ecr-registry)"
+IMAGE_PREFIX="$(param image-prefix)"
+IMAGE_TAG="$(param image-tag)"
+RESET_SECRET_ARN="$(param reset-secret-arn)"
+VENUEOPS_DB_SECRET_ARN="$(param venueops-db-secret-arn)"
+ENVIRONMENTAL_DB_SECRET_ARN="$(param environmental-db-secret-arn)"
+ACME_SECRET_ARN="$(param acme-secret-arn)"
+MONITOR_SECRET_ARN="$(param monitor-secret-arn)"
+FLOW_SECRET_ARN="$(param flow-secret-arn)"
+RELIABILITY_SECRET_ARN="$(param reliability-secret-arn)"
+
+require_value DEMO_HOST "$DEMO_HOST"
+require_value DEMO_ORIGIN "$DEMO_ORIGIN"
+require_value VENUEOPS_ISSUER_URI "$VENUEOPS_ISSUER_URI"
+require_value VENUEOPS_ALLOWED_CLIENT_IDS "$VENUEOPS_ALLOWED_CLIENT_IDS"
+require_value NWS_USER_AGENT "$NWS_USER_AGENT"
+require_value SOURCE_REPOSITORY_URL "$SOURCE_REPOSITORY_URL"
+require_value SOURCE_REVISION "$SOURCE_REVISION"
+require_value ECR_REGISTRY "$ECR_REGISTRY"
+
+if [ "$DEMO_SECURITY_MODE" != "OIDC" ]; then
+  echo "refusing to start: security mode must be OIDC" >&2
+  exit 1
+fi
+if [ "$VENUEOPS_HISTORICAL_SEED" != "true" ]; then
+  echo "refusing to start: historical seed must stay on" >&2
+  exit 1
+fi
+
+DEMO_RESET_SECRET="$(secret_value "$RESET_SECRET_ARN")"
+DEMO_VENUEOPS_DB_PASSWORD="$(secret_value "$VENUEOPS_DB_SECRET_ARN")"
+DEMO_ENVIRONMENTAL_DB_PASSWORD="$(secret_value "$ENVIRONMENTAL_DB_SECRET_ARN")"
+DEMO_ACME_EMAIL="$(secret_value "$ACME_SECRET_ARN")"
+require_value DEMO_RESET_SECRET "$DEMO_RESET_SECRET"
+require_value DEMO_VENUEOPS_DB_PASSWORD "$DEMO_VENUEOPS_DB_PASSWORD"
+require_value DEMO_ENVIRONMENTAL_DB_PASSWORD "$DEMO_ENVIRONMENTAL_DB_PASSWORD"
+require_value DEMO_ACME_EMAIL "$DEMO_ACME_EMAIL"
+
+MONITOR_JSON="$(secret_value "$MONITOR_SECRET_ARN")"
+FLOW_JSON="$(secret_value "$FLOW_SECRET_ARN")"
+RELIABILITY_JSON="$(secret_value "$RELIABILITY_SECRET_ARN")"
+OIDC_CLIENT_ID="$(json_field "$MONITOR_JSON" .client_id)"
+OIDC_CLIENT_SECRET="$(json_field "$MONITOR_JSON" .client_secret)"
+OIDC_TOKEN_URL="$(json_field "$MONITOR_JSON" .token_url)"
+OIDC_SCOPE="$(json_field "$MONITOR_JSON" .scope)"
+FLOW_OIDC_CLIENT_ID="$(json_field "$FLOW_JSON" .client_id)"
+FLOW_OIDC_CLIENT_SECRET="$(json_field "$FLOW_JSON" .client_secret)"
+FLOW_OIDC_TOKEN_URL="$(json_field "$FLOW_JSON" .token_url)"
+FLOW_OIDC_SCOPE="$(json_field "$FLOW_JSON" .scope)"
+RELIABILITY_OIDC_CLIENT_ID="$(json_field "$RELIABILITY_JSON" .client_id)"
+RELIABILITY_OIDC_CLIENT_SECRET="$(json_field "$RELIABILITY_JSON" .client_secret)"
+RELIABILITY_OIDC_TOKEN_URL="$(json_field "$RELIABILITY_JSON" .token_url)"
+RELIABILITY_OIDC_SCOPE="$(json_field "$RELIABILITY_JSON" .scope)"
+unset MONITOR_JSON FLOW_JSON RELIABILITY_JSON
+
+require_value OIDC_CLIENT_ID "$OIDC_CLIENT_ID"
+require_value OIDC_CLIENT_SECRET "$OIDC_CLIENT_SECRET"
+require_value OIDC_TOKEN_URL "$OIDC_TOKEN_URL"
+require_value OIDC_SCOPE "$OIDC_SCOPE"
+require_value FLOW_OIDC_CLIENT_ID "$FLOW_OIDC_CLIENT_ID"
+require_value FLOW_OIDC_CLIENT_SECRET "$FLOW_OIDC_CLIENT_SECRET"
+require_value FLOW_OIDC_TOKEN_URL "$FLOW_OIDC_TOKEN_URL"
+require_value FLOW_OIDC_SCOPE "$FLOW_OIDC_SCOPE"
+require_value RELIABILITY_OIDC_CLIENT_ID "$RELIABILITY_OIDC_CLIENT_ID"
+require_value RELIABILITY_OIDC_CLIENT_SECRET "$RELIABILITY_OIDC_CLIENT_SECRET"
+require_value RELIABILITY_OIDC_TOKEN_URL "$RELIABILITY_OIDC_TOKEN_URL"
+require_value RELIABILITY_OIDC_SCOPE "$RELIABILITY_OIDC_SCOPE"
+
+# Local fixture tokens are not credentials on this host.
+unset DEMO_WEATHER_TOKEN DEMO_FLOW_TOKEN DEMO_RELIABILITY_TOKEN || true
+
+install -d -m 700 /etc/lumen-marsh
+umask 077
+env_file=/etc/lumen-marsh/visit.env
+: > "$env_file"
+chmod 600 "$env_file"
+append() {
+  reject_newline "$2"
+  escaped="$(printf '%s' "$2" | sed "s/'/'\\\\''/g")"
+  printf "%s='%s'\n" "$1" "$escaped" >> "$env_file"
+}
+append DEMO_HOST "$DEMO_HOST"
+append DEMO_ORIGIN "$DEMO_ORIGIN"
+append DEMO_HTTP_PORT 80
+append DEMO_HTTPS_PORT 443
+append DEMO_SECURITY_MODE "$DEMO_SECURITY_MODE"
+append DEMO_OIDC_DISABLED false
+append DEMO_LEASE_DURATION "$DEMO_LEASE_DURATION"
+append DEMO_INACTIVITY_TIMEOUT "$DEMO_INACTIVITY_TIMEOUT"
+append DEMO_HARD_MAXIMUM "$DEMO_HARD_MAXIMUM"
+append DEMO_EXPIRY_SCAN "$DEMO_EXPIRY_SCAN"
+append DEMO_RESET_SECRET "$DEMO_RESET_SECRET"
+append DEMO_VENUEOPS_DB_PASSWORD "$DEMO_VENUEOPS_DB_PASSWORD"
+append DEMO_ENVIRONMENTAL_DB_PASSWORD "$DEMO_ENVIRONMENTAL_DB_PASSWORD"
+append DEMO_ACME_EMAIL "$DEMO_ACME_EMAIL"
+append NWS_USER_AGENT "$NWS_USER_AGENT"
+append VENUEOPS_ISSUER_URI "$VENUEOPS_ISSUER_URI"
+append VENUEOPS_ALLOWED_CLIENT_IDS "$VENUEOPS_ALLOWED_CLIENT_IDS"
+append VENUEOPS_HISTORICAL_SEED "$VENUEOPS_HISTORICAL_SEED"
+append OIDC_TOKEN_URL "$OIDC_TOKEN_URL"
+append OIDC_CLIENT_ID "$OIDC_CLIENT_ID"
+append OIDC_CLIENT_SECRET "$OIDC_CLIENT_SECRET"
+append OIDC_SCOPE "$OIDC_SCOPE"
+append FLOW_OIDC_TOKEN_URL "$FLOW_OIDC_TOKEN_URL"
+append FLOW_OIDC_CLIENT_ID "$FLOW_OIDC_CLIENT_ID"
+append FLOW_OIDC_CLIENT_SECRET "$FLOW_OIDC_CLIENT_SECRET"
+append FLOW_OIDC_SCOPE "$FLOW_OIDC_SCOPE"
+append RELIABILITY_OIDC_TOKEN_URL "$RELIABILITY_OIDC_TOKEN_URL"
+append RELIABILITY_OIDC_CLIENT_ID "$RELIABILITY_OIDC_CLIENT_ID"
+append RELIABILITY_OIDC_CLIENT_SECRET "$RELIABILITY_OIDC_CLIENT_SECRET"
+append RELIABILITY_OIDC_SCOPE "$RELIABILITY_OIDC_SCOPE"
+unset DEMO_RESET_SECRET DEMO_VENUEOPS_DB_PASSWORD DEMO_ENVIRONMENTAL_DB_PASSWORD DEMO_ACME_EMAIL
+unset OIDC_CLIENT_SECRET FLOW_OIDC_CLIENT_SECRET RELIABILITY_OIDC_CLIENT_SECRET
+
+rm -rf /opt/lumen-marsh/src
+install -d /opt/lumen-marsh/src
+git -C /opt/lumen-marsh/src init
+git -C /opt/lumen-marsh/src remote add origin "$SOURCE_REPOSITORY_URL"
+git -C /opt/lumen-marsh/src fetch --depth 1 origin "$SOURCE_REVISION"
+git -C /opt/lumen-marsh/src checkout --detach FETCH_HEAD
+
+cd /opt/lumen-marsh/src/lumen-marsh-platform
+if [ ! -f compose.yaml ] || [ ! -f compose.demo.yaml ]; then
+  echo "demo compose files are not in the checked out revision" >&2
+  exit 1
+fi
+
+set -a
+# shellcheck disable=SC1091
+. "$env_file"
+set +a
+unset DEMO_WEATHER_TOKEN DEMO_FLOW_TOKEN DEMO_RELIABILITY_TOKEN || true
+
+export VENUEOPS_IMAGE="$ECR_REGISTRY/$IMAGE_PREFIX/venueops-api:$IMAGE_TAG"
+export ENVIRONMENTAL_MONITOR_IMAGE="$ECR_REGISTRY/$IMAGE_PREFIX/environmental-monitor:$IMAGE_TAG"
+export PARK_FLOW_INTELLIGENCE_IMAGE="$ECR_REGISTRY/$IMAGE_PREFIX/park-flow-intelligence:$IMAGE_TAG"
+export RELIABILITY_INTELLIGENCE_IMAGE="$ECR_REGISTRY/$IMAGE_PREFIX/reliability-intelligence:$IMAGE_TAG"
+export OPERATOR_CONSOLE_IMAGE="$ECR_REGISTRY/$IMAGE_PREFIX/venueops-console:$IMAGE_TAG"
+export GUEST_APP_IMAGE="$ECR_REGISTRY/$IMAGE_PREFIX/lumen-marsh-app:$IMAGE_TAG"
+export CUTAWAY_IMAGE="$ECR_REGISTRY/$IMAGE_PREFIX/cutaway:$IMAGE_TAG"
+export COMPOSE_PARALLEL_LIMIT=1
+
+aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+image_exists() {
+  aws ecr describe-images \
+    --region "$AWS_REGION" \
+    --repository-name "$1" \
+    --image-ids "imageTag=$IMAGE_TAG" \
+    >/dev/null 2>&1
+}
+
+published=true
+for repository in \
+  "$IMAGE_PREFIX/venueops-api" \
+  "$IMAGE_PREFIX/environmental-monitor" \
+  "$IMAGE_PREFIX/park-flow-intelligence" \
+  "$IMAGE_PREFIX/reliability-intelligence" \
+  "$IMAGE_PREFIX/venueops-console" \
+  "$IMAGE_PREFIX/lumen-marsh-app" \
+  "$IMAGE_PREFIX/cutaway"
+do
+  if ! image_exists "$repository"; then
+    published=false
+    break
+  fi
+done
+
+if [ "$published" = true ]; then
+  docker compose -f compose.yaml -f compose.demo.yaml pull
+  docker compose -f compose.yaml -f compose.demo.yaml up -d --no-build
+else
+  docker compose -f compose.yaml -f compose.demo.yaml up -d --build
+fi
+
+echo "visit host bootstrap ready"
