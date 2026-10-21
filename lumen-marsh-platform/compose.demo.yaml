@@ -60,6 +60,9 @@ services:
       VENUEOPS_ISSUER_URI: ${DEMO_ORIGIN:?set DEMO_ORIGIN}
       VENUEOPS_CORS_ORIGINS: ${DEMO_ORIGIN:?set DEMO_ORIGIN, for example https://demo.example.com}
       VENUEOPS_DEMO_SANDBOX_ENABLED: "true"
+      # The database is tmpfs, so a restart empties it. Seeding stays on so the
+      # October story is loaded again and the live park returns to its opening.
+      VENUEOPS_HISTORICAL_SEED: "true"
       DEMO_RESET_SECRET: ${DEMO_RESET_SECRET:?set DEMO_RESET_SECRET to at least 32 random characters}
       DEMO_SECURE_COOKIE: "true"
       DEMO_LEASE_DURATION: ${DEMO_LEASE_DURATION:-PT10M}
@@ -166,13 +169,16 @@ services:
       DEMO_HOST: ${DEMO_HOST:?set DEMO_HOST}
       DEMO_ORIGIN: ${DEMO_ORIGIN:?set DEMO_ORIGIN}
       DEMO_RESET_SECRET: ${DEMO_RESET_SECRET:?set DEMO_RESET_SECRET}
+      DEMO_ACME_EMAIL: ${DEMO_ACME_EMAIL:-}
     ports:
       - "${DEMO_HTTP_PORT:-80}:80"
       - "${DEMO_HTTPS_PORT:-443}:443"
     volumes:
       - ./demo/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./demo/prepare-gateway.sh:/demo/prepare-gateway.sh:ro
       - demo-caddy-data:/data
       - demo-caddy-config:/config
+    command: ["/bin/sh", "/demo/prepare-gateway.sh"]
     networks:
       - demo-gateway
       - demo-edge

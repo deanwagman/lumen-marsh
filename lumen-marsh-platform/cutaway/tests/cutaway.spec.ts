@@ -270,8 +270,10 @@ test("in-app docs explain hosted turns, readiness, and reset recovery", async ({
   await expect(guide).toContainText("spectator");
   await expect(guide).toContainText("compact readiness");
   await expect(guide).toContainText("use Retry");
+  await expect(guide).toContainText("This exhibit is the public visit");
   await expect(guide).toContainText("Synthetic October story");
   await expect(guide).toContainText("separate from the live board");
+  await expect(guide).toContainText("A restart returns the live park to its opening");
   await expect(guide).toContainText("reduced-capacity hour stays in uptime");
   await expect(guide).toContainText("Choosing a citation opens that park date and highlights the segment");
   await expect(guide).not.toContainText("localhost");

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -57,6 +58,7 @@ for (const service of [
 }
 const demoVenueOps = demoCompose.match(/  venueops-api:[\s\S]*?(?=\n  [a-z]|$)/)?.[0] ?? "";
 assert.match(demoVenueOps, /VENUEOPS_ISSUER_URI: \$\{DEMO_ORIGIN:\?set DEMO_ORIGIN\}/);
+assert.match(demoVenueOps, /VENUEOPS_HISTORICAL_SEED: "true"/);
 assert.match(caddy, /\{\$DEMO_HOST\} \{/);
 assert.doesNotMatch(caddy, /tls\s+internal/);
 assert.match(caddy, /auto_https disable_redirects/);
@@ -65,10 +67,21 @@ const healthHandle = caddy.indexOf("handle /gateway-health");
 const cutawayCatchAll = caddy.lastIndexOf("handle {");
 assert.ok(healthHandle >= 0 && healthHandle < cutawayCatchAll);
 assert.match(caddy.slice(healthHandle, cutawayCatchAll), /respond "ok" 200/);
-assert.match(
-  demoCompose.match(/  gateway:[\s\S]*?(?=\nnetworks:)/)?.[0] ?? "",
-  /DEMO_ORIGIN: \$\{DEMO_ORIGIN:\?set DEMO_ORIGIN\}/,
-);
+const gateway = demoCompose.match(/  gateway:[\s\S]*?(?=\nnetworks:)/)?.[0] ?? "";
+assert.match(gateway, /DEMO_ORIGIN: \$\{DEMO_ORIGIN:\?set DEMO_ORIGIN\}/);
+assert.match(gateway, /DEMO_ACME_EMAIL: \$\{DEMO_ACME_EMAIL:-\}/);
+assert.doesNotMatch(gateway, /DEMO_ACME_EMAIL:\?/);
+assert.match(gateway, /\/demo\/prepare-gateway\.sh/);
+const prepareGateway = readFileSync(join(platform, "demo", "prepare-gateway.sh"), "utf8");
+const render = (email) =>
+  execFileSync("sh", [join(platform, "demo", "prepare-gateway.sh"), "--render"], {
+    encoding: "utf8",
+    env: { ...process.env, DEMO_ACME_EMAIL: email, CADDYFILE_SOURCE: join(platform, "demo", "Caddyfile") },
+  });
+assert.equal(render(""), caddy);
+assert.match(render("visit@example.com"), /\temail visit@example.com\n/);
+assert.throws(() => render("not an email"));
+assert.match(prepareGateway, /DEMO_ACME_EMAIL/);
 assert.match(acceptance, /curl_tls=\(-kfsS/);
 assert.match(acceptance, /--resolve/);
 assert.match(acceptance, /\[\[ "\$gateway_health" == \$'ok\\n200' \]\]/);

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # Proves the disposable hosted-demo boundary: one TLS gateway, no direct host
-# ports, bounded/restarting services, ephemeral databases, and working
+# ports, bounded/restarting services, ephemeral databases, the public visit
+# (history, spectator answers, lease-gated reset and replay), and working
 # same-origin Cutaway surfaces and producer triggers.
 
 PLATFORM_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -107,12 +108,42 @@ for name in ("environmental-monitor", "park-flow-intelligence", "reliability-int
 
 venueops_env = services["venueops-api"]["environment"]
 assert venueops_env["VENUEOPS_DEMO_SANDBOX_ENABLED"] == "true"
+assert venueops_env["VENUEOPS_HISTORICAL_SEED"] == "true", venueops_env.get("VENUEOPS_HISTORICAL_SEED")
 assert venueops_env["VENUEOPS_ISSUER_URI"] == services["gateway"]["environment"]["DEMO_ORIGIN"]
 assert "@" in services["environmental-monitor"]["environment"]["NWS_USER_AGENT"]
-assert services["gateway"]["environment"]["DEMO_ORIGIN"] == config["services"]["cutaway"]["environment"]["DEMO_ORIGIN"]
+gateway_env = services["gateway"]["environment"]
+assert gateway_env["DEMO_ORIGIN"] == config["services"]["cutaway"]["environment"]["DEMO_ORIGIN"]
+assert "DEMO_ACME_EMAIL" in gateway_env
+acme_email = gateway_env["DEMO_ACME_EMAIL"]
+assert acme_email == "" or ("@" in str(acme_email) and " " not in str(acme_email)), acme_email
+gateway_command = services["gateway"].get("command") or []
+assert any("prepare-gateway.sh" in str(part) for part in gateway_command), gateway_command
 assert config["networks"]["demo-gateway"]["internal"] is True
 print("PASS  rendered demo boundary")
 PY
+
+caddy_source="$PLATFORM_ROOT/demo/Caddyfile"
+blank_caddy="$(mktemp "${TMPDIR:-/tmp}/lm-demo-caddy-blank.XXXXXX")"
+email_caddy="$(mktemp "${TMPDIR:-/tmp}/lm-demo-caddy-email.XXXXXX")"
+trap 'rm -f "$CONFIG_JSON" "$blank_caddy" "$email_caddy"' EXIT
+CADDYFILE_SOURCE="$caddy_source" DEMO_ACME_EMAIL= \
+  sh "$PLATFORM_ROOT/demo/prepare-gateway.sh" --render >"$blank_caddy"
+cmp -s "$caddy_source" "$blank_caddy"
+CADDYFILE_SOURCE="$caddy_source" DEMO_ACME_EMAIL=visit@example.com \
+  sh "$PLATFORM_ROOT/demo/prepare-gateway.sh" --render >"$email_caddy"
+grep -qx $'\temail visit@example.com' "$email_caddy"
+if DEMO_ACME_EMAIL='not an email' CADDYFILE_SOURCE="$caddy_source" \
+  sh "$PLATFORM_ROOT/demo/prepare-gateway.sh" --render >/dev/null 2>&1; then
+  echo "error: invalid DEMO_ACME_EMAIL was accepted" >&2
+  exit 1
+fi
+grep -q '/history\*' demo/Caddyfile
+grep -q 'id="operating-story"' cutaway/public/index.html
+grep -q 'const towerHistoryUrl = "/tower/history"' cutaway/public/cutaway.js
+grep -q 'getElementById("console-frame").src = towerHistoryUrl' cutaway/public/cutaway.js
+grep -q 's|/tower/history|/history|g' demo/prepare-cutaway.sh
+rm -f "$blank_caddy" "$email_caddy"
+echo "PASS  optional certificate contact and history route"
 
 if [[ "$CONFIG_ONLY" -eq 1 ]]; then
   echo "Cutaway sandbox acceptance: config passed"
@@ -156,6 +187,56 @@ curl "${curl_tls[@]}" "$DEMO_ORIGIN/dashboard" >/dev/null
 curl "${curl_tls[@]}" "$DEMO_ORIGIN/api/v1/attractions" \
   | python3 -c 'import json,sys; assert len(json.load(sys.stdin)) > 0'
 echo "PASS  same-origin exhibit, apps, and API"
+
+read_cited_answers() {
+  curl "${curl_tls[@]}" -G \
+    "$DEMO_ORIGIN/api/v1/operator/analytics/availability" \
+    --data-urlencode "datasetId=lumen-marsh-availability-demo-v1" \
+    --data-urlencode "from=2026-10-13" \
+    --data-urlencode "to=2026-10-15" \
+    | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+answers = data["answers"]
+assert [item["question"] for item in answers] == [
+    "Which attraction had the worst uptime?",
+    "What caused it?",
+    "Which day?",
+], answers
+assert all(isinstance(item.get("answer"), str) and item["answer"].strip() for item in answers), answers
+assert "maintenance episode" in answers[1]["answer"], answers[1]
+assert "2026-10-15" in answers[2]["answer"], answers[2]
+'
+}
+
+assert_lease_gated() {
+  local payload code body
+  payload="$(curl -ksS "${resolve[@]}" -w $'\n%{http_code}' -X POST "$1")"
+  code="${payload##*$'\n'}"
+  body="${payload%$'\n'*}"
+  [[ "$code" == "403" ]]
+  BODY="$body" python3 -c '
+import json, os
+body = json.loads(os.environ["BODY"])
+assert body.get("title") == "Active sandbox lease required", body
+'
+}
+
+history_page="$(curl "${curl_tls[@]}" "$DEMO_ORIGIN/history")"
+grep -q 'Lumen Marsh Control' <<<"$history_page"
+exhibit_page="$(curl "${curl_tls[@]}" "$DEMO_ORIGIN/")"
+grep -q 'id="operating-story"' <<<"$exhibit_page"
+served_js="$(curl "${curl_tls[@]}" "$DEMO_ORIGIN/cutaway.js")"
+grep -q 'const towerHistoryUrl = "/history";' <<<"$served_js"
+grep -q 'getElementById("console-frame").src = towerHistoryUrl' <<<"$served_js"
+echo "PASS  /history is Control Tower and Operating story points the frame there"
+
+read_cited_answers
+echo "PASS  spectator reads the three cited answers without a lease"
+
+assert_lease_gated "$DEMO_ORIGIN/api/v1/demo/reset"
+assert_lease_gated "$DEMO_ORIGIN/api/v1/operator/analytics/datasets/lumen-marsh-availability-demo-v1/replay"
+echo "PASS  reset and historical replay stay lease-gated"
 
 cookie_a="$(mktemp "${TMPDIR:-/tmp}/lm-demo-cookie-a.XXXXXX")"
 cookie_b="$(mktemp "${TMPDIR:-/tmp}/lm-demo-cookie-b.XXXXXX")"
@@ -214,6 +295,34 @@ print(next((item.get("subjectId", "") for item in items if item.get("kind") == o
     sleep 1
   done
   return 1
+}
+
+prove_playable_opening() {
+  curl "${curl_tls[@]}" "$DEMO_ORIGIN/api/v1/attractions" | python3 -c '
+import json, sys
+rows = json.load(sys.stdin)
+expected = {
+    "cypress-coil": ("CLOSED", "NOT_APPLICABLE", None, 0),
+    "mangrove-run": ("OPERATING", "NORMAL", 25, 0),
+    "stormglass-station": ("CLOSED", "NOT_APPLICABLE", None, 0),
+}
+actual = {
+    item["id"]: (item.get("status"), item.get("capacityMode"), item.get("waitMinutes"), item.get("version"))
+    for item in rows
+}
+assert actual == expected, actual
+'
+  local attraction_id
+  for attraction_id in cypress-coil mangrove-run stormglass-station; do
+    curl "${curl_tls[@]}" "$DEMO_ORIGIN/api/v1/operator/attractions/$attraction_id/activity" \
+      | python3 -c 'import json,sys; assert json.load(sys.stdin) == []'
+  done
+  read_cited_answers
+  curl "${curl_tls[@]}" "$DEMO_ORIGIN/api/v1/operator/analytics/datasets" | python3 -c '
+import json, sys
+ids = [item["id"] for item in json.load(sys.stdin)]
+assert "lumen-marsh-availability-demo-v1" in ids, ids
+'
 }
 
 reset_and_prove_quiet() {
@@ -326,6 +435,8 @@ curl "${curl_tls[@]}" -b "$cookie_a" -X POST \
 replayed_flow_id="$(pending_subject "$cookie_a" UNPUBLISHED_FLOW_RECOMMENDATION)"
 [[ "$replayed_flow_id" == "$flow_id" ]]
 reset_and_prove_quiet "$cookie_a"
+prove_playable_opening
+echo "PASS  Start over restores the playable opening and leaves the October dataset"
 
 # Let the short acceptance lease expire. Its stale cookie cannot mutate, and
 # the next visitor receives another quiet reset park.
