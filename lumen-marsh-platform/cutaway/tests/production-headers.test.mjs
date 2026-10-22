@@ -57,8 +57,35 @@ for (const service of [
   assert.match(block, /ports: !reset \[\]/);
 }
 const demoVenueOps = demoCompose.match(/  venueops-api:[\s\S]*?(?=\n  [a-z]|$)/)?.[0] ?? "";
-assert.match(demoVenueOps, /VENUEOPS_ISSUER_URI: \$\{DEMO_ORIGIN:\?set DEMO_ORIGIN\}/);
+assert.match(demoVenueOps, /VENUEOPS_ISSUER_URI: \$\{VENUEOPS_ISSUER_URI:-\$\{DEMO_ORIGIN\}\}/);
 assert.match(demoVenueOps, /VENUEOPS_HISTORICAL_SEED: "true"/);
+const demoOrigin = "https://demo.example.com";
+const cognitoIssuer = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example";
+const renderedIssuer = (issuer) => {
+  const env = {
+    ...process.env,
+    DEMO_HOST: "demo.example.com",
+    DEMO_ORIGIN: demoOrigin,
+    DEMO_SECURITY_MODE: "LOCAL_JWT",
+    DEMO_RESET_SECRET: "0123456789abcdef0123456789abcdef",
+    DEMO_VENUEOPS_DB_PASSWORD: "venueops-secret",
+    DEMO_ENVIRONMENTAL_DB_PASSWORD: "environmental-secret",
+    NWS_USER_AGENT: "LumenMarshDemo/1.0 (operator@example.com)",
+  };
+  if (issuer === undefined) {
+    delete env.VENUEOPS_ISSUER_URI;
+  } else {
+    env.VENUEOPS_ISSUER_URI = issuer;
+  }
+  const rendered = execFileSync(
+    "docker",
+    ["compose", "-f", "compose.yaml", "-f", "compose.demo.yaml", "config", "--format", "json"],
+    { cwd: platform, encoding: "utf8", env },
+  );
+  return JSON.parse(rendered).services["venueops-api"].environment.VENUEOPS_ISSUER_URI;
+};
+assert.equal(renderedIssuer(), demoOrigin);
+assert.equal(renderedIssuer(cognitoIssuer), cognitoIssuer);
 assert.match(caddy, /\{\$DEMO_HOST\} \{/);
 assert.doesNotMatch(caddy, /tls\s+internal/);
 assert.match(caddy, /auto_https disable_redirects/);

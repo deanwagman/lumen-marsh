@@ -57,7 +57,8 @@ services:
     environment:
       SPRING_DATASOURCE_PASSWORD: ${DEMO_VENUEOPS_DB_PASSWORD:?set DEMO_VENUEOPS_DB_PASSWORD}
       VENUEOPS_SECURITY_MODE: ${DEMO_SECURITY_MODE:?set DEMO_SECURITY_MODE explicitly}
-      VENUEOPS_ISSUER_URI: ${DEMO_ORIGIN:?set DEMO_ORIGIN}
+      # The local sandbox uses the origin. The AWS host sets the Cognito issuer.
+      VENUEOPS_ISSUER_URI: ${VENUEOPS_ISSUER_URI:-${DEMO_ORIGIN}}
       VENUEOPS_CORS_ORIGINS: ${DEMO_ORIGIN:?set DEMO_ORIGIN, for example https://demo.example.com}
       VENUEOPS_DEMO_SANDBOX_ENABLED: "true"
       # The database is tmpfs, so a restart empties it. Seeding stays on so the
@@ -85,7 +86,8 @@ services:
       NWS_USER_AGENT: ${NWS_USER_AGENT:?set NWS_USER_AGENT to an application name and contact}
       DATABASE_URL: postgresql+asyncpg://${ENVIRONMENTAL_DB_USER:-environmental}:${DEMO_ENVIRONMENTAL_DB_PASSWORD:?set DEMO_ENVIRONMENTAL_DB_PASSWORD}@environmental-db:5432/${ENVIRONMENTAL_DB_NAME:-environmental_monitor}
       OIDC_DISABLED: ${DEMO_OIDC_DISABLED:-true}
-      VENUEOPS_BEARER_TOKEN: ${DEMO_WEATHER_TOKEN:?set DEMO_WEATHER_TOKEN}
+      # LOCAL_JWT fixture. The AWS host leaves this empty and uses Cognito client credentials.
+      VENUEOPS_BEARER_TOKEN: ${DEMO_WEATHER_TOKEN:-}
     networks:
       - environmental-data
       - services
@@ -99,7 +101,7 @@ services:
       DEMO_SANDBOX_ENABLED: "true"
       DEMO_SANDBOX_SECRET: ${DEMO_RESET_SECRET:?set DEMO_RESET_SECRET}
       OIDC_DISABLED: ${DEMO_OIDC_DISABLED:-true}
-      VENUEOPS_BEARER_TOKEN: ${DEMO_FLOW_TOKEN:?set DEMO_FLOW_TOKEN}
+      VENUEOPS_BEARER_TOKEN: ${DEMO_FLOW_TOKEN:-}
 
   reliability-intelligence:
     <<: *demo-producer
@@ -110,7 +112,7 @@ services:
       DEMO_SANDBOX_ENABLED: "true"
       DEMO_SANDBOX_SECRET: ${DEMO_RESET_SECRET:?set DEMO_RESET_SECRET}
       OIDC_DISABLED: ${DEMO_OIDC_DISABLED:-true}
-      VENUEOPS_BEARER_TOKEN: ${DEMO_RELIABILITY_TOKEN:?set DEMO_RELIABILITY_TOKEN}
+      VENUEOPS_BEARER_TOKEN: ${DEMO_RELIABILITY_TOKEN:-}
 
   venueops-console:
     <<: *demo-runtime

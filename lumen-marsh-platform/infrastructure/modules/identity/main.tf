@@ -375,6 +375,30 @@ output "flow_secret_arn" {
   value       = try(aws_secretsmanager_secret.flow_client[0].arn, null)
 }
 
+output "monitor_client_id" {
+  value = try(aws_cognito_user_pool_client.environmental_monitor[0].id, null)
+}
+
+output "flow_client_id" {
+  value = try(aws_cognito_user_pool_client.park_flow[0].id, null)
+}
+
+output "reliability_client_id" {
+  value = try(aws_cognito_user_pool_client.reliability[0].id, null)
+}
+
+output "monitor_secret_version_id" {
+  value = try(aws_secretsmanager_secret_version.monitor_client[0].version_id, "")
+}
+
+output "flow_secret_version_id" {
+  value = try(aws_secretsmanager_secret_version.flow_client[0].version_id, "")
+}
+
+output "reliability_secret_version_id" {
+  value = try(aws_secretsmanager_secret_version.reliability_client[0].version_id, "")
+}
+
 output "token_url" {
   value = "https://${aws_cognito_user_pool_domain.venueops.domain}.auth.${var.aws_region}.amazoncognito.com/oauth2/token"
 }

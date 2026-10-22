@@ -21,7 +21,7 @@ docker compose -f compose.yaml -f compose.override.yaml -f compose.oidc.yaml con
 echo "OIDC compose overlay OK"
 
 echo "== shell syntax =="
-for script in scripts/*.sh; do
+for script in scripts/*.sh infrastructure/modules/compute/visit-host.sh.tftpl; do
   bash -n "$script"
 done
 echo "scripts OK"
@@ -32,6 +32,11 @@ tofu fmt -check -recursive ../..
 tofu init -backend=false -input=false >/dev/null
 tofu validate
 echo "opentofu demo OK"
+
+cd "$ROOT/infrastructure/bootstrap"
+tofu init -backend=false -input=false >/dev/null
+tofu validate
+echo "opentofu state bootstrap OK"
 
 cd "$ROOT/infrastructure/environments/dev-identity"
 tofu init -backend=false -input=false >/dev/null

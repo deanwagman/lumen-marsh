@@ -204,7 +204,10 @@ tofu validate
 Armed apply (Phase 10+) requires an explicit reviewed plan:
 
 ```bash
-tofu plan -var='enable_demo_resources=true'
+tofu plan \
+  -var='enable_demo_resources=true' \
+  -var='demo_host=visit.example.com' \
+  -var='demo_acme_email=ops@example.com'
 ```
 
 Design notes: [docs/aws-demo.md](docs/aws-demo.md).
