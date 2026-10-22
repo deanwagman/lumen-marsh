@@ -25,4 +25,10 @@ find "$root" -type f \( -name '*.html' -o -name '*.js' \) -exec sed -i \
   -e 's|/tower/history|/history|g' \
   {} +
 
+# This script is the hosted container command, so the image entrypoint never
+# sees nginx and skips template rendering. Apply the same default and envsubst
+# the local image uses, then start nginx with the rendered config.
+. /docker-entrypoint.d/15-demo-gateway-secret.envsh
+/docker-entrypoint.d/20-envsubst-on-templates.sh
+
 exec nginx -g 'daemon off;'

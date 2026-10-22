@@ -11,9 +11,16 @@ const productionNginx = readFileSync(join(repo, "venueops-console/docker/nginx.c
 const framedNginx = readFileSync(join(repo, "venueops-console/docker/nginx.framed.conf"), "utf8");
 const compose = readFileSync(join(platform, "compose.yaml"), "utf8");
 const override = readFileSync(join(platform, "compose.override.yaml"), "utf8");
-const cutawayNginx = readFileSync(join(platform, "cutaway", "nginx.conf"), "utf8");
-const cutawayIndex = readFileSync(join(platform, "cutaway", "public", "index.html"), "utf8");
-const cutawayScript = readFileSync(join(platform, "cutaway", "public", "cutaway.js"), "utf8");
+const cutawayDir = join(platform, "cutaway");
+const cutawayNginx = readFileSync(join(cutawayDir, "nginx.conf"), "utf8");
+const cutawayDockerfile = readFileSync(join(cutawayDir, "Dockerfile"), "utf8");
+const gatewaySecretEntrypoint = readFileSync(
+  join(cutawayDir, "docker-entrypoint.d", "15-demo-gateway-secret.envsh"),
+  "utf8",
+);
+const cutawayIndex = readFileSync(join(cutawayDir, "public", "index.html"), "utf8");
+const cutawayScript = readFileSync(join(cutawayDir, "public", "cutaway.js"), "utf8");
+const prepareCutaway = readFileSync(join(platform, "demo", "prepare-cutaway.sh"), "utf8");
 const demoCompose = readFileSync(join(platform, "compose.demo.yaml"), "utf8");
 const caddy = readFileSync(join(platform, "demo", "Caddyfile"), "utf8");
 const acceptance = readFileSync(
@@ -47,6 +54,70 @@ assert.match(cutawayNginx, /Permissions-Policy/);
 assert.doesNotMatch(cutawayNginx, /localhost|127\.0\.0\.1/);
 assert.doesNotMatch(cutawayIndex, /localhost|127\.0\.0\.1/);
 assert.doesNotMatch(cutawayScript, /localhost|127\.0\.0\.1|local-development-token|Authorization/);
+
+assert.match(cutawayNginx, /proxy_set_header X-Demo-Gateway-Secret "\$\{DEMO_GATEWAY_SECRET\}";/);
+assert.match(cutawayDockerfile, /NGINX_ENVSUBST_FILTER=DEMO_GATEWAY_SECRET/);
+assert.match(
+  cutawayDockerfile,
+  /COPY docker-entrypoint\.d\/15-demo-gateway-secret\.envsh \/docker-entrypoint\.d\/15-demo-gateway-secret\.envsh/,
+);
+assert.match(
+  cutawayDockerfile,
+  /chmod 755 \/docker-entrypoint\.d\/15-demo-gateway-secret\.envsh/,
+);
+assert.match(gatewaySecretEntrypoint, /export DEMO_GATEWAY_SECRET=/);
+const cutawayOverride = override.slice(override.indexOf("\n  cutaway:"));
+assert.doesNotMatch(cutawayOverride, /DEMO_GATEWAY_SECRET/);
+const cutawayDemo = demoCompose.match(/  cutaway:[\s\S]*?(?=\n  [a-z]|$)/)?.[0] ?? "";
+assert.match(cutawayDemo, /DEMO_GATEWAY_SECRET: \$\{DEMO_RESET_SECRET:\?set DEMO_RESET_SECRET\}/);
+assert.match(caddy, /header_up X-Demo-Gateway-Secret \{\$DEMO_RESET_SECRET\}/);
+const prepareRender = prepareCutaway.indexOf(". /docker-entrypoint.d/15-demo-gateway-secret.envsh");
+const prepareEnvsubst = prepareCutaway.indexOf("/docker-entrypoint.d/20-envsubst-on-templates.sh");
+const prepareNginx = prepareCutaway.lastIndexOf("exec nginx -g 'daemon off;'");
+assert.ok(prepareRender >= 0 && prepareRender < prepareEnvsubst && prepareEnvsubst < prepareNginx);
+
+const nginxVariables = new Set([
+  "request_method",
+  "demo_limit_key",
+  "binary_remote_addr",
+  "host",
+  "scheme",
+  "proxy_add_x_forwarded_for",
+  "uri",
+]);
+
+function appliedGatewaySecret(secret) {
+  const env = { PATH: process.env.PATH };
+  if (secret !== undefined) env.DEMO_GATEWAY_SECRET = secret;
+  return execFileSync(
+    "sh",
+    [
+      "-c",
+      '. "$1"; printf %s "$DEMO_GATEWAY_SECRET"',
+      "sh",
+      join(cutawayDir, "docker-entrypoint.d", "15-demo-gateway-secret.envsh"),
+    ],
+    { env, encoding: "utf8" },
+  );
+}
+
+function renderCutawayNginx(secret) {
+  const rendered = cutawayNginx.replaceAll("${DEMO_GATEWAY_SECRET}", appliedGatewaySecret(secret));
+  const names = [...rendered.matchAll(/\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?/g)].map((match) => match[1]);
+  assert.deepEqual(names.filter((name) => !nginxVariables.has(name)), []);
+  assert.doesNotMatch(rendered, /\$\{?DEMO_GATEWAY_SECRET\}?/);
+  return rendered;
+}
+
+const hostedSecret = "0123456789abcdef0123456789abcdef";
+assert.equal(appliedGatewaySecret(undefined), "");
+assert.equal(appliedGatewaySecret(""), "");
+assert.equal(appliedGatewaySecret(hostedSecret), hostedSecret);
+const unsetNginx = renderCutawayNginx(undefined);
+const hostedNginx = renderCutawayNginx(hostedSecret);
+assert.match(unsetNginx, /proxy_set_header X-Demo-Gateway-Secret "";/);
+assert.match(hostedNginx, new RegExp(`proxy_set_header X-Demo-Gateway-Secret "${hostedSecret}";`));
+assert.match(hostedNginx, /proxy_set_header Host \$host;/);
 
 for (const service of [
   "environmental-monitor",
