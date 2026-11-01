@@ -128,7 +128,8 @@ for (const service of [
   assert.match(block, /ports: !reset \[\]/);
 }
 const demoVenueOps = demoCompose.match(/  venueops-api:[\s\S]*?(?=\n  [a-z]|$)/)?.[0] ?? "";
-assert.match(demoVenueOps, /VENUEOPS_ISSUER_URI: \$\{VENUEOPS_ISSUER_URI:-\$\{DEMO_ORIGIN\}\}/);
+assert.match(demoVenueOps, /VENUEOPS_ISSUER_URI: \$\{DEMO_VENUEOPS_ISSUER_URI:-\$\{DEMO_ORIGIN\}\}/);
+assert.doesNotMatch(demoVenueOps, /\$\{VENUEOPS_ISSUER_URI:/);
 assert.match(demoVenueOps, /VENUEOPS_HISTORICAL_SEED: "true"/);
 const demoOrigin = "https://demo.example.com";
 const cognitoIssuer = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_example";
@@ -142,11 +143,12 @@ const renderedIssuer = (issuer) => {
     DEMO_VENUEOPS_DB_PASSWORD: "venueops-secret",
     DEMO_ENVIRONMENTAL_DB_PASSWORD: "environmental-secret",
     NWS_USER_AGENT: "LumenMarshDemo/1.0 (operator@example.com)",
+    // Developer .env contract. The demo overlay must ignore it.
+    VENUEOPS_ISSUER_URI: "http://venueops.local/test",
   };
-  if (issuer === undefined) {
-    delete env.VENUEOPS_ISSUER_URI;
-  } else {
-    env.VENUEOPS_ISSUER_URI = issuer;
+  delete env.DEMO_VENUEOPS_ISSUER_URI;
+  if (issuer !== undefined) {
+    env.DEMO_VENUEOPS_ISSUER_URI = issuer;
   }
   const rendered = execFileSync(
     "docker",
