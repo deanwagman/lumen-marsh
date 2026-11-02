@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { environment } from '@/config/environment';
 import { catalogAttractions, lightningHoldRecommendation, mangroveRun } from '@/test/fixtures';
 import {
   AttractionEventSource,
@@ -309,7 +310,10 @@ describe('handleAttractionStreamEvent', () => {
 });
 
 describe('AttractionEventSource.connect', () => {
+  const authMode = environment.authMode;
+
   afterEach(() => {
+    environment.authMode = authMode;
     vi.useRealTimers();
   });
 
@@ -347,6 +351,77 @@ describe('AttractionEventSource.connect', () => {
     expect(url).toContain('/api/v1/operator/events');
     expect(new Headers(request.headers).get('Authorization')).toBe('Bearer stream-token');
 
+    disconnect();
+  });
+
+  it('connects in demo mode with an empty token and does not expire the session', async () => {
+    environment.authMode = 'demo';
+    const queryClient = new QueryClient();
+    const onUnauthorized = vi.fn();
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(
+            `event: attractions.snapshot\ndata: ${JSON.stringify(catalogAttractions)}\n\n`,
+          ),
+        );
+      },
+    });
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      }),
+    );
+
+    const disconnect = AttractionEventSource.connect(queryClient, {
+      getAccessToken: () => '',
+      fetchImpl,
+      onUnauthorized,
+    });
+
+    await vi.waitFor(() => {
+      expect(queryClient.getQueryData(AttractionQueries.list())).toEqual(catalogAttractions);
+    });
+    const [, request] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(new Headers(request.headers).get('Authorization')).toBeNull();
+    expect(onUnauthorized).not.toHaveBeenCalled();
+
+    disconnect();
+  });
+
+  it('expires the session in local mode when the access token is empty', () => {
+    environment.authMode = 'local';
+    const queryClient = new QueryClient();
+    const onUnauthorized = vi.fn();
+    const fetchImpl = vi.fn();
+
+    const disconnect = AttractionEventSource.connect(queryClient, {
+      getAccessToken: () => '',
+      fetchImpl,
+      onUnauthorized,
+    });
+
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+    expect(fetchImpl).not.toHaveBeenCalled();
+    disconnect();
+  });
+
+  it('expires the session in oidc mode when there is no access token', () => {
+    environment.authMode = 'oidc';
+    const queryClient = new QueryClient();
+    const onUnauthorized = vi.fn();
+    const fetchImpl = vi.fn();
+
+    const disconnect = AttractionEventSource.connect(queryClient, {
+      getAccessToken: () => undefined,
+      fetchImpl,
+      onUnauthorized,
+    });
+
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+    expect(fetchImpl).not.toHaveBeenCalled();
     disconnect();
   });
 

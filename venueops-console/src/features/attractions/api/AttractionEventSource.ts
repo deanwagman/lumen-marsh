@@ -205,18 +205,22 @@ export const AttractionEventSource = {
       controller = new AbortController();
       setStreamHealth(queryClient, { type: 'connect' });
       const token = options.getAccessToken();
-      if (!token) {
+      // Demo mode ships no browser credential. The gateway authenticates the visit,
+      // so an empty token is signed in. OIDC and local JWT still are not.
+      if (!token && environment.authMode !== 'demo') {
         disposed = true;
         options.onUnauthorized?.();
         return;
       }
 
+      const headers = new Headers({ Accept: 'text/event-stream' });
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+
       void fetchImpl(resolveApiUrl(environment.apiBaseUrl, '/api/v1/operator/events'), {
         method: 'GET',
-        headers: {
-          Accept: 'text/event-stream',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         signal: controller.signal,
       })
         .then(async (response) => {
